@@ -69,23 +69,23 @@ export default function ActiveAgents() {
   };
 
   return (
-    <div className="flex flex-col gap-8 p-6 max-w-7xl mx-auto">
+    <div className="flex flex-col gap-8 p-8 max-w-7xl mx-auto">
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div className="flex flex-col gap-1">
-          <h2 className="text-3xl font-bold tracking-tight text-slate-900">Active Agents</h2>
-          <p className="text-slate-500">Manage AI agents available for this chatbot instance.</p>
+          <h2 className="text-4xl font-bold tracking-tight text-slate-900">Active Agents</h2>
+          <p className="text-slate-500 text-base">Manage AI agents available for this chatbot instance.</p>
         </div>
         <div className="flex items-center gap-3">
           <div className="relative">
-            <Search className="absolute left-3 top-2.5 text-slate-400" size={18} />
+            <Search className="absolute left-3 top-3 text-slate-400" size={20} />
             <input
               type="text"
               placeholder="Filter agents..."
-              className="pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-[#E3000F] outline-none transition-all w-64"
+              className="pl-11 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-base focus:ring-2 focus:ring-[#E3000F] outline-none transition-all w-72"
             />
           </div>
-          <button className="p-2 bg-white border border-slate-200 rounded-xl text-slate-500 hover:text-slate-900 transition-all">
-            <Filter size={20} />
+          <button className="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-500 hover:text-slate-900 transition-all">
+            <Filter size={22} />
           </button>
         </div>
       </div>
@@ -94,12 +94,12 @@ export default function ActiveAgents() {
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-200">
-              <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Agent Name</th>
-              <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Category</th>
-              <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Status</th>
-              <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest text-center">Sessions</th>
-              <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest">Last Active</th>
-              <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest text-right">Actions</th>
+              <th className="px-6 py-4 text-sm font-bold text-slate-500 uppercase tracking-widest">Agent Name</th>
+              <th className="px-6 py-4 text-sm font-bold text-slate-500 uppercase tracking-widest">Category</th>
+              <th className="px-6 py-4 text-sm font-bold text-slate-500 uppercase tracking-widest">Status</th>
+              <th className="px-6 py-4 text-sm font-bold text-slate-500 uppercase tracking-widest text-center">Sessions</th>
+              <th className="px-6 py-4 text-sm font-bold text-slate-500 uppercase tracking-widest">Last Active</th>
+              <th className="px-6 py-4 text-sm font-bold text-slate-500 uppercase tracking-widest text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -111,64 +111,64 @@ export default function ActiveAgents() {
                 exit={{ opacity: 0 }}
                 className="border-b border-slate-100 hover:bg-slate-50/50 transition-all group"
               >
-                <td className="px-6 py-4">
+                <td className="px-6 py-5">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-red-50 rounded-lg flex items-center justify-center text-[#E3000F]">
-                      <Bot size={16} />
+                    <div className="w-10 h-10 bg-red-50 rounded-lg flex items-center justify-center text-[#E3000F]">
+                      <Bot size={18} />
                     </div>
                     <div className="flex flex-col">
-                      <span className="font-bold text-slate-900 text-sm">{agent.name}</span>
-                      <span className="text-[11px] text-slate-500 max-w-xs truncate">{agent.description}</span>
+                      <span className="font-bold text-slate-900 text-base">{agent.name}</span>
+                      <span className="text-sm text-slate-500 max-w-xs truncate">{agent.description}</span>
                     </div>
                   </div>
                 </td>
-                <td className="px-6 py-4">
-                  <span className="text-xs font-medium text-slate-500 bg-slate-100 px-2 py-1 rounded-md">
+                <td className="px-6 py-5">
+                  <span className="text-sm font-medium text-slate-500 bg-slate-100 px-3 py-1.5 rounded-md">
                     {agent.category}
                   </span>
                 </td>
-                <td className="px-6 py-4">
-                  <div className="flex items-center gap-1.5">
-                    <div className={cn("w-1.5 h-1.5 rounded-full", agent.status === 'active' ? "bg-emerald-500" : "bg-slate-400")} />
-                    <span className={cn("text-xs font-bold uppercase tracking-wider", agent.status === 'active' ? "text-emerald-700" : "text-slate-500")}>
+                <td className="px-6 py-5">
+                  <div className="flex items-center gap-2">
+                    <div className={cn("w-2 h-2 rounded-full", agent.status === 'active' ? "bg-emerald-500" : "bg-slate-400")} />
+                    <span className={cn("text-sm font-bold uppercase tracking-wider", agent.status === 'active' ? "text-emerald-700" : "text-slate-500")}>
                       {agent.status}
                     </span>
                   </div>
                 </td>
-                <td className="px-6 py-4 text-center">
-                  <span className="text-sm font-mono text-slate-600">{agent.sessionsHandled.toLocaleString()}</span>
+                <td className="px-6 py-5 text-center">
+                  <span className="text-base font-mono text-slate-600">{agent.sessionsHandled.toLocaleString()}</span>
                 </td>
-                <td className="px-6 py-4">
-                  <div className="flex items-center gap-1.5 text-slate-500">
-                    <Clock size={14} />
-                    <span className="text-xs">{agent.lastUpdated}</span>
+                <td className="px-6 py-5">
+                  <div className="flex items-center gap-2 text-slate-500">
+                    <Clock size={16} />
+                    <span className="text-sm">{agent.lastUpdated}</span>
                   </div>
                 </td>
-                <td className="px-6 py-4 text-right">
+                <td className="px-6 py-5 text-right">
                   <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all">
                     <button
                       onClick={() => handleToggleStatus(agent.id)}
                       title={agent.status === 'active' ? "Deactivate" : "Activate"}
                       className={cn(
-                        "p-2 rounded-lg transition-all",
+                        "p-2.5 rounded-lg transition-all",
                         agent.status === 'active' ? "hover:bg-amber-50 text-slate-400 hover:text-amber-600" : "hover:bg-emerald-50 text-slate-400 hover:text-emerald-600"
                       )}
                     >
-                      {agent.status === 'active' ? <PowerOff size={16} /> : <Power size={16} />}
+                      {agent.status === 'active' ? <PowerOff size={18} /> : <Power size={18} />}
                     </button>
                     <button
                       onClick={() => setEditingAgent(agent)}
                       title="Edit"
-                      className="p-2 hover:bg-red-50 text-slate-400 hover:text-[#E3000F] rounded-lg transition-all"
+                      className="p-2.5 hover:bg-red-50 text-slate-400 hover:text-[#E3000F] rounded-lg transition-all"
                     >
-                      <Edit3 size={16} />
+                      <Edit3 size={18} />
                     </button>
                     <button
                       onClick={() => handleDelete(agent.id)}
                       title="Delete"
-                      className="p-2 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-lg transition-all"
+                      className="p-2.5 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-lg transition-all"
                     >
-                      <Trash2 size={16} />
+                      <Trash2 size={18} />
                     </button>
                   </div>
                 </td>
@@ -176,7 +176,7 @@ export default function ActiveAgents() {
             ))}
             {agents.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-6 py-12 text-center text-slate-500">
+                <td colSpan={6} className="px-6 py-12 text-center text-slate-500 text-base">
                   No agents configured.
                 </td>
               </tr>
@@ -186,10 +186,10 @@ export default function ActiveAgents() {
       </div>
 
       <div className="flex items-center justify-between px-2">
-        <span className="text-sm text-slate-500">Showing {agents.length} of {agents.length} agents</span>
+        <span className="text-base text-slate-500">Showing {agents.length} of {agents.length} agents</span>
         <div className="flex gap-2">
-          <button className="px-4 py-2 text-sm font-bold text-slate-400 cursor-not-allowed">Previous</button>
-          <button className="px-4 py-2 text-sm font-bold text-[#E3000F] hover:bg-red-50 rounded-lg transition-all">Next</button>
+          <button className="px-5 py-2.5 text-base font-bold text-slate-400 cursor-not-allowed">Previous</button>
+          <button className="px-5 py-2.5 text-base font-bold text-[#E3000F] hover:bg-red-50 rounded-lg transition-all">Next</button>
         </div>
       </div>
 
@@ -211,7 +211,7 @@ export default function ActiveAgents() {
               className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden flex flex-col relative z-10"
             >
               <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-                <h3 className="text-xl font-bold text-slate-900">Edit Agent</h3>
+                <h3 className="text-2xl font-bold text-slate-900">Edit Agent</h3>
                 <button
                   onClick={() => setEditingAgent(null)}
                   className="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-all"
@@ -220,42 +220,42 @@ export default function ActiveAgents() {
                 </button>
               </div>
 
-              <form onSubmit={handleSaveEdit} className="p-6 flex flex-col gap-4">
+              <form onSubmit={handleSaveEdit} className="p-6 flex flex-col gap-5">
                 <div className="flex flex-col gap-2">
-                  <label className="text-sm font-bold text-slate-700">Agent Name</label>
+                  <label className="text-base font-bold text-slate-700">Agent Name</label>
                   <input
                     type="text"
                     value={editingAgent.name}
                     onChange={(e) => setEditingAgent({ ...editingAgent, name: e.target.value })}
-                    className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#E3000F]"
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-base outline-none focus:ring-2 focus:ring-[#E3000F]"
                     required
                   />
                 </div>
                 <div className="flex flex-col gap-2">
-                  <label className="text-sm font-bold text-slate-700">Description</label>
+                  <label className="text-base font-bold text-slate-700">Description</label>
                   <textarea
                     value={editingAgent.description}
                     onChange={(e) => setEditingAgent({ ...editingAgent, description: e.target.value })}
-                    className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#E3000F] min-h-[80px] resize-y"
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-base outline-none focus:ring-2 focus:ring-[#E3000F] min-h-[80px] resize-y"
                     required
                   />
                 </div>
                 <div className="flex flex-col gap-2">
-                  <label className="text-sm font-bold text-slate-700">Category</label>
+                  <label className="text-base font-bold text-slate-700">Category</label>
                   <input
                     type="text"
                     value={editingAgent.category}
                     onChange={(e) => setEditingAgent({ ...editingAgent, category: e.target.value })}
-                    className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#E3000F]"
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-base outline-none focus:ring-2 focus:ring-[#E3000F]"
                     required
                   />
                 </div>
                 <div className="flex flex-col gap-2">
-                  <label className="text-sm font-bold text-slate-700">Status</label>
+                  <label className="text-base font-bold text-slate-700">Status</label>
                   <select
                     value={editingAgent.status}
                     onChange={(e) => setEditingAgent({ ...editingAgent, status: e.target.value as AgentStatus })}
-                    className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#E3000F]"
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-base outline-none focus:ring-2 focus:ring-[#E3000F]"
                   >
                     <option value="active">Active</option>
                     <option value="inactive">Inactive</option>
@@ -266,13 +266,13 @@ export default function ActiveAgents() {
                   <button
                     type="button"
                     onClick={() => setEditingAgent(null)}
-                    className="px-6 py-2.5 font-bold text-slate-600 hover:text-slate-900 transition-all"
+                    className="px-6 py-3 font-bold text-slate-600 hover:text-slate-900 transition-all text-base"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="px-8 py-2.5 bg-[#E3000F] hover:bg-red-700 text-white font-bold rounded-xl shadow-lg shadow-red-200 transition-all"
+                    className="px-8 py-3 bg-[#E3000F] hover:bg-red-700 text-white font-bold rounded-xl shadow-lg shadow-red-200 transition-all text-base"
                   >
                     Save Changes
                   </button>

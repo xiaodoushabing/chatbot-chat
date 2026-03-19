@@ -11,7 +11,6 @@ import {
   ShieldCheck,
   LogOut,
   Bell,
-  Search,
   User,
   Activity,
   Users2
@@ -37,11 +36,11 @@ export default function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   const navItems = [
-    { id: 'discovery', label: 'Intent Discovery', icon: <Zap size={20} />, description: 'Automated Knowledge Sync' },
-    { id: 'dashboard', label: 'Observability', icon: <Activity size={20} />, description: 'Intelligence & Monitoring' },
-    { id: 'preview', label: 'Chatbot Preview', icon: <Bot size={20} />, description: 'Next-Gen Experience' },
-    { id: 'active-intents', label: 'Active Intents', icon: <MessageSquare size={20} />, description: 'Manage Live Database' },
-    { id: 'active-agents', label: 'Active Agents', icon: <Users2 size={20} />, description: 'Manage AI Agents' },
+    { id: 'discovery', label: 'Intent Discovery', icon: <Zap size={22} />, description: 'Automated Knowledge Sync' },
+    { id: 'dashboard', label: 'Observability', icon: <Activity size={22} />, description: 'Intelligence & Monitoring' },
+    { id: 'preview', label: 'Chatbot Preview', icon: <Bot size={22} />, description: 'Next-Gen Experience' },
+    { id: 'active-intents', label: 'Active Intents', icon: <MessageSquare size={22} />, description: 'Manage Live Database' },
+    { id: 'active-agents', label: 'Active Agents', icon: <Users2 size={22} />, description: 'Manage AI Agents' },
   ];
 
   const handleDeploySuccess = () => {
@@ -54,38 +53,38 @@ export default function App() {
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-50 bg-white border-r border-slate-200 transition-all duration-300 ease-in-out flex flex-col shadow-xl lg:shadow-none",
-          isSidebarOpen ? "w-72" : "w-20"
+          isSidebarOpen ? "w-80" : "w-20"
         )}
       >
         {/* Logo Section */}
-        <div className="h-20 flex items-center px-6 border-b border-slate-100 shrink-0">
+        <div className="h-24 flex items-center px-6 border-b border-slate-100 shrink-0">
           {isSidebarOpen ? (
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4">
               <img
                 src={ocbcLogo}
                 alt="OCBC Logo"
-                className="h-7 object-contain"
+                className="h-9 object-contain"
               />
-              <div className="flex flex-col border-l-2 border-slate-200 pl-3">
-                <span className="font-black text-sm tracking-tight leading-none text-slate-900">AI Admin</span>
-                <span className="text-[9px] font-bold text-[#E3000F] uppercase tracking-widest mt-0.5">Suite</span>
+              <div className="flex flex-col border-l-2 border-slate-200 pl-4">
+                <span className="font-black text-base tracking-tight leading-none text-slate-900">AI Admin</span>
+                <span className="text-[11px] font-bold text-[#E3000F] uppercase tracking-widest mt-1">Suite</span>
               </div>
             </div>
           ) : (
-            <div className="w-10 h-10 bg-[#E3000F] rounded-xl flex items-center justify-center text-white font-black text-xs shadow-lg shadow-red-200 shrink-0 mx-auto">
+            <div className="w-12 h-12 bg-[#E3000F] rounded-xl flex items-center justify-center text-white font-black text-sm shadow-lg shadow-red-200 shrink-0 mx-auto">
               OCBC
             </div>
           )}
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-3 py-6 flex flex-col gap-2">
+        <nav className="flex-1 px-4 py-6 flex flex-col gap-2">
           {navItems.map((item) => (
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id as Tab)}
               className={cn(
-                "group flex items-center gap-4 p-3 rounded-xl transition-all relative",
+                "group flex items-center gap-4 p-3.5 rounded-xl transition-all relative",
                 activeTab === item.id
                   ? "bg-red-50 text-[#E3000F]"
                   : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"
@@ -99,14 +98,14 @@ export default function App() {
               </div>
               {isSidebarOpen && (
                 <div className="flex flex-col items-start overflow-hidden whitespace-nowrap">
-                  <span className="font-bold text-sm">{item.label}</span>
-                  <span className="text-[10px] font-medium opacity-60">{item.description}</span>
+                  <span className="font-bold text-[15px]">{item.label}</span>
+                  <span className="text-xs font-medium opacity-60">{item.description}</span>
                 </div>
               )}
               {activeTab === item.id && (
                 <motion.div
                   layoutId="active-pill"
-                  className="absolute left-0 w-1 h-8 bg-[#E3000F] rounded-r-full"
+                  className="absolute left-0 w-1.5 h-9 bg-[#E3000F] rounded-r-full"
                 />
               )}
             </button>
@@ -116,19 +115,19 @@ export default function App() {
         {/* User Section */}
         <div className="p-4 border-t border-slate-100">
           <div className={cn(
-            "flex items-center gap-3 p-2 rounded-xl bg-slate-50 border border-slate-100",
+            "flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100",
             !isSidebarOpen && "justify-center"
           )}>
-            <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center text-[#E3000F] shrink-0">
-              <User size={18} />
+            <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center text-[#E3000F] shrink-0">
+              <User size={20} />
             </div>
             {isSidebarOpen && (
               <div className="flex flex-col overflow-hidden">
-                <span className="text-xs font-bold truncate">System Admin</span>
-                <span className="text-[10px] text-slate-500 truncate">Chatbot Administrator</span>
+                <span className="text-sm font-bold truncate">System Admin</span>
+                <span className="text-xs text-slate-500 truncate">Chatbot Administrator</span>
               </div>
             )}
-            {isSidebarOpen && <LogOut size={14} className="ml-auto text-slate-400 hover:text-rose-500 cursor-pointer" />}
+            {isSidebarOpen && <LogOut size={16} className="ml-auto text-slate-400 hover:text-rose-500 cursor-pointer" />}
           </div>
         </div>
       </aside>
@@ -137,7 +136,7 @@ export default function App() {
       <main
         className={cn(
           "flex-1 transition-all duration-300 ease-in-out min-h-screen flex flex-col",
-          isSidebarOpen ? "pl-72" : "pl-20"
+          isSidebarOpen ? "pl-80" : "pl-20"
         )}
       >
         {/* Top Header */}
@@ -145,41 +144,31 @@ export default function App() {
           <div className="flex items-center gap-4">
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 transition-all"
+              className="p-2.5 hover:bg-slate-100 rounded-lg text-slate-500 transition-all"
             >
-              <Menu size={20} />
+              <Menu size={22} />
             </button>
             <div className="h-6 w-px bg-slate-200 mx-2" />
-            <div className="flex items-center gap-2 text-sm font-medium text-slate-500">
+            <div className="flex items-center gap-2 text-base font-medium text-slate-500">
               <span>Admin</span>
-              <ChevronRight size={14} />
+              <ChevronRight size={16} />
               <span className="text-slate-900 font-bold">
                 {navItems.find(n => n.id === activeTab)?.label}
               </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-6">
-            <div className="hidden md:flex items-center gap-2 px-4 py-2 bg-slate-100 rounded-xl border border-slate-200 group focus-within:ring-2 focus-within:ring-[#E3000F] transition-all">
-              <Search size={18} className="text-slate-400" />
-              <input
-                type="text"
-                placeholder="Search intents, logs..."
-                className="bg-transparent border-none outline-none text-sm w-48"
-              />
-            </div>
-            <div className="flex items-center gap-3">
-              <button className="p-2.5 text-slate-500 hover:bg-slate-100 rounded-xl relative transition-all">
-                <Bell size={20} />
-                <span className="absolute top-2 right-2 w-2 h-2 bg-[#E3000F] rounded-full border-2 border-white" />
-              </button>
-              <button className="p-2.5 text-slate-500 hover:bg-slate-100 rounded-xl transition-all">
-                <Settings size={20} />
-              </button>
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 border border-emerald-100 rounded-lg">
-                <ShieldCheck size={14} className="text-emerald-600" />
-                <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-widest">System Secure</span>
-              </div>
+          <div className="flex items-center gap-4">
+            <button className="p-2.5 text-slate-500 hover:bg-slate-100 rounded-xl relative transition-all">
+              <Bell size={22} />
+              <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-[#E3000F] rounded-full border-2 border-white" />
+            </button>
+            <button className="p-2.5 text-slate-500 hover:bg-slate-100 rounded-xl transition-all">
+              <Settings size={22} />
+            </button>
+            <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 border border-emerald-100 rounded-lg">
+              <ShieldCheck size={16} className="text-emerald-600" />
+              <span className="text-xs font-bold text-emerald-700 uppercase tracking-widest">System Secure</span>
             </div>
           </div>
         </header>
@@ -201,10 +190,10 @@ export default function App() {
               {activeTab === 'active-agents' && <ActiveAgents />}
               {activeTab === 'preview' && (
                 <div className="p-8 flex flex-col items-center justify-center min-h-[calc(100vh-80px)]">
-                  <div className="max-w-md w-full">
+                  <div className="max-w-lg w-full">
                     <div className="mb-8 text-center">
-                      <h2 className="text-2xl font-bold text-slate-900">Experience OCBC Next-Gen Banking</h2>
-                      <p className="text-slate-500 mt-2">Test the OCBC retirement planner chatbot with real-time dashboard context and life-event awareness.</p>
+                      <h2 className="text-3xl font-bold text-slate-900">Experience OCBC Next-Gen Banking</h2>
+                      <p className="text-slate-500 mt-3 text-base">Test the OCBC retirement planner chatbot with real-time dashboard context and life-event awareness.</p>
                     </div>
                     <ChatbotPreview />
                   </div>
