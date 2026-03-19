@@ -1,19 +1,21 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  FileText, 
-  Globe, 
-  Folder, 
-  Zap, 
-  Clock, 
-  CheckCircle2, 
-  ArrowRight, 
-  Plus, 
+import {
+  FileText,
+  Globe,
+  Folder,
+  Zap,
+  Clock,
+  CheckCircle2,
+  ArrowRight,
+  Plus,
   RefreshCw,
   Settings2,
   X,
   Eye,
   Trash2,
-  History
+  History,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
@@ -49,7 +51,7 @@ const MOCK_DIFFS: IntentDiff[] = [
     intent: 'OCBC_360_Salary_Credit',
     status: 'new',
     utterances: [
-      'What is the minimum salary credit for OCBC 360?', 
+      'What is the minimum salary credit for OCBC 360?',
       'How does salary credit affect my 360 interest?',
       'Can I use GIRO for salary credit?',
       'What are the benefits of crediting salary to 360 account?',
@@ -60,7 +62,7 @@ const MOCK_DIFFS: IntentDiff[] = [
     llmSuggestion: {
       intent: 'OCBC_360_Salary_Credit',
       utterances: [
-        'What is the minimum salary credit for OCBC 360?', 
+        'What is the minimum salary credit for OCBC 360?',
         'How does salary credit affect my 360 interest?',
         'Can I use GIRO for salary credit?',
         'What are the benefits of crediting salary to 360 account?',
@@ -74,7 +76,7 @@ const MOCK_DIFFS: IntentDiff[] = [
     intent: 'Home_Loan_Repayment_Impact',
     status: 'changed',
     utterances: [
-      'I am getting a new house, how does it affect my savings?', 
+      'I am getting a new house, how does it affect my savings?',
       'Impact of mortgage on OCBC 360 wealth bonus',
       'Will buying a house delay my retirement goals?',
       'How much does a home loan reduce my investment capacity?'
@@ -90,7 +92,7 @@ const MOCK_DIFFS: IntentDiff[] = [
     original: {
       intent: 'Home_Loan_Repayment_Impact',
       utterances: [
-        'I am getting a new house, how does it affect my savings?', 
+        'I am getting a new house, how does it affect my savings?',
         'Impact of mortgage on OCBC 360 wealth bonus',
         'Can I use CPF for my house?'
       ],
@@ -99,7 +101,7 @@ const MOCK_DIFFS: IntentDiff[] = [
     llmSuggestion: {
       intent: 'Home_Loan_Repayment_Impact',
       utterances: [
-        'I am getting a new house, how does it affect my savings?', 
+        'I am getting a new house, how does it affect my savings?',
         'Impact of mortgage on OCBC 360 wealth bonus',
         'Will buying a house delay my retirement goals?',
         'How much does a home loan reduce my investment capacity?'
@@ -112,7 +114,7 @@ const MOCK_DIFFS: IntentDiff[] = [
     intent: 'CPF_Life_Explanation',
     status: 'deleted',
     utterances: [
-      'Explain CPF Life', 
+      'Explain CPF Life',
       'How does the annuity work?',
       'What is CPF Life?',
       'Tell me about the national annuity scheme'
@@ -126,7 +128,7 @@ const MOCK_DIFFS: IntentDiff[] = [
     intent: 'OCBC_Life_Goals_Retirement',
     status: 'new',
     utterances: [
-      'How do I set up a retirement goal in OCBC app?', 
+      'How do I set up a retirement goal in OCBC app?',
       'OCBC Life Goals retirement calculator',
       'Which investment is best for retirement?',
       'Track my retirement progress'
@@ -136,7 +138,7 @@ const MOCK_DIFFS: IntentDiff[] = [
     llmSuggestion: {
       intent: 'OCBC_Life_Goals_Retirement',
       utterances: [
-        'How do I set up a retirement goal in OCBC app?', 
+        'How do I set up a retirement goal in OCBC app?',
         'OCBC Life Goals retirement calculator',
         'Which investment is best for retirement?',
         'Track my retirement progress'
@@ -165,7 +167,7 @@ const TraditionalWorkflowMock = () => {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setTick((prev) => (prev >= 600 ? 0 : prev + 1)); // loop every 60 seconds (100ms * 600)
+      setTick((prev) => (prev >= 600 ? 0 : prev + 1));
     }, 100);
     return () => clearInterval(interval);
   }, []);
@@ -215,13 +217,13 @@ const TraditionalWorkflowMock = () => {
   else response = getTypedText(450, 520, responseFull);
 
   let docScroll = 0;
-  if (tick < 20) docScroll = tick * 2; // 0 to 40
+  if (tick < 20) docScroll = tick * 2;
   else if (tick < 100) docScroll = 40;
-  else if (tick < 120) docScroll = 40 + (tick - 100) * 1; // 40 to 60
+  else if (tick < 120) docScroll = 40 + (tick - 100) * 1;
   else if (tick < 200) docScroll = 60;
-  else if (tick < 220) docScroll = 60 + (tick - 200) * 2; // 60 to 100
+  else if (tick < 220) docScroll = 60 + (tick - 200) * 2;
   else if (tick < 300) docScroll = 100;
-  else if (tick < 330) docScroll = 100 + (tick - 300) * 1.5; // 100 to 145
+  else if (tick < 330) docScroll = 100 + (tick - 300) * 1.5;
   else docScroll = 145;
 
   return (
@@ -239,7 +241,7 @@ const TraditionalWorkflowMock = () => {
           )}
         </div>
         <div className="p-3 text-[10px] text-slate-400 font-serif leading-relaxed relative h-full overflow-hidden">
-          <div 
+          <div
             className="absolute top-0 left-0 right-0 p-3 transition-transform duration-100 ease-linear"
             style={{ transform: `translateY(-${docScroll}px)` }}
           >
@@ -266,7 +268,7 @@ const TraditionalWorkflowMock = () => {
             </span>
           </div>
         </div>
-        
+
         <div className="flex flex-col gap-1">
           <label className="text-[10px] font-bold text-slate-400 uppercase">Utterances (0/50)</label>
           <div className="h-32 bg-slate-50 rounded border border-slate-200 p-2 flex flex-col gap-2 shadow-sm overflow-y-auto custom-scrollbar shrink-0">
@@ -281,7 +283,7 @@ const TraditionalWorkflowMock = () => {
                 {isCursorVisible(70, 100) && <span className="text-slate-400">|</span>}
               </div>
             )}
-            
+
             {tick >= 150 && (
               <div className="bg-white border border-slate-200 rounded px-2 py-1.5 text-[11px] text-slate-700 w-fit shadow-sm">
                 {utt2Full}
@@ -329,11 +331,11 @@ const TraditionalWorkflowMock = () => {
                 {isCursorVisible(270, 300) && <span className="text-slate-400">|</span>}
               </div>
             )}
-            
+
             {tick < 70 && <span className="text-xs text-slate-400 italic px-1">Type utterance and press Enter...</span>}
           </div>
         </div>
-        
+
         <div className="flex flex-col gap-1">
           <label className="text-[10px] font-bold text-slate-400 uppercase">Responses</label>
           <div className="h-24 bg-slate-50 rounded border border-slate-200 p-2 shadow-sm shrink-0">
@@ -343,7 +345,7 @@ const TraditionalWorkflowMock = () => {
             </span>
           </div>
         </div>
-        
+
         <div className="mt-auto flex justify-end pt-2">
           <div className={cn(
             "px-4 py-1.5 rounded text-xs font-bold transition-all duration-300",
@@ -363,7 +365,7 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
   const [activeSyncId, setActiveSyncId] = useState<string | null>(null);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [isDeploying, setIsDeploying] = useState(false);
-  
+
   const [selectedIntents, setSelectedIntents] = useState<Set<string>>(new Set());
   const [editingIntentId, setEditingIntentId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<{ intent: string; response: string; utterances: string[] }>({ intent: '', response: '', utterances: [] });
@@ -371,6 +373,9 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [urlInput, setUrlInput] = useState('');
+
+  const [showTraditionalWorkflow, setShowTraditionalWorkflow] = useState(false);
+  const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
 
   const [syncHistory, setSyncHistory] = useState<SyncSession[]>(() => {
     const saved = localStorage.getItem('ocbc_sync_history');
@@ -386,8 +391,7 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
     setActiveSyncId(null);
     setTimeout(() => {
       setIsGenerating(false);
-      
-      // Generate dynamic diffs for this session
+
       const shuffled = [...MOCK_DIFFS].sort(() => 0.5 - Math.random());
       const selectedDiffs = shuffled.slice(0, Math.floor(Math.random() * 3) + 2);
 
@@ -409,8 +413,8 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
       setIsDeploying(false);
       setSyncHistory(prev => prev.map(s => {
         if (s.id !== activeSyncId) return s;
-        return { 
-          ...s, 
+        return {
+          ...s,
           status: 'deployed',
           diffs: s.diffs.filter(d => selectedIntents.has(d.id))
         };
@@ -510,34 +514,55 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
   };
 
   return (
-    <div className="flex flex-col lg:flex-row gap-8 p-6 max-w-[1600px] mx-auto min-h-[calc(100vh-4rem)]">
-      
-      {/* Traditional Workflow (1/3) */}
-      <div className="w-full lg:w-1/3 flex flex-col gap-6">
-        <div className="flex flex-col gap-2">
-          <h2 className="text-2xl font-bold tracking-tight text-slate-900">Traditional Workflow</h2>
-          <p className="text-slate-500 text-sm">
-            Manual intent creation process.
-          </p>
-        </div>
-        <div className="bg-white border border-slate-200 rounded-2xl p-6 flex flex-col gap-4 flex-1 shadow-sm overflow-hidden">
-          <div className="flex items-center justify-between px-2">
-            <span className="text-sm font-bold text-slate-400 uppercase tracking-widest">Manual Entry</span>
-            <span className="text-xs font-medium text-slate-400 flex items-center gap-1">
-              <Clock size={12} /> Tedious
-            </span>
+    <div className="flex flex-col gap-8 p-6 max-w-[1600px] mx-auto min-h-[calc(100vh-4rem)]">
+
+      {/* Traditional Workflow - Collapsible */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <button
+          onClick={() => setShowTraditionalWorkflow(!showTraditionalWorkflow)}
+          className="w-full px-6 py-4 flex items-center justify-between hover:bg-slate-50 transition-all"
+        >
+          <div className="flex items-center gap-3">
+            <Clock size={18} className="text-slate-400" />
+            <div className="flex flex-col items-start">
+              <span className="text-sm font-bold text-slate-900">Traditional Workflow</span>
+              <span className="text-xs text-slate-400">Manual intent creation process (~30 mins/intent)</span>
+            </div>
           </div>
-          <TraditionalWorkflowMock />
-          <div className="mt-auto pt-4 border-t border-slate-100 flex items-center justify-between relative z-20">
-            <span className="text-sm font-bold text-slate-500">Total Effort</span>
-            <span className="text-lg font-black text-slate-400">~30 MINS / INTENT</span>
-          </div>
-        </div>
+          {showTraditionalWorkflow ? <ChevronUp size={18} className="text-slate-400" /> : <ChevronDown size={18} className="text-slate-400" />}
+        </button>
+
+        <AnimatePresence>
+          {showTraditionalWorkflow && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="overflow-hidden"
+            >
+              <div className="px-6 pb-6 border-t border-slate-100 pt-4">
+                <div className="bg-white border border-slate-200 rounded-2xl p-6 flex flex-col gap-4 h-[500px] overflow-hidden">
+                  <div className="flex items-center justify-between px-2">
+                    <span className="text-sm font-bold text-slate-400 uppercase tracking-widest">Manual Entry</span>
+                    <span className="text-xs font-medium text-slate-400 flex items-center gap-1">
+                      <Clock size={12} /> Tedious
+                    </span>
+                  </div>
+                  <TraditionalWorkflowMock />
+                  <div className="mt-auto pt-4 border-t border-slate-100 flex items-center justify-between relative z-20">
+                    <span className="text-sm font-bold text-slate-500">Total Effort</span>
+                    <span className="text-lg font-black text-slate-400">~30 MINS / INTENT</span>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
-      {/* Knowledge Synchronization (2/3) */}
-      <div className="w-full lg:w-2/3 flex flex-col gap-6">
-        {/* Header Section */}
+      {/* Knowledge Synchronization */}
+      <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-2">
           <h2 className="text-2xl font-bold tracking-tight text-slate-900">Knowledge Synchronization</h2>
           <p className="text-slate-500 text-sm">
@@ -547,19 +572,19 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
 
         {/* Main Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1">
-          
+
           {/* Left Panel: Inputs & History */}
           <div className="flex flex-col gap-6 h-full">
-          
+
           {/* Input Panel */}
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex flex-col gap-6 shrink-0">
             <div className="flex flex-col gap-4">
               <label className="text-sm font-semibold text-slate-700">Knowledge Sources</label>
-              
+
               <div className="flex flex-col gap-2">
                 <AnimatePresence>
                   {sources.map(source => (
-                    <motion.div 
+                    <motion.div
                       key={source.id}
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
@@ -572,7 +597,7 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
                         {source.type === 'folder' && <Folder size={16} className="text-slate-400 shrink-0" />}
                         <span className="text-xs font-medium text-slate-700 truncate">{source.name}</span>
                       </div>
-                      <button 
+                      <button
                         onClick={() => setSources(sources.filter(s => s.id !== source.id))}
                         className="text-slate-400 hover:text-[#E3000F] transition-all shrink-0 p-1"
                       >
@@ -584,7 +609,7 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
               </div>
 
               <div className="flex flex-col gap-3">
-                <div 
+                <div
                   onDragOver={onDragOver}
                   onDragLeave={onDragLeave}
                   onDrop={onDrop}
@@ -594,12 +619,12 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
                     isDragging ? "border-[#E3000F] bg-[#E3000F]/5" : "border-slate-300 hover:bg-slate-50 hover:border-[#E3000F]/50"
                   )}
                 >
-                  <input 
-                    type="file" 
-                    multiple 
-                    ref={fileInputRef} 
-                    onChange={handleFileSelect} 
-                    className="hidden" 
+                  <input
+                    type="file"
+                    multiple
+                    ref={fileInputRef}
+                    onChange={handleFileSelect}
+                    className="hidden"
                   />
                   <div className="w-10 h-10 bg-[#E3000F]/10 text-[#E3000F] rounded-full flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
                     <Plus size={20} />
@@ -611,15 +636,15 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
                 <form onSubmit={handleAddUrl} className="flex gap-2">
                   <div className="relative flex-1">
                     <Globe size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                    <input 
-                      type="url" 
+                    <input
+                      type="url"
                       value={urlInput}
                       onChange={(e) => setUrlInput(e.target.value)}
-                      placeholder="https://..." 
+                      placeholder="https://..."
                       className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-[#E3000F]"
                     />
                   </div>
-                  <button 
+                  <button
                     type="submit"
                     disabled={!urlInput.trim()}
                     className="px-4 py-2 bg-[#E3000F] text-white text-sm font-semibold rounded-lg hover:bg-[#E3000F]/90 disabled:opacity-50 transition-all"
@@ -630,30 +655,47 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
               </div>
             </div>
 
-            <div className="flex flex-col gap-4 pt-4 border-t border-slate-100">
-              <div className="flex items-center justify-between">
+            {/* Advanced Settings - Collapsible */}
+            <div className="border-t border-slate-100 pt-4">
+              <button
+                onClick={() => setShowAdvancedSettings(!showAdvancedSettings)}
+                className="flex items-center justify-between w-full group"
+              >
                 <span className="text-sm font-semibold text-slate-700 flex items-center gap-2">
                   <Settings2 size={16} /> Advanced Settings
                 </span>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-medium text-slate-500">Max Intents</label>
-                  <input type="number" defaultValue={15} className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-[#E3000F]" />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-medium text-slate-500">Match Sensitivity</label>
-                  <select className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-[#E3000F]">
-                    <option>Balanced</option>
-                    <option>Strict</option>
-                    <option>Broad</option>
-                  </select>
-                </div>
-              </div>
+                {showAdvancedSettings ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
+              </button>
+
+              <AnimatePresence>
+                {showAdvancedSettings && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="grid grid-cols-2 gap-4 mt-4">
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-medium text-slate-500">Max Intents</label>
+                        <input type="number" defaultValue={15} className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-[#E3000F]" />
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-medium text-slate-500">Match Sensitivity</label>
+                        <select className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-[#E3000F]">
+                          <option>Balanced</option>
+                          <option>Strict</option>
+                          <option>Broad</option>
+                        </select>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
-             <button 
+             <button
               onClick={handleGenerate}
               disabled={isGenerating || sources.length === 0}
               className="w-full bg-[#E3000F] hover:bg-[#E3000F]/90 text-white font-semibold py-3 rounded-xl shadow-lg shadow-[#E3000F]/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
@@ -671,7 +713,7 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
               </div>
               <div className="flex flex-col gap-2 overflow-y-auto custom-scrollbar pr-2">
                 {syncHistory.map(sync => (
-                  <button 
+                  <button
                     key={sync.id}
                     onClick={() => {
                       setActiveSyncId(sync.id);
@@ -703,7 +745,7 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
           <div className="flex flex-col gap-6 min-h-0">
             <AnimatePresence mode="wait">
               {!activeSyncId ? (
-                <motion.div 
+                <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95 }}
@@ -718,7 +760,7 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
                   </p>
                 </motion.div>
               ) : (
-                <motion.div 
+                <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   className="flex flex-col gap-4 h-full min-h-0"
@@ -747,8 +789,8 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
                     </div>
                     <div className="flex flex-col gap-3 pr-2 custom-scrollbar overflow-y-auto min-h-0">
                       {displayDiffs.map((diff) => (
-                        <div 
-                          key={diff.id} 
+                        <div
+                          key={diff.id}
                           className={cn(
                             "p-3 rounded-xl border flex flex-col gap-2 transition-all cursor-pointer",
                             selectedIntents.has(diff.id) ? "bg-[#E3000F]/5 border-[#E3000F]/20" : "bg-slate-50 border-slate-100 hover:border-slate-300"
@@ -774,7 +816,7 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
                               {diff.status}
                             </span>
                           </div>
-                          
+
                           <div className="flex flex-col gap-1 pl-6">
                             <span className="text-[10px] font-bold text-slate-400 uppercase">Utterances ({diff.utterances.length})</span>
                             <div className="flex flex-wrap gap-1">
@@ -821,29 +863,46 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
           </div>
         </div>
 
-        {/* Suggested Actions */}
+        {/* Deployment Summary - Concise Point Form */}
         {activeSyncId && activeSync?.status !== 'deployed' && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-slate-900 rounded-2xl p-8 text-white flex flex-col md:flex-row items-center justify-between gap-6"
+            className="bg-slate-900 rounded-2xl p-8 text-white flex flex-col md:flex-row items-start justify-between gap-6"
           >
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-3">
             <h3 className="text-xl font-bold flex items-center gap-2">
               <CheckCircle2 className="text-[#E3000F]" /> Ready for Deployment
             </h3>
-            <p className="text-slate-300 text-sm max-w-md">
-              AI has identified {displayDiffs.filter(d => d.status === 'new').length} new intents, updated {displayDiffs.filter(d => d.status === 'changed').length} existing ones, and deleted {displayDiffs.filter(d => d.status === 'deleted').length} from the selected sources. Review and push to production?
-            </p>
+            <ul className="text-slate-300 text-sm space-y-1">
+              {displayDiffs.filter(d => d.status === 'new').length > 0 && (
+                <li className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
+                  <span><strong>{displayDiffs.filter(d => d.status === 'new').length} new</strong> — {displayDiffs.filter(d => d.status === 'new').map(d => d.intent).join(', ')}</span>
+                </li>
+              )}
+              {displayDiffs.filter(d => d.status === 'changed').length > 0 && (
+                <li className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
+                  <span><strong>{displayDiffs.filter(d => d.status === 'changed').length} changed</strong> — {displayDiffs.filter(d => d.status === 'changed').map(d => d.intent).join(', ')}</span>
+                </li>
+              )}
+              {displayDiffs.filter(d => d.status === 'deleted').length > 0 && (
+                <li className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />
+                  <span><strong>{displayDiffs.filter(d => d.status === 'deleted').length} to delete</strong> — {displayDiffs.filter(d => d.status === 'deleted').map(d => d.intent).join(', ')}</span>
+                </li>
+              )}
+            </ul>
           </div>
-          <div className="flex flex-wrap gap-4 justify-end">
-            <button 
+          <div className="flex flex-wrap gap-4 justify-end shrink-0">
+            <button
               onClick={() => setShowReviewModal(true)}
               className="px-6 py-3 bg-white/10 hover:bg-white/20 rounded-xl font-semibold transition-all whitespace-nowrap"
             >
               Review Intents ({displayDiffs.length})
             </button>
-            <button 
+            <button
               onClick={() => {
                 if (selectedIntents.size < displayDiffs.length) {
                   setSelectedIntents(new Set(displayDiffs.map(d => d.id)));
@@ -855,7 +914,7 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
             >
               Approve All & Deploy
             </button>
-            <button 
+            <button
               onClick={handleDeploy}
               disabled={isDeploying || selectedIntents.size === 0}
               className="px-6 py-3 bg-[#E3000F] hover:bg-[#E3000F]/90 rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg shadow-[#E3000F]/20 disabled:opacity-50 whitespace-nowrap"
@@ -873,14 +932,14 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
       <AnimatePresence>
         {showReviewModal && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setShowReviewModal(false)}
               className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
             />
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -905,7 +964,7 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
                     </label>
                   </div>
                 </div>
-                <button 
+                <button
                   onClick={() => setShowReviewModal(false)}
                   className="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-all"
                 >
@@ -915,8 +974,8 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
 
               <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-4 custom-scrollbar">
                 {displayDiffs.map((diff) => (
-                  <div 
-                    key={diff.id} 
+                  <div
+                    key={diff.id}
                     className={cn(
                       "p-4 rounded-2xl border flex flex-col gap-4 transition-all",
                       selectedIntents.has(diff.id) ? "bg-red-50/30 border-[#E3000F]/20" : "bg-slate-50 border-slate-200"
@@ -934,9 +993,9 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
                           <input type="checkbox" className="hidden" checked={selectedIntents.has(diff.id)} onChange={() => toggleSelection(diff.id)} />
                         </label>
                         {editingIntentId === diff.id ? (
-                          <input 
-                            type="text" 
-                            value={editForm.intent} 
+                          <input
+                            type="text"
+                            value={editForm.intent}
                             onChange={e => setEditForm(prev => ({ ...prev, intent: e.target.value }))}
                             className="text-sm font-black text-slate-900 bg-white border border-slate-300 rounded px-2 py-1 outline-none focus:border-[#E3000F]"
                           />
@@ -960,7 +1019,7 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
                             <button onClick={() => setEditingIntentId(null)} className="text-xs font-bold text-slate-500 hover:text-slate-700 bg-slate-100 px-2 py-1 rounded">Cancel</button>
                           </div>
                         ) : (
-                          <button 
+                          <button
                             onClick={() => {
                               setEditingIntentId(diff.id);
                               setEditForm({ intent: diff.intent, response: diff.response, utterances: [...diff.utterances] });
@@ -1032,7 +1091,7 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
                       <div className="flex flex-col gap-2">
                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">AI Generated Response</span>
                         {editingIntentId === diff.id ? (
-                          <textarea 
+                          <textarea
                             value={editForm.response}
                             onChange={e => setEditForm(prev => ({ ...prev, response: e.target.value }))}
                             className="text-sm text-slate-700 leading-relaxed bg-white p-3 rounded-xl border border-slate-300 outline-none focus:border-[#E3000F] min-h-[100px] resize-y"
@@ -1044,7 +1103,7 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
                         )}
                       </div>
                     </div>
-                    
+
                     {editingIntentId === diff.id && diff.llmSuggestion && (
                       <div className="flex justify-end pt-2 border-t border-slate-100 mt-2">
                         <button
@@ -1091,13 +1150,13 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
               </div>
 
               <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
-                <button 
+                <button
                   onClick={() => setShowReviewModal(false)}
                   className="px-6 py-2.5 font-bold text-slate-600 hover:text-slate-900 transition-all"
                 >
                   Cancel
                 </button>
-                <button 
+                <button
                   onClick={() => { setShowReviewModal(false); handleDeploy(); }}
                   disabled={selectedIntents.size === 0}
                   className="px-8 py-2.5 bg-[#E3000F] hover:bg-[#E3000F]/90 text-white font-bold rounded-xl shadow-lg shadow-[#E3000F]/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1112,4 +1171,3 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
     </div>
   );
 }
-

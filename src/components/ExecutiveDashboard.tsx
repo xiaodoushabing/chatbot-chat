@@ -1,33 +1,35 @@
-import React from 'react';
-import { 
-  TrendingUp, 
-  Users, 
-  MessageSquare, 
-  ShieldAlert, 
-  ArrowUpRight, 
-  ArrowDownRight, 
-  Search, 
-  FileSearch, 
-  Bell, 
+import React, { useState } from 'react';
+import {
+  TrendingUp,
+  Users,
+  MessageSquare,
+  ShieldAlert,
+  ArrowUpRight,
+  ArrowDownRight,
+  Search,
+  FileSearch,
   MoreHorizontal,
   Activity,
-  Zap
+  Zap,
+  ChevronDown,
+  ChevronUp,
+  Sparkles
 } from 'lucide-react';
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer, 
-  AreaChart, 
-  Area, 
-  PieChart, 
-  Pie, 
-  Cell 
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  PieChart,
+  Pie,
+  Cell
 } from 'recharts';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -39,7 +41,7 @@ const QUERY_DATA = [
   { name: 'Mon', queries: 4200, satisfaction: 88 },
   { name: 'Tue', queries: 4800, satisfaction: 91 },
   { name: 'Wed', queries: 5100, satisfaction: 89 },
-  { name: 'Thu', queries: 7200, satisfaction: 82 }, // Spike
+  { name: 'Thu', queries: 7200, satisfaction: 82 },
   { name: 'Fri', queries: 5400, satisfaction: 90 },
   { name: 'Sat', queries: 3200, satisfaction: 94 },
   { name: 'Sun', queries: 2800, satisfaction: 95 },
@@ -56,12 +58,14 @@ const INTENT_DATA = [
 const COLORS = ['#E3000F', '#1e293b', '#64748b', '#cbd5e1', '#f1f5f9'];
 
 export default function ExecutiveDashboard() {
+  const [showDetailedAnalytics, setShowDetailedAnalytics] = useState(false);
+
   return (
     <div className="flex flex-col gap-8 p-6 max-w-7xl mx-auto">
       {/* Header Section */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div className="flex flex-col gap-1">
-          <h2 className="text-3xl font-bold tracking-tight text-slate-900">OCBC Executive Performance Suite</h2>
+          <h2 className="text-3xl font-bold tracking-tight text-slate-900">Observability</h2>
           <p className="text-slate-500">Real-time intelligence and automated risk detection.</p>
         </div>
         <div className="flex items-center gap-3 bg-white p-1.5 rounded-xl border border-slate-200 shadow-sm">
@@ -70,93 +74,12 @@ export default function ExecutiveDashboard() {
         </div>
       </div>
 
-      {/* Main Dashboard Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        
-        {/* Left: Deterministic Data (4/12) */}
-        <div className="lg:col-span-5 flex flex-col gap-6">
-          <div className="grid grid-cols-2 gap-4">
-            <StatCard 
-              title="Customer Interactions" 
-              value="32,740" 
-              change="+12.5%" 
-              trend="up" 
-              icon={<MessageSquare size={20} className="text-[#E3000F]" />} 
-            />
-            <StatCard 
-              title="Active Customers" 
-              value="18,210" 
-              change="+8.2%" 
-              trend="up" 
-              icon={<Users size={20} className="text-emerald-600" />} 
-            />
-          </div>
+      {/* Top Row: Trending (left) + Opportunity (right) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col gap-6">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold text-slate-900 uppercase tracking-widest">Interaction Volume</h3>
-              <TrendingUp size={16} className="text-slate-400" />
-            </div>
-            <div className="h-[240px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={QUERY_DATA}>
-                  <defs>
-                    <linearGradient id="colorQueries" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#E3000F" stopOpacity={0.1}/>
-                      <stop offset="95%" stopColor="#E3000F" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#94a3b8'}} />
-                  <YAxis hide />
-                  <Tooltip 
-                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                  />
-                  <Area type="monotone" dataKey="queries" stroke="#E3000F" strokeWidth={3} fillOpacity={1} fill="url(#colorQueries)" />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col gap-6">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold text-slate-900 uppercase tracking-widest">Top Intents</h3>
-              <Activity size={16} className="text-slate-400" />
-            </div>
-            <div className="h-[200px] w-full flex items-center justify-center">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={INTENT_DATA}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={80}
-                    paddingAngle={5}
-                    dataKey="value"
-                  >
-                    {INTENT_DATA.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="flex flex-col gap-2 ml-4">
-                {INTENT_DATA.map((item, i) => (
-                  <div key={item.name} className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[i] }} />
-                    <span className="text-xs font-medium text-slate-600">{item.name}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Right: AI-Driven Analytics (7/12) */}
-        <div className="lg:col-span-7 flex flex-col gap-6">
-          <div className="bg-slate-900 rounded-3xl p-8 text-white relative overflow-hidden">
+        {/* OCBC AI Insight Engine - Trending (top left) */}
+        <div className="lg:col-span-7">
+          <div className="bg-slate-900 rounded-3xl p-8 text-white relative overflow-hidden h-full">
             <div className="absolute top-0 right-0 p-8 opacity-10">
               <Zap size={120} fill="currentColor" />
             </div>
@@ -165,7 +88,7 @@ export default function ExecutiveDashboard() {
                 <Zap size={14} className="text-red-400" fill="currentColor" />
                 <span className="text-xs font-bold text-red-300 uppercase tracking-wider">OCBC AI Insight Engine</span>
               </div>
-              
+
               <div className="flex flex-col gap-2">
                 <h3 className="text-2xl font-bold">Trending: "OCBC 360 Account Changes"</h3>
                 <p className="text-slate-400 max-w-lg">
@@ -183,51 +106,199 @@ export default function ExecutiveDashboard() {
               </div>
             </div>
           </div>
-
-          {/* Actionable Insights List */}
-          <div className="flex flex-col gap-4">
-            <h3 className="text-sm font-bold text-slate-900 uppercase tracking-widest px-2">Critical Alerts & Suggestions</h3>
-            
-            <InsightCard 
-              type="spike"
-              title="Abnormal Query Volume Detected"
-              description="Intent 'Housing_Loan_Impact' has seen a 45% increase in the last 4 hours. Current response accuracy is dropping."
-              actionLabel="REVIEW THIS INTENT"
-              onAction={() => {}}
-              icon={<TrendingUp className="text-amber-500" />}
-            />
-
-            <InsightCard 
-              type="risk"
-              title="Potential Malicious Activity"
-              description="Detected 12 attempts to bypass financial advice guardrails using prompt injection techniques from 3 unique IPs."
-              actionLabel="ALERT TISO"
-              variant="danger"
-              onAction={() => {}}
-              icon={<ShieldAlert className="text-rose-500" />}
-            />
-
-            <InsightCard 
-              type="opportunity"
-              title="New Topic Gaining Trend"
-              description="Users are frequently mentioning 'Sustainable Investing' in retirement contexts. No existing intent matches this topic."
-              actionLabel="GENERATE NEW INTENT"
-              onAction={() => {}}
-              icon={<ArrowUpRight className="text-indigo-500" />}
-            />
-          </div>
         </div>
+
+        {/* Opportunity - Highlighted (top right) */}
+        <div className="lg:col-span-5">
+          <motion.div
+            whileHover={{ scale: 1.01 }}
+            className="p-6 rounded-3xl border-2 border-indigo-200 bg-gradient-to-br from-indigo-50 to-white shadow-lg shadow-indigo-100/50 flex flex-col gap-4 h-full"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="p-2.5 rounded-xl bg-indigo-100">
+                  <Sparkles size={20} className="text-indigo-600" />
+                </div>
+                <span className="text-xs font-bold text-indigo-600 uppercase tracking-widest">Opportunity</span>
+              </div>
+              <button className="text-slate-400 hover:text-slate-600"><MoreHorizontal size={16} /></button>
+            </div>
+            <div className="flex flex-col gap-2">
+              <h4 className="text-lg font-bold text-slate-900">New Topic Gaining Trend</h4>
+              <p className="text-sm text-slate-600 leading-relaxed">
+                Users are frequently mentioning "Sustainable Investing" in retirement contexts. No existing intent matches this topic. This represents a gap in coverage that could improve customer satisfaction.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-3 mt-auto">
+              <button className="px-5 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200">
+                GENERATE NEW INTENT
+              </button>
+              <button className="px-5 py-2.5 bg-white text-indigo-600 border border-indigo-200 rounded-xl text-sm font-bold hover:bg-indigo-50 transition-all">
+                VIEW TREND DATA
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      </div>
+
+      {/* Spike & Risk Alerts (below) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <InsightCard
+          type="spike"
+          title="Abnormal Query Volume Detected"
+          description="Intent 'Housing_Loan_Impact' has seen a 45% increase in the last 4 hours. Current response accuracy is dropping."
+          actionLabel="REVIEW THIS INTENT"
+          onAction={() => {}}
+          icon={<TrendingUp className="text-amber-500" />}
+        />
+
+        <InsightCard
+          type="risk"
+          title="Potential Malicious Activity"
+          description="Detected 12 attempts to bypass financial advice guardrails using prompt injection techniques from 3 unique IPs."
+          actionLabel="ALERT TISO"
+          variant="danger"
+          onAction={() => {}}
+          icon={<ShieldAlert className="text-rose-500" />}
+        />
+      </div>
+
+      {/* Detailed Analytics - Collapsible */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <button
+          onClick={() => setShowDetailedAnalytics(!showDetailedAnalytics)}
+          className="w-full px-6 py-4 flex items-center justify-between hover:bg-slate-50 transition-all"
+        >
+          <div className="flex items-center gap-3">
+            <Activity size={18} className="text-slate-400" />
+            <span className="text-sm font-bold text-slate-900 uppercase tracking-widest">Detailed Analytics</span>
+            <span className="text-xs text-slate-400 font-medium">Interaction volume, top intents, customers</span>
+          </div>
+          {showDetailedAnalytics ? <ChevronUp size={18} className="text-slate-400" /> : <ChevronDown size={18} className="text-slate-400" />}
+        </button>
+
+        <AnimatePresence>
+          {showDetailedAnalytics && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="overflow-hidden"
+            >
+              <div className="px-6 pb-6 flex flex-col gap-6 border-t border-slate-100 pt-6">
+                {/* Stat Cards */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                  <StatCard
+                    title="Customer Interactions"
+                    value="32,740"
+                    change="+12.5%"
+                    trend="up"
+                    icon={<MessageSquare size={20} className="text-[#E3000F]" />}
+                  />
+                  <StatCard
+                    title="Active Customers"
+                    value="18,210"
+                    change="+8.2%"
+                    trend="up"
+                    icon={<Users size={20} className="text-emerald-600" />}
+                  />
+                  <StatCard
+                    title="Avg Satisfaction"
+                    value="91.3%"
+                    change="+2.1%"
+                    trend="up"
+                    icon={<Activity size={20} className="text-indigo-600" />}
+                  />
+                  <StatCard
+                    title="Fallback Rate"
+                    value="3.2%"
+                    change="-0.8%"
+                    trend="down"
+                    icon={<TrendingUp size={20} className="text-amber-600" />}
+                  />
+                </div>
+
+                {/* Charts Row */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Interaction Volume */}
+                  <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 flex flex-col gap-6">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-sm font-bold text-slate-900 uppercase tracking-widest">Interaction Volume</h3>
+                      <TrendingUp size={16} className="text-slate-400" />
+                    </div>
+                    <div className="h-[240px] w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={QUERY_DATA}>
+                          <defs>
+                            <linearGradient id="colorQueries" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#E3000F" stopOpacity={0.1}/>
+                              <stop offset="95%" stopColor="#E3000F" stopOpacity={0}/>
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                          <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#94a3b8'}} />
+                          <YAxis hide />
+                          <Tooltip
+                            contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                          />
+                          <Area type="monotone" dataKey="queries" stroke="#E3000F" strokeWidth={3} fillOpacity={1} fill="url(#colorQueries)" />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+
+                  {/* Top Intents */}
+                  <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 flex flex-col gap-6">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-sm font-bold text-slate-900 uppercase tracking-widest">Top Intents</h3>
+                      <Activity size={16} className="text-slate-400" />
+                    </div>
+                    <div className="h-[240px] w-full flex items-center justify-center">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={INTENT_DATA}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={60}
+                            outerRadius={80}
+                            paddingAngle={5}
+                            dataKey="value"
+                          >
+                            {INTENT_DATA.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip />
+                        </PieChart>
+                      </ResponsiveContainer>
+                      <div className="flex flex-col gap-2 ml-4">
+                        {INTENT_DATA.map((item, i) => (
+                          <div key={item.name} className="flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[i] }} />
+                            <span className="text-xs font-medium text-slate-600">{item.name}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
 }
 
-function StatCard({ title, value, change, trend, icon }: { 
-  title: string; 
-  value: string; 
-  change: string; 
-  trend: 'up' | 'down'; 
-  icon: React.ReactNode 
+function StatCard({ title, value, change, trend, icon }: {
+  title: string;
+  value: string;
+  change: string;
+  trend: 'up' | 'down';
+  icon: React.ReactNode
 }) {
   return (
     <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col gap-3">
@@ -249,25 +320,25 @@ function StatCard({ title, value, change, trend, icon }: {
   );
 }
 
-function InsightCard({ 
-  title, 
-  description, 
-  actionLabel, 
-  onAction, 
-  icon, 
+function InsightCard({
+  title,
+  description,
+  actionLabel,
+  onAction,
+  icon,
   variant = 'default',
   type
-}: { 
-  title: string; 
-  description: string; 
-  actionLabel: string; 
-  onAction: () => void; 
+}: {
+  title: string;
+  description: string;
+  actionLabel: string;
+  onAction: () => void;
   icon: React.ReactNode;
   variant?: 'default' | 'danger';
   type: string;
 }) {
   return (
-    <motion.div 
+    <motion.div
       whileHover={{ scale: 1.01 }}
       className={cn(
         "p-5 rounded-2xl border flex items-start gap-4 transition-all",
@@ -288,7 +359,7 @@ function InsightCard({
         <h4 className="font-bold text-slate-900">{title}</h4>
         <p className="text-sm text-slate-500 leading-relaxed">{description}</p>
         <div className="mt-3">
-          <button 
+          <button
             onClick={onAction}
             className={cn(
               "px-4 py-2 rounded-lg text-xs font-bold transition-all",

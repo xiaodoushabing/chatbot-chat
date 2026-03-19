@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Send, 
-  Bot, 
-  User, 
-  Sparkles, 
-  TrendingUp, 
-  Home, 
-  Wallet, 
+import {
+  Send,
+  Bot,
+  User,
+  Sparkles,
+  TrendingUp,
+  Home,
+  Wallet,
   Info,
   ChevronRight,
   RefreshCw,
@@ -116,15 +116,15 @@ export default function ChatbotPreview() {
 
   return (
     <div className="flex flex-col h-[600px] bg-white rounded-3xl border border-slate-200 shadow-2xl overflow-hidden">
-      {/* Chat Header */}
-      <div className="bg-indigo-600 p-4 text-white flex items-center justify-between">
+      {/* Chat Header - OCBC Theme */}
+      <div className="bg-[#E3000F] p-4 text-white flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-md">
             <Bot size={24} />
           </div>
           <div className="flex flex-col">
             <span className="font-bold text-sm">Retirement AI Assistant</span>
-            <span className="text-[10px] text-indigo-200 flex items-center gap-1 uppercase tracking-widest font-bold">
+            <span className="text-[10px] text-red-100 flex items-center gap-1 uppercase tracking-widest font-bold">
               <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" /> Next-Gen Hybrid Model
             </span>
           </div>
@@ -135,7 +135,7 @@ export default function ChatbotPreview() {
       </div>
 
       {/* Messages Area */}
-      <div 
+      <div
         ref={scrollRef}
         className="flex-1 overflow-y-auto p-4 flex flex-col gap-4 bg-slate-50/50 custom-scrollbar"
       >
@@ -151,7 +151,7 @@ export default function ChatbotPreview() {
           >
             <div className={cn(
               "p-3 rounded-2xl text-sm leading-relaxed shadow-sm",
-              msg.role === 'user' ? "bg-indigo-600 text-white rounded-tr-none" : "bg-white text-slate-800 border border-slate-100 rounded-tl-none"
+              msg.role === 'user' ? "bg-[#E3000F] text-white rounded-tr-none" : "bg-white text-slate-800 border border-slate-100 rounded-tl-none"
             )}>
               {msg.content}
             </div>
@@ -191,14 +191,14 @@ export default function ChatbotPreview() {
             )}
 
             {msg.role === 'bot' && msg.type === 'contextual' && (
-              <div className="w-full bg-indigo-50 border border-indigo-100 rounded-xl p-3 flex flex-col gap-2">
+              <div className="w-full bg-red-50 border border-red-100 rounded-xl p-3 flex flex-col gap-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold text-indigo-700 uppercase tracking-widest">Dashboard Context</span>
-                  <Wallet size={14} className="text-indigo-600" />
+                  <span className="text-[10px] font-bold text-[#E3000F] uppercase tracking-widest">Dashboard Context</span>
+                  <Wallet size={14} className="text-[#E3000F]" />
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold text-slate-700">Total Assets</span>
-                  <span className="text-sm font-black text-indigo-700">${msg.data.total.toLocaleString()}</span>
+                  <span className="text-sm font-black text-[#E3000F]">${msg.data.total.toLocaleString()}</span>
                 </div>
               </div>
             )}
@@ -214,21 +214,21 @@ export default function ChatbotPreview() {
 
       {/* Quick Actions */}
       <div className="px-4 py-2 bg-slate-50 border-t border-slate-100 flex gap-2 overflow-x-auto no-scrollbar">
-        <button 
+        <button
           onClick={() => { setInput("What if I retire at 65?"); handleSend(); }}
-          className="whitespace-nowrap px-3 py-1.5 bg-white border border-slate-200 rounded-full text-[10px] font-bold text-slate-600 hover:border-indigo-500 hover:text-indigo-600 transition-all"
+          className="whitespace-nowrap px-3 py-1.5 bg-white border border-slate-200 rounded-full text-[10px] font-bold text-slate-600 hover:border-[#E3000F] hover:text-[#E3000F] transition-all"
         >
           Retire at 65?
         </button>
-        <button 
+        <button
           onClick={() => { setInput("How does buying a house affect me?"); handleSend(); }}
-          className="whitespace-nowrap px-3 py-1.5 bg-white border border-slate-200 rounded-full text-[10px] font-bold text-slate-600 hover:border-indigo-500 hover:text-indigo-600 transition-all"
+          className="whitespace-nowrap px-3 py-1.5 bg-white border border-slate-200 rounded-full text-[10px] font-bold text-slate-600 hover:border-[#E3000F] hover:text-[#E3000F] transition-all"
         >
           Buy a house?
         </button>
-        <button 
+        <button
           onClick={() => { setInput("Show my asset balance"); handleSend(); }}
-          className="whitespace-nowrap px-3 py-1.5 bg-white border border-slate-200 rounded-full text-[10px] font-bold text-slate-600 hover:border-indigo-500 hover:text-indigo-600 transition-all"
+          className="whitespace-nowrap px-3 py-1.5 bg-white border border-slate-200 rounded-full text-[10px] font-bold text-slate-600 hover:border-[#E3000F] hover:text-[#E3000F] transition-all"
         >
           My Balance
         </button>
@@ -236,16 +236,16 @@ export default function ChatbotPreview() {
 
       {/* Input Area */}
       <form onSubmit={handleSend} className="p-4 bg-white border-t border-slate-100 flex gap-3">
-        <input 
-          type="text" 
+        <input
+          type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Ask about your retirement..."
-          className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+          className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#E3000F] transition-all"
         />
-        <button 
+        <button
           type="submit"
-          className="bg-indigo-600 text-white p-2.5 rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200"
+          className="bg-[#E3000F] text-white p-2.5 rounded-xl hover:bg-red-700 transition-all shadow-lg shadow-red-200"
         >
           <Send size={18} />
         </button>

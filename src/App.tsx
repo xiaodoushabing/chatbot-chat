@@ -1,32 +1,36 @@
 import React, { useState } from 'react';
-import { 
-  LayoutDashboard, 
-  Zap, 
-  MessageSquare, 
-  Settings, 
-  Menu, 
-  X, 
-  ChevronRight, 
-  Bot, 
+import {
+  LayoutDashboard,
+  Zap,
+  MessageSquare,
+  Settings,
+  Menu,
+  X,
+  ChevronRight,
+  Bot,
   ShieldCheck,
   LogOut,
   Bell,
   Search,
-  User
+  User,
+  Activity,
+  Users2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import IntentDiscovery from './components/IntentDiscovery';
 import ExecutiveDashboard from './components/ExecutiveDashboard';
 import ChatbotPreview from './components/ChatbotPreview';
 import ActiveIntents from './components/ActiveIntents';
+import ActiveAgents from './components/ActiveAgents';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import ocbcLogo from './assets/Logo-ocbc.png';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-type Tab = 'discovery' | 'dashboard' | 'preview' | 'active-intents';
+type Tab = 'discovery' | 'dashboard' | 'preview' | 'active-intents' | 'active-agents';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('discovery');
@@ -34,9 +38,10 @@ export default function App() {
 
   const navItems = [
     { id: 'discovery', label: 'Intent Discovery', icon: <Zap size={20} />, description: 'Automated Knowledge Sync' },
-    { id: 'active-intents', label: 'Active Intents', icon: <MessageSquare size={20} />, description: 'Manage Live Database' },
-    { id: 'dashboard', label: 'Executive Suite', icon: <LayoutDashboard size={20} />, description: 'Performance & Risk' },
+    { id: 'dashboard', label: 'Observability', icon: <Activity size={20} />, description: 'Intelligence & Monitoring' },
     { id: 'preview', label: 'Chatbot Preview', icon: <Bot size={20} />, description: 'Next-Gen Experience' },
+    { id: 'active-intents', label: 'Active Intents', icon: <MessageSquare size={20} />, description: 'Manage Live Database' },
+    { id: 'active-agents', label: 'Active Agents', icon: <Users2 size={20} />, description: 'Manage AI Agents' },
   ];
 
   const handleDeploySuccess = () => {
@@ -46,7 +51,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-50 flex text-slate-900 font-sans selection:bg-red-100 selection:text-red-900">
       {/* Sidebar */}
-      <aside 
+      <aside
         className={cn(
           "fixed inset-y-0 left-0 z-50 bg-white border-r border-slate-200 transition-all duration-300 ease-in-out flex flex-col shadow-xl lg:shadow-none",
           isSidebarOpen ? "w-72" : "w-20"
@@ -56,9 +61,9 @@ export default function App() {
         <div className="h-20 flex items-center px-6 border-b border-slate-100 shrink-0">
           {isSidebarOpen ? (
             <div className="flex items-center gap-3">
-              <img 
-                src="https://upload.wikimedia.org/wikipedia/en/thumb/8/87/OCBC_Bank_logo.svg/512px-OCBC_Bank_logo.svg.png" 
-                alt="OCBC Logo" 
+              <img
+                src={ocbcLogo}
+                alt="OCBC Logo"
                 className="h-7 object-contain"
               />
               <div className="flex flex-col border-l-2 border-slate-200 pl-3">
@@ -81,8 +86,8 @@ export default function App() {
               onClick={() => setActiveTab(item.id as Tab)}
               className={cn(
                 "group flex items-center gap-4 p-3 rounded-xl transition-all relative",
-                activeTab === item.id 
-                  ? "bg-red-50 text-[#E3000F]" 
+                activeTab === item.id
+                  ? "bg-red-50 text-[#E3000F]"
                   : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"
               )}
             >
@@ -99,7 +104,7 @@ export default function App() {
                 </div>
               )}
               {activeTab === item.id && (
-                <motion.div 
+                <motion.div
                   layoutId="active-pill"
                   className="absolute left-0 w-1 h-8 bg-[#E3000F] rounded-r-full"
                 />
@@ -129,7 +134,7 @@ export default function App() {
       </aside>
 
       {/* Main Content */}
-      <main 
+      <main
         className={cn(
           "flex-1 transition-all duration-300 ease-in-out min-h-screen flex flex-col",
           isSidebarOpen ? "pl-72" : "pl-20"
@@ -138,7 +143,7 @@ export default function App() {
         {/* Top Header */}
         <header className="h-20 bg-white/80 backdrop-blur-md border-b border-slate-200 px-8 flex items-center justify-between sticky top-0 z-40">
           <div className="flex items-center gap-4">
-            <button 
+            <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
               className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 transition-all"
             >
@@ -157,9 +162,9 @@ export default function App() {
           <div className="flex items-center gap-6">
             <div className="hidden md:flex items-center gap-2 px-4 py-2 bg-slate-100 rounded-xl border border-slate-200 group focus-within:ring-2 focus-within:ring-[#E3000F] transition-all">
               <Search size={18} className="text-slate-400" />
-              <input 
-                type="text" 
-                placeholder="Search intents, logs..." 
+              <input
+                type="text"
+                placeholder="Search intents, logs..."
                 className="bg-transparent border-none outline-none text-sm w-48"
               />
             </div>
@@ -193,6 +198,7 @@ export default function App() {
               {activeTab === 'discovery' && <IntentDiscovery onDeploy={handleDeploySuccess} />}
               {activeTab === 'dashboard' && <ExecutiveDashboard />}
               {activeTab === 'active-intents' && <ActiveIntents />}
+              {activeTab === 'active-agents' && <ActiveAgents />}
               {activeTab === 'preview' && (
                 <div className="p-8 flex flex-col items-center justify-center min-h-[calc(100vh-80px)]">
                   <div className="max-w-md w-full">
