@@ -159,7 +159,7 @@ export default function ExecutiveDashboard() {
             <div className="flex items-center gap-4 mt-2">
               <div className="flex items-center gap-2 px-4 py-2 bg-white/15 rounded-xl">
                 <Eye size={16} />
-                <span className="text-sm font-bold">99.6% Accuracy</span>
+                <span className="text-sm font-bold">247 Checked</span>
               </div>
               <div className="flex items-center gap-2 px-4 py-2 bg-white/15 rounded-xl">
                 <Activity size={16} />
@@ -195,7 +195,7 @@ export default function ExecutiveDashboard() {
               </div>
               <div className="flex items-center gap-2 px-4 py-2 bg-white/15 rounded-xl">
                 <ShieldAlert size={16} />
-                <span className="text-sm font-bold">100% Blocked</span>
+                <span className="text-sm font-bold">89 Checked</span>
               </div>
             </div>
           </div>
@@ -299,10 +299,10 @@ export default function ExecutiveDashboard() {
                             </linearGradient>
                           </defs>
                           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                          <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 14, fill: '#94a3b8'}} />
+                          <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 21, fill: '#94a3b8'}} />
                           <YAxis hide />
                           <Tooltip
-                            contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontSize: '14px' }}
+                            contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontSize: '21px' }}
                           />
                           <Area type="monotone" dataKey="queries" stroke="#E3000F" strokeWidth={3} fillOpacity={1} fill="url(#colorQueries)" />
                         </AreaChart>

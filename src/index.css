@@ -1,1 +1,20 @@
 @import "tailwindcss";
+
+@theme {
+  --font-size-xs: 1.125rem;
+  --font-size-xs--line-height: 1.5rem;
+  --font-size-sm: 1.3125rem;
+  --font-size-sm--line-height: 1.75rem;
+  --font-size-base: 1.5rem;
+  --font-size-base--line-height: 2rem;
+  --font-size-lg: 1.6875rem;
+  --font-size-lg--line-height: 2.125rem;
+  --font-size-xl: 1.875rem;
+  --font-size-xl--line-height: 2.375rem;
+  --font-size-2xl: 2.25rem;
+  --font-size-2xl--line-height: 2.75rem;
+  --font-size-3xl: 2.8125rem;
+  --font-size-3xl--line-height: 3.25rem;
+  --font-size-4xl: 3.375rem;
+  --font-size-4xl--line-height: 1;
+}

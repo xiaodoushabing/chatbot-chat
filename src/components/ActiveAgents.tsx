@@ -43,6 +43,13 @@ const INITIAL_AGENTS: Agent[] = [
 export default function ActiveAgents() {
   const [agents, setAgents] = useState<Agent[]>(INITIAL_AGENTS);
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredAgents = agents.filter(agent =>
+    agent.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    agent.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    agent.description.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const handleToggleStatus = (id: string) => {
     setAgents(prev => prev.map(agent =>
@@ -81,6 +88,8 @@ export default function ActiveAgents() {
             <input
               type="text"
               placeholder="Filter agents..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-11 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-base focus:ring-2 focus:ring-[#E3000F] outline-none transition-all w-72"
             />
           </div>
@@ -103,7 +112,7 @@ export default function ActiveAgents() {
             </tr>
           </thead>
           <tbody>
-            {agents.map((agent) => (
+            {filteredAgents.map((agent) => (
               <motion.tr
                 key={agent.id}
                 initial={{ opacity: 0 }}
@@ -174,7 +183,7 @@ export default function ActiveAgents() {
                 </td>
               </motion.tr>
             ))}
-            {agents.length === 0 && (
+            {filteredAgents.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-6 py-12 text-center text-slate-500 text-base">
                   No agents configured.
@@ -186,7 +195,7 @@ export default function ActiveAgents() {
       </div>
 
       <div className="flex items-center justify-between px-2">
-        <span className="text-base text-slate-500">Showing {agents.length} of {agents.length} agents</span>
+        <span className="text-base text-slate-500">Showing {filteredAgents.length} of {agents.length} agents</span>
         <div className="flex gap-2">
           <button className="px-5 py-2.5 text-base font-bold text-slate-400 cursor-not-allowed">Previous</button>
           <button className="px-5 py-2.5 text-base font-bold text-[#E3000F] hover:bg-red-50 rounded-lg transition-all">Next</button>

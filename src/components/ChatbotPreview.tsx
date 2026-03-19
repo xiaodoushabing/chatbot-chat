@@ -124,7 +124,7 @@ export default function ChatbotPreview() {
           </div>
           <div className="flex flex-col">
             <span className="font-bold text-sm">Retirement AI Assistant</span>
-            <span className="text-[10px] text-red-100 flex items-center gap-1 uppercase tracking-widest font-bold">
+            <span className="text-[0.625rem] text-red-100 flex items-center gap-1 uppercase tracking-widest font-bold">
               <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" /> Next-Gen Hybrid Model
             </span>
           </div>
@@ -160,18 +160,18 @@ export default function ChatbotPreview() {
             {msg.role === 'bot' && msg.type === 'what-if' && (
               <div className="w-full bg-emerald-50 border border-emerald-100 rounded-xl p-3 flex flex-col gap-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-widest">What-If Analysis</span>
+                  <span className="text-[0.625rem] font-bold text-emerald-700 uppercase tracking-widest">What-If Analysis</span>
                   <TrendingUp size={14} className="text-emerald-600" />
                 </div>
                 <div className="flex items-center gap-4">
                   <div className="flex flex-col">
-                    <span className="text-[10px] text-emerald-600 uppercase font-bold">Current</span>
+                    <span className="text-[0.625rem] text-emerald-600 uppercase font-bold">Current</span>
                     <span className="text-sm font-bold text-slate-400 line-through">${msg.data.old}</span>
                   </div>
                   <ArrowRight size={14} className="text-emerald-400" />
                   <div className="flex flex-col">
-                    <span className="text-[10px] text-emerald-600 uppercase font-bold">Projected</span>
-                    <span className="text-lg font-black text-emerald-700">${msg.data.new} <span className="text-[10px]">{msg.data.unit}</span></span>
+                    <span className="text-[0.625rem] text-emerald-600 uppercase font-bold">Projected</span>
+                    <span className="text-lg font-black text-emerald-700">${msg.data.new} <span className="text-[0.625rem]">{msg.data.unit}</span></span>
                   </div>
                 </div>
               </div>
@@ -180,7 +180,7 @@ export default function ChatbotPreview() {
             {msg.role === 'bot' && msg.type === 'life-event' && (
               <div className="w-full bg-amber-50 border border-amber-100 rounded-xl p-3 flex flex-col gap-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold text-amber-700 uppercase tracking-widest">Life Event Impact</span>
+                  <span className="text-[0.625rem] font-bold text-amber-700 uppercase tracking-widest">Life Event Impact</span>
                   <Home size={14} className="text-amber-600" />
                 </div>
                 <div className="flex items-center justify-between">
@@ -193,7 +193,7 @@ export default function ChatbotPreview() {
             {msg.role === 'bot' && msg.type === 'contextual' && (
               <div className="w-full bg-red-50 border border-red-100 rounded-xl p-3 flex flex-col gap-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold text-[#E3000F] uppercase tracking-widest">Dashboard Context</span>
+                  <span className="text-[0.625rem] font-bold text-[#E3000F] uppercase tracking-widest">Dashboard Context</span>
                   <Wallet size={14} className="text-[#E3000F]" />
                 </div>
                 <div className="flex items-center justify-between">
@@ -216,19 +216,19 @@ export default function ChatbotPreview() {
       <div className="px-4 py-2 bg-slate-50 border-t border-slate-100 flex gap-2 overflow-x-auto no-scrollbar">
         <button
           onClick={() => { setInput("What if I retire at 65?"); handleSend(); }}
-          className="whitespace-nowrap px-3 py-1.5 bg-white border border-slate-200 rounded-full text-[10px] font-bold text-slate-600 hover:border-[#E3000F] hover:text-[#E3000F] transition-all"
+          className="whitespace-nowrap px-3 py-1.5 bg-white border border-slate-200 rounded-full text-[0.625rem] font-bold text-slate-600 hover:border-[#E3000F] hover:text-[#E3000F] transition-all"
         >
           Retire at 65?
         </button>
         <button
           onClick={() => { setInput("How does buying a house affect me?"); handleSend(); }}
-          className="whitespace-nowrap px-3 py-1.5 bg-white border border-slate-200 rounded-full text-[10px] font-bold text-slate-600 hover:border-[#E3000F] hover:text-[#E3000F] transition-all"
+          className="whitespace-nowrap px-3 py-1.5 bg-white border border-slate-200 rounded-full text-[0.625rem] font-bold text-slate-600 hover:border-[#E3000F] hover:text-[#E3000F] transition-all"
         >
           Buy a house?
         </button>
         <button
           onClick={() => { setInput("Show my asset balance"); handleSend(); }}
-          className="whitespace-nowrap px-3 py-1.5 bg-white border border-slate-200 rounded-full text-[10px] font-bold text-slate-600 hover:border-[#E3000F] hover:text-[#E3000F] transition-all"
+          className="whitespace-nowrap px-3 py-1.5 bg-white border border-slate-200 rounded-full text-[0.625rem] font-bold text-slate-600 hover:border-[#E3000F] hover:text-[#E3000F] transition-all"
         >
           My Balance
         </button>

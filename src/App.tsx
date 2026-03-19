@@ -32,14 +32,14 @@ function cn(...inputs: ClassValue[]) {
 type Tab = 'discovery' | 'dashboard' | 'preview' | 'active-intents' | 'active-agents';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<Tab>('discovery');
+  const [activeTab, setActiveTab] = useState<Tab>('active-intents');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   const navItems = [
+    { id: 'active-intents', label: 'Active Topics', icon: <MessageSquare size={22} />, description: 'Manage Live Database' },
     { id: 'discovery', label: 'Intent Discovery', icon: <Zap size={22} />, description: 'Automated Knowledge Sync' },
     { id: 'dashboard', label: 'Observability', icon: <Activity size={22} />, description: 'Intelligence & Monitoring' },
     { id: 'preview', label: 'Chatbot Preview', icon: <Bot size={22} />, description: 'Next-Gen Experience' },
-    { id: 'active-intents', label: 'Active Intents', icon: <MessageSquare size={22} />, description: 'Manage Live Database' },
     { id: 'active-agents', label: 'Active Agents', icon: <Users2 size={22} />, description: 'Manage AI Agents' },
   ];
 
@@ -53,38 +53,38 @@ export default function App() {
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-50 bg-white border-r border-slate-200 transition-all duration-300 ease-in-out flex flex-col shadow-xl lg:shadow-none",
-          isSidebarOpen ? "w-80" : "w-20"
+          isSidebarOpen ? "w-72" : "w-20"
         )}
       >
         {/* Logo Section */}
-        <div className="h-24 flex items-center px-6 border-b border-slate-100 shrink-0">
+        <div className="h-20 flex items-center px-4 border-b border-slate-100 shrink-0">
           {isSidebarOpen ? (
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
               <img
                 src={ocbcLogo}
                 alt="OCBC Logo"
-                className="h-9 object-contain"
+                className="h-8 object-contain"
               />
-              <div className="flex flex-col border-l-2 border-slate-200 pl-4">
-                <span className="font-black text-base tracking-tight leading-none text-slate-900">AI Admin</span>
-                <span className="text-[11px] font-bold text-[#E3000F] uppercase tracking-widest mt-1">Suite</span>
+              <div className="flex flex-col border-l-2 border-slate-200 pl-3 whitespace-nowrap">
+                <span className="font-black text-lg tracking-tight leading-none text-slate-900">AI Admin</span>
+                <span className="text-xs font-bold text-[#E3000F] uppercase tracking-widest mt-1">Suite</span>
               </div>
             </div>
           ) : (
-            <div className="w-12 h-12 bg-[#E3000F] rounded-xl flex items-center justify-center text-white font-black text-sm shadow-lg shadow-red-200 shrink-0 mx-auto">
+            <div className="w-14 h-14 bg-[#E3000F] rounded-xl flex items-center justify-center text-white font-black text-[0.6rem] shadow-lg shadow-red-200 shrink-0 mx-auto tracking-wide">
               OCBC
             </div>
           )}
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-4 py-6 flex flex-col gap-2">
+        <nav className="flex-1 px-3 py-4 flex flex-col gap-1">
           {navItems.map((item) => (
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id as Tab)}
               className={cn(
-                "group flex items-center gap-4 p-3.5 rounded-xl transition-all relative",
+                "group flex items-center gap-3 p-2.5 rounded-xl transition-all relative",
                 activeTab === item.id
                   ? "bg-red-50 text-[#E3000F]"
                   : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"
@@ -98,7 +98,7 @@ export default function App() {
               </div>
               {isSidebarOpen && (
                 <div className="flex flex-col items-start overflow-hidden whitespace-nowrap">
-                  <span className="font-bold text-[15px]">{item.label}</span>
+                  <span className="font-bold text-lg">{item.label}</span>
                   <span className="text-xs font-medium opacity-60">{item.description}</span>
                 </div>
               )}
@@ -136,7 +136,7 @@ export default function App() {
       <main
         className={cn(
           "flex-1 transition-all duration-300 ease-in-out min-h-screen flex flex-col",
-          isSidebarOpen ? "pl-80" : "pl-20"
+          isSidebarOpen ? "pl-72" : "pl-20"
         )}
       >
         {/* Top Header */}

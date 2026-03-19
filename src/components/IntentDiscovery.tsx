@@ -122,29 +122,6 @@ const MOCK_DIFFS: IntentDiff[] = [
     response: "CPF LIFE is a national longevity multi-purpose annuity scheme that provides you with monthly payouts for as long as you live.",
     confidence: 0.99,
     whatsChanged: ["Intent deprecated. Content merged into general 'Retirement_Planning_Guide' intent based on new OCBC Wealth Advisory documentation structure."]
-  },
-  {
-    id: '4',
-    intent: 'OCBC_Life_Goals_Retirement',
-    status: 'new',
-    utterances: [
-      'How do I set up a retirement goal in OCBC app?',
-      'OCBC Life Goals retirement calculator',
-      'Which investment is best for retirement?',
-      'Track my retirement progress'
-    ],
-    response: "You can set up a retirement goal using OCBC Life Goals in the OCBC Digital app. It helps you project your retirement needs and suggests suitable investment portfolios to close any gaps.",
-    confidence: 0.96,
-    llmSuggestion: {
-      intent: 'OCBC_Life_Goals_Retirement',
-      utterances: [
-        'How do I set up a retirement goal in OCBC app?',
-        'OCBC Life Goals retirement calculator',
-        'Which investment is best for retirement?',
-        'Track my retirement progress'
-      ],
-      response: "You can set up a retirement goal using OCBC Life Goals in the OCBC Digital app. It helps you project your retirement needs and suggests suitable investment portfolios to close any gaps."
-    }
   }
 ];
 
@@ -524,7 +501,7 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
                 >
                   {/* Next-Gen Column */}
                   <div className="flex items-center justify-between px-2">
-                    <span className="text-base font-bold text-[#E3000F] uppercase tracking-widest">Next-Gen AI Sync</span>
+                    <span className="text-base font-bold text-[#E3000F] uppercase tracking-widest">GenAI Sync</span>
                     <span className="text-sm font-medium text-emerald-600 flex items-center gap-1">
                       <Zap size={14} fill="currentColor" /> Automated Discovery
                     </span>
@@ -550,7 +527,11 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
                           key={diff.id}
                           className={cn(
                             "p-4 rounded-xl border flex flex-col gap-2 transition-all cursor-pointer",
-                            selectedIntents.has(diff.id) ? "bg-[#E3000F]/5 border-[#E3000F]/20" : "bg-slate-50 border-slate-100 hover:border-slate-300"
+                            selectedIntents.has(diff.id)
+                              ? diff.status === 'new' ? "bg-emerald-50 border-emerald-300"
+                                : diff.status === 'changed' ? "bg-amber-50 border-amber-300"
+                                : "bg-red-50 border-red-300"
+                              : "bg-slate-50 border-slate-100 hover:border-slate-300"
                           )}
                           onClick={() => toggleSelection(diff.id)}
                         >
@@ -558,7 +539,11 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
                             <div className="flex items-center gap-2">
                               <div className={cn(
                                 "w-5 h-5 rounded border flex items-center justify-center transition-colors shrink-0",
-                                selectedIntents.has(diff.id) ? "bg-[#E3000F] border-[#E3000F]" : "border-slate-300 bg-white"
+                                selectedIntents.has(diff.id)
+                                  ? diff.status === 'new' ? "bg-emerald-600 border-emerald-600"
+                                    : diff.status === 'changed' ? "bg-amber-500 border-amber-500"
+                                    : "bg-red-600 border-red-600"
+                                  : "border-slate-300 bg-white"
                               )}>
                                 {selectedIntents.has(diff.id) && <CheckCircle2 size={14} className="text-white" />}
                               </div>
@@ -609,8 +594,7 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
                     <div className="mt-auto pt-4 border-t border-slate-100 flex items-center justify-between">
                       <span className="text-base font-bold text-[#E3000F]">Total Effort</span>
                       <div className="flex flex-col items-end">
-                        <span className="text-xl font-black text-[#E3000F] tracking-tighter">&lt; 2 SECONDS</span>
-                        <span className="text-xs font-bold text-emerald-600 uppercase">99.8% Faster</span>
+                        <span className="text-xl font-black text-emerald-600 tracking-tighter">&lt; 2 SECONDS</span>
                       </div>
                     </div>
                   </div>
@@ -735,7 +719,11 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
                     key={diff.id}
                     className={cn(
                       "p-5 rounded-2xl border flex flex-col gap-4 transition-all",
-                      selectedIntents.has(diff.id) ? "bg-red-50/30 border-[#E3000F]/20" : "bg-slate-50 border-slate-200"
+                      selectedIntents.has(diff.id)
+                        ? diff.status === 'new' ? "bg-emerald-50/30 border-emerald-300"
+                          : diff.status === 'changed' ? "bg-amber-50/30 border-amber-300"
+                          : "bg-red-50/30 border-red-300"
+                        : "bg-slate-50 border-slate-200"
                     )}
                   >
                     <div className="flex items-center justify-between">
@@ -743,7 +731,11 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
                         <label className="flex items-center gap-2 cursor-pointer group">
                           <div className={cn(
                             "w-5 h-5 rounded border flex items-center justify-center transition-colors shrink-0",
-                            selectedIntents.has(diff.id) ? "bg-[#E3000F] border-[#E3000F]" : "border-slate-300 bg-white group-hover:border-[#E3000F]"
+                            selectedIntents.has(diff.id)
+                              ? diff.status === 'new' ? "bg-emerald-600 border-emerald-600"
+                                : diff.status === 'changed' ? "bg-amber-500 border-amber-500"
+                                : "bg-red-600 border-red-600"
+                              : "border-slate-300 bg-white group-hover:border-slate-400"
                           )}>
                             {selectedIntents.has(diff.id) && <CheckCircle2 size={14} className="text-white" />}
                           </div>
