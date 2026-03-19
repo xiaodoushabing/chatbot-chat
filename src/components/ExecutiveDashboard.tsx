@@ -159,11 +159,11 @@ export default function ExecutiveDashboard() {
             <div className="flex items-center gap-4 mt-2">
               <div className="flex items-center gap-2 px-4 py-2 bg-white/15 rounded-xl">
                 <Eye size={16} />
-                <span className="text-sm font-bold">247 Checked</span>
+                <span className="text-sm font-bold">0.75% Caught</span>
               </div>
               <div className="flex items-center gap-2 px-4 py-2 bg-white/15 rounded-xl">
                 <Activity size={16} />
-                <span className="text-sm font-bold">32,740 Checked</span>
+                <span className="text-sm font-bold">-12% vs Last Period</span>
               </div>
             </div>
           </div>
@@ -191,11 +191,11 @@ export default function ExecutiveDashboard() {
             <div className="flex items-center gap-4 mt-2">
               <div className="flex items-center gap-2 px-4 py-2 bg-white/15 rounded-xl">
                 <AlertTriangle size={16} />
-                <span className="text-sm font-bold">3 Unique IPs</span>
+                <span className="text-sm font-bold">2.4% Caught</span>
               </div>
               <div className="flex items-center gap-2 px-4 py-2 bg-white/15 rounded-xl">
                 <ShieldAlert size={16} />
-                <span className="text-sm font-bold">89 Checked</span>
+                <span className="text-sm font-bold">+8% vs Last Period</span>
               </div>
             </div>
           </div>

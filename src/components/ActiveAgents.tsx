@@ -80,7 +80,7 @@ export default function ActiveAgents() {
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div className="flex flex-col gap-1">
           <h2 className="text-4xl font-bold tracking-tight text-slate-900">Active Agents</h2>
-          <p className="text-slate-500 text-base">Manage AI agents available for this chatbot instance.</p>
+          <p className="text-slate-500 text-lg">Manage AI agents available for this chatbot instance.</p>
         </div>
         <div className="flex items-center gap-3">
           <div className="relative">
@@ -90,7 +90,7 @@ export default function ActiveAgents() {
               placeholder="Filter agents..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-11 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-base focus:ring-2 focus:ring-[#E3000F] outline-none transition-all w-72"
+              className="pl-11 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-lg focus:ring-2 focus:ring-[#E3000F] outline-none transition-all w-72"
             />
           </div>
           <button className="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-500 hover:text-slate-900 transition-all">
@@ -103,12 +103,12 @@ export default function ActiveAgents() {
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-200">
-              <th className="px-6 py-4 text-sm font-bold text-slate-500 uppercase tracking-widest">Agent Name</th>
-              <th className="px-6 py-4 text-sm font-bold text-slate-500 uppercase tracking-widest">Category</th>
-              <th className="px-6 py-4 text-sm font-bold text-slate-500 uppercase tracking-widest">Status</th>
-              <th className="px-6 py-4 text-sm font-bold text-slate-500 uppercase tracking-widest text-center">Sessions</th>
-              <th className="px-6 py-4 text-sm font-bold text-slate-500 uppercase tracking-widest">Last Active</th>
-              <th className="px-6 py-4 text-sm font-bold text-slate-500 uppercase tracking-widest text-right">Actions</th>
+              <th className="px-6 py-4 text-base font-bold text-slate-500 uppercase tracking-widest">Agent Name</th>
+              <th className="px-6 py-4 text-base font-bold text-slate-500 uppercase tracking-widest">Category</th>
+              <th className="px-6 py-4 text-base font-bold text-slate-500 uppercase tracking-widest">Status</th>
+              <th className="px-6 py-4 text-base font-bold text-slate-500 uppercase tracking-widest text-center">Sessions</th>
+              <th className="px-6 py-4 text-base font-bold text-slate-500 uppercase tracking-widest">Last Active</th>
+              <th className="px-6 py-4 text-base font-bold text-slate-500 uppercase tracking-widest text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -126,26 +126,26 @@ export default function ActiveAgents() {
                       <Bot size={18} />
                     </div>
                     <div className="flex flex-col">
-                      <span className="font-bold text-slate-900 text-base">{agent.name}</span>
-                      <span className="text-sm text-slate-500 max-w-xs truncate">{agent.description}</span>
+                      <span className="font-bold text-slate-900 text-lg">{agent.name}</span>
+                      <span className="text-base text-slate-500 max-w-xs truncate">{agent.description}</span>
                     </div>
                   </div>
                 </td>
                 <td className="px-6 py-5">
-                  <span className="text-sm font-medium text-slate-500 bg-slate-100 px-3 py-1.5 rounded-md">
+                  <span className="text-base font-medium text-slate-500 bg-slate-100 px-3 py-1.5 rounded-md">
                     {agent.category}
                   </span>
                 </td>
                 <td className="px-6 py-5">
                   <div className="flex items-center gap-2">
                     <div className={cn("w-2 h-2 rounded-full", agent.status === 'active' ? "bg-emerald-500" : "bg-slate-400")} />
-                    <span className={cn("text-sm font-bold uppercase tracking-wider", agent.status === 'active' ? "text-emerald-700" : "text-slate-500")}>
+                    <span className={cn("text-base font-bold uppercase tracking-wider", agent.status === 'active' ? "text-emerald-700" : "text-slate-500")}>
                       {agent.status}
                     </span>
                   </div>
                 </td>
                 <td className="px-6 py-5 text-center">
-                  <span className="text-base font-mono text-slate-600">{agent.sessionsHandled.toLocaleString()}</span>
+                  <span className="text-lg font-mono text-slate-600">{agent.sessionsHandled.toLocaleString()}</span>
                 </td>
                 <td className="px-6 py-5">
                   <div className="flex items-center gap-2 text-slate-500">

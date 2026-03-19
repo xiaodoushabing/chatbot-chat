@@ -67,8 +67,8 @@ const INITIAL_TOPICS: Topic[] = [
 ];
 
 const RISK_CONFIG = {
-  high: { label: 'High Risk', icon: AlertTriangle, color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200', hint: 'Sensitive financial topic — template recommended' },
-  low: { label: 'Low Risk', icon: ShieldCheck, color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200', hint: 'Safe for GenAI responses' },
+  high: { label: 'High', icon: AlertTriangle, color: 'text-red-600', bg: 'bg-red-50', border: 'border-red-200', hint: 'Sensitive financial topic — template recommended' },
+  low: { label: 'Low', icon: ShieldCheck, color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200', hint: 'Safe for GenAI responses' },
 };
 
 export default function ActiveIntents() {

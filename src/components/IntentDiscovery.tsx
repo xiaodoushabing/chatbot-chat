@@ -171,15 +171,12 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
     setTimeout(() => {
       setIsGenerating(false);
 
-      const shuffled = [...MOCK_DIFFS].sort(() => 0.5 - Math.random());
-      const selectedDiffs = shuffled.slice(0, Math.floor(Math.random() * 3) + 2);
-
       const newSync: SyncSession = {
         id: Date.now().toString(),
         date: new Date().toLocaleString(),
         sources: [...sources],
         status: 'pending',
-        diffs: selectedDiffs
+        diffs: [...MOCK_DIFFS]
       };
       setSyncHistory(prev => [newSync, ...prev].slice(0, 5));
       setActiveSyncId(newSync.id);
@@ -296,24 +293,24 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
     <div className="flex flex-col gap-8 p-8 max-w-[1600px] mx-auto min-h-[calc(100vh-4rem)]">
 
       {/* Knowledge Synchronization */}
-      <div className="flex flex-col gap-6">
-        <div className="flex flex-col gap-2">
-          <h2 className="text-3xl font-bold tracking-tight text-slate-900">Knowledge Synchronization</h2>
-          <p className="text-slate-500 text-base">
+      <div className="flex flex-col gap-8">
+        <div className="flex flex-col gap-3">
+          <h2 className="text-4xl font-bold tracking-tight text-slate-900">Knowledge Synchronization</h2>
+          <p className="text-slate-500 text-lg">
             Automatically discover and update chatbot intents from your latest policy documents and web resources.
           </p>
         </div>
 
         {/* Main Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 flex-1">
 
           {/* Left Panel: Inputs & History */}
-          <div className="flex flex-col gap-6 h-full">
+          <div className="flex flex-col gap-8 h-full">
 
           {/* Input Panel */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex flex-col gap-6 shrink-0">
-            <div className="flex flex-col gap-4">
-              <label className="text-base font-semibold text-slate-700">Knowledge Sources</label>
+          <div className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm flex flex-col gap-8 shrink-0">
+            <div className="flex flex-col gap-5">
+              <label className="text-lg font-semibold text-slate-700">Knowledge Sources</label>
 
               <div className="flex flex-col gap-2">
                 <AnimatePresence>
@@ -323,19 +320,19 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
-                      className="flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-xl"
+                      className="flex items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-xl"
                     >
                       <div className="flex items-center gap-3 overflow-hidden">
-                        {source.type === 'url' && <Globe size={18} className="text-slate-400 shrink-0" />}
-                        {source.type === 'doc' && <FileText size={18} className="text-slate-400 shrink-0" />}
-                        {source.type === 'folder' && <Folder size={18} className="text-slate-400 shrink-0" />}
-                        <span className="text-sm font-medium text-slate-700 truncate">{source.name}</span>
+                        {source.type === 'url' && <Globe size={20} className="text-slate-400 shrink-0" />}
+                        {source.type === 'doc' && <FileText size={20} className="text-slate-400 shrink-0" />}
+                        {source.type === 'folder' && <Folder size={20} className="text-slate-400 shrink-0" />}
+                        <span className="text-base font-medium text-slate-700 truncate">{source.name}</span>
                       </div>
                       <button
                         onClick={() => setSources(sources.filter(s => s.id !== source.id))}
                         className="text-slate-400 hover:text-[#E3000F] transition-all shrink-0 p-1"
                       >
-                        <Trash2 size={16} />
+                        <Trash2 size={18} />
                       </button>
                     </motion.div>
                   ))}
@@ -360,28 +357,28 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
                     onChange={handleFileSelect}
                     className="hidden"
                   />
-                  <div className="w-12 h-12 bg-[#E3000F]/10 text-[#E3000F] rounded-full flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                    <Plus size={24} />
+                  <div className="w-14 h-14 bg-[#E3000F]/10 text-[#E3000F] rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                    <Plus size={28} />
                   </div>
-                  <span className="text-base font-bold text-slate-700">Drag & Drop or Click to Add</span>
-                  <span className="text-sm text-slate-500 mt-1">PDFs, DOCX, and Folders</span>
+                  <span className="text-lg font-bold text-slate-700">Drag & Drop or Click to Add</span>
+                  <span className="text-base text-slate-500 mt-1">PDFs, DOCX, and Folders</span>
                 </div>
 
-                <form onSubmit={handleAddUrl} className="flex gap-2">
+                <form onSubmit={handleAddUrl} className="flex gap-3">
                   <div className="relative flex-1">
-                    <Globe size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <Globe size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                     <input
                       type="url"
                       value={urlInput}
                       onChange={(e) => setUrlInput(e.target.value)}
                       placeholder="https://..."
-                      className="w-full pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-[#E3000F]"
+                      className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg text-base outline-none focus:ring-2 focus:ring-[#E3000F]"
                     />
                   </div>
                   <button
                     type="submit"
                     disabled={!urlInput.trim()}
-                    className="px-5 py-2.5 bg-[#E3000F] text-white text-sm font-semibold rounded-lg hover:bg-[#E3000F]/90 disabled:opacity-50 transition-all"
+                    className="px-6 py-3 bg-[#E3000F] text-white text-base font-semibold rounded-lg hover:bg-[#E3000F]/90 disabled:opacity-50 transition-all"
                   >
                     Add URL
                   </button>
@@ -390,15 +387,15 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
             </div>
 
             {/* Advanced Settings - Collapsible */}
-            <div className="border-t border-slate-100 pt-4">
+            <div className="border-t border-slate-100 pt-5">
               <button
                 onClick={() => setShowAdvancedSettings(!showAdvancedSettings)}
                 className="flex items-center justify-between w-full group"
               >
-                <span className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                  <Settings2 size={16} /> Advanced Settings
+                <span className="text-base font-semibold text-slate-700 flex items-center gap-2">
+                  <Settings2 size={18} /> Advanced Settings
                 </span>
-                {showAdvancedSettings ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
+                {showAdvancedSettings ? <ChevronUp size={18} className="text-slate-400" /> : <ChevronDown size={18} className="text-slate-400" />}
               </button>
 
               <AnimatePresence>
@@ -410,14 +407,14 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
                     transition={{ duration: 0.2 }}
                     className="overflow-hidden"
                   >
-                    <div className="grid grid-cols-2 gap-4 mt-4">
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-sm font-medium text-slate-500">Max Intents</label>
-                        <input type="number" defaultValue={15} className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-[#E3000F]" />
+                    <div className="grid grid-cols-2 gap-5 mt-5">
+                      <div className="flex flex-col gap-2">
+                        <label className="text-base font-medium text-slate-500">Max Intents</label>
+                        <input type="number" defaultValue={15} className="px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg text-base outline-none focus:ring-2 focus:ring-[#E3000F]" />
                       </div>
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-sm font-medium text-slate-500">Match Sensitivity</label>
-                        <select className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-[#E3000F]">
+                      <div className="flex flex-col gap-2">
+                        <label className="text-base font-medium text-slate-500">Match Sensitivity</label>
+                        <select className="px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg text-base outline-none focus:ring-2 focus:ring-[#E3000F]">
                           <option>Balanced</option>
                           <option>Strict</option>
                           <option>Broad</option>
@@ -432,18 +429,18 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
              <button
               onClick={handleGenerate}
               disabled={isGenerating || sources.length === 0}
-              className="w-full bg-[#E3000F] hover:bg-[#E3000F]/90 text-white font-semibold py-3.5 rounded-xl shadow-lg shadow-[#E3000F]/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50 text-base"
+              className="w-full bg-[#E3000F] hover:bg-[#E3000F]/90 text-white font-semibold py-4 rounded-xl shadow-lg shadow-[#E3000F]/20 transition-all flex items-center justify-center gap-3 disabled:opacity-50 text-lg"
             >
-              {isGenerating ? <RefreshCw className="animate-spin" size={22} /> : <Zap size={22} fill="currentColor" />}
+              {isGenerating ? <RefreshCw className="animate-spin" size={24} /> : <Zap size={24} fill="currentColor" />}
               {isGenerating ? "Analyzing Knowledge..." : "Discover & Sync"}
             </button>
           </div>
 
           {/* Recent Syncs */}
           {syncHistory.length > 0 && (
-            <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex flex-col gap-4 flex-1 min-h-0">
-              <div className="flex items-center gap-2 text-base font-semibold text-slate-700 shrink-0">
-                <History size={18} /> Recent Syncs
+            <div className="bg-white rounded-2xl border border-slate-200 p-8 shadow-sm flex flex-col gap-5 flex-1 min-h-0">
+              <div className="flex items-center gap-2 text-lg font-semibold text-slate-700 shrink-0">
+                <History size={20} /> Recent Syncs
               </div>
               <div className="flex flex-col gap-2 overflow-y-auto custom-scrollbar pr-2">
                 {syncHistory.map(sync => (
@@ -454,12 +451,12 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
                       setSources(sync.sources);
                     }}
                     className={cn(
-                      "flex flex-col gap-1 p-3.5 rounded-xl border text-left transition-all shrink-0",
+                      "flex flex-col gap-1.5 p-4 rounded-xl border text-left transition-all shrink-0",
                       activeSyncId === sync.id ? "bg-[#E3000F]/5 border-[#E3000F]/20" : "bg-white border-slate-100 hover:border-slate-300"
                     )}
                   >
                     <div className="flex items-center justify-between w-full">
-                      <span className="text-sm font-bold text-slate-900 truncate pr-2">{sync.date}</span>
+                      <span className="text-base font-bold text-slate-900 truncate pr-2">{sync.date}</span>
                       <span className={cn(
                         "text-xs px-2.5 py-0.5 rounded-full font-bold uppercase shrink-0",
                         sync.status === 'deployed' ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
@@ -467,7 +464,7 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
                         {sync.status}
                       </span>
                     </div>
-                    <span className="text-sm text-slate-500">{sync.sources.length} sources analyzed</span>
+                    <span className="text-base text-slate-500">{sync.sources.length} sources analyzed</span>
                   </button>
                 ))}
               </div>
@@ -476,20 +473,20 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
         </div>
 
           {/* Right Panel: Comparison View */}
-          <div className="flex flex-col gap-6 min-h-0">
+          <div className="flex flex-col gap-8 min-h-0">
             <AnimatePresence mode="wait">
               {!activeSyncId ? (
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95 }}
-                  className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center p-12 text-center h-full min-h-[400px]"
+                  className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center p-16 text-center h-full min-h-[400px]"
                 >
-                  <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-sm mb-5">
-                    <FileText className="text-slate-400" size={36} />
+                  <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center shadow-sm mb-6">
+                    <FileText className="text-slate-400" size={42} />
                   </div>
-                  <h3 className="text-xl font-semibold text-slate-900">No Analysis Pending</h3>
-                  <p className="text-slate-500 max-w-sm mt-3 text-base">
+                  <h3 className="text-2xl font-semibold text-slate-900">No Analysis Pending</h3>
+                  <p className="text-slate-500 max-w-sm mt-4 text-lg">
                     Add sources and click "Discover & Sync", or select a recent sync from the history to view results.
                   </p>
                 </motion.div>
@@ -497,40 +494,38 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="flex flex-col gap-4 h-full min-h-0"
+                  className="flex flex-col gap-5 h-full min-h-0"
                 >
                   {/* Next-Gen Column */}
                   <div className="flex items-center justify-between px-2">
-                    <span className="text-base font-bold text-[#E3000F] uppercase tracking-widest">GenAI Sync</span>
-                    <span className="text-sm font-medium text-emerald-600 flex items-center gap-1">
-                      <Zap size={14} fill="currentColor" /> Automated Discovery
+                    <span className="text-lg font-bold text-[#E3000F] uppercase tracking-widest">GenAI Sync</span>
+                    <span className="text-base font-medium text-emerald-600 flex items-center gap-1.5">
+                      <Zap size={16} fill="currentColor" /> Automated Discovery
                     </span>
                   </div>
-                  <div className="bg-white border-2 border-[#E3000F] rounded-2xl p-6 shadow-xl shadow-[#E3000F]/10 flex flex-col gap-4 flex-1 min-h-0">
-                    <div className="flex items-center justify-between pb-2 border-b border-slate-100 shrink-0">
-                      <label className="flex items-center gap-2 cursor-pointer group">
+                  <div className="bg-white border-2 border-[#E3000F] rounded-2xl p-8 shadow-xl shadow-[#E3000F]/10 flex flex-col gap-5 flex-1 min-h-0">
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-100 shrink-0">
+                      <label className="flex items-center gap-3 cursor-pointer group">
                         <div className={cn(
-                          "w-5 h-5 rounded border flex items-center justify-center transition-colors",
+                          "w-6 h-6 rounded border flex items-center justify-center transition-colors",
                           selectedIntents.size === displayDiffs.length ? "bg-[#E3000F] border-[#E3000F]" : "border-slate-300 group-hover:border-[#E3000F]"
                         )}>
-                          {selectedIntents.size === displayDiffs.length && <CheckCircle2 size={14} className="text-white" />}
+                          {selectedIntents.size === displayDiffs.length && <CheckCircle2 size={16} className="text-white" />}
                         </div>
-                        <span className="text-sm font-bold text-slate-600 group-hover:text-slate-900">
+                        <span className="text-base font-bold text-slate-600 group-hover:text-slate-900">
                           {selectedIntents.size === displayDiffs.length ? 'Deselect All' : 'Select All'} ({selectedIntents.size}/{displayDiffs.length})
                         </span>
                         <input type="checkbox" className="hidden" checked={selectedIntents.size === displayDiffs.length} onChange={toggleAll} />
                       </label>
                     </div>
-                    <div className="flex flex-col gap-3 pr-2 custom-scrollbar overflow-y-auto min-h-0">
+                    <div className="flex flex-col gap-4 pr-2 custom-scrollbar overflow-y-auto min-h-0">
                       {displayDiffs.map((diff) => (
                         <div
                           key={diff.id}
                           className={cn(
-                            "p-4 rounded-xl border flex flex-col gap-2 transition-all cursor-pointer",
+                            "p-5 rounded-xl border flex flex-col gap-3 transition-all cursor-pointer",
                             selectedIntents.has(diff.id)
-                              ? diff.status === 'new' ? "bg-emerald-50 border-emerald-300"
-                                : diff.status === 'changed' ? "bg-amber-50 border-amber-300"
-                                : "bg-red-50 border-red-300"
+                              ? "bg-white border-slate-200 shadow-sm"
                               : "bg-slate-50 border-slate-100 hover:border-slate-300"
                           )}
                           onClick={() => toggleSelection(diff.id)}
@@ -538,19 +533,19 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               <div className={cn(
-                                "w-5 h-5 rounded border flex items-center justify-center transition-colors shrink-0",
+                                "w-6 h-6 rounded border flex items-center justify-center transition-colors shrink-0",
                                 selectedIntents.has(diff.id)
                                   ? diff.status === 'new' ? "bg-emerald-600 border-emerald-600"
                                     : diff.status === 'changed' ? "bg-amber-500 border-amber-500"
                                     : "bg-red-600 border-red-600"
                                   : "border-slate-300 bg-white"
                               )}>
-                                {selectedIntents.has(diff.id) && <CheckCircle2 size={14} className="text-white" />}
+                                {selectedIntents.has(diff.id) && <CheckCircle2 size={16} className="text-white" />}
                               </div>
-                              <span className="text-sm font-bold font-mono text-slate-900">{diff.intent}</span>
+                              <span className="text-base font-bold font-mono text-slate-900">{diff.intent}</span>
                             </div>
                             <span className={cn(
-                              "text-xs px-2.5 py-0.5 rounded-full font-bold uppercase",
+                              "text-sm px-3 py-1 rounded-full font-bold uppercase",
                               diff.status === 'new' ? "bg-emerald-100 text-emerald-700" :
                               diff.status === 'changed' ? "bg-amber-100 text-amber-700" :
                               "bg-[#E3000F]/10 text-[#E3000F]"
@@ -559,29 +554,29 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
                             </span>
                           </div>
 
-                          <div className="flex flex-col gap-1 pl-7">
-                            <span className="text-xs font-bold text-slate-400 uppercase">Utterances ({diff.utterances.length})</span>
-                            <div className="flex flex-wrap gap-1">
+                          <div className="flex flex-col gap-1.5 pl-8">
+                            <span className="text-sm font-bold text-slate-400 uppercase">Utterances ({diff.utterances.length})</span>
+                            <div className="flex flex-wrap gap-1.5">
                               {diff.utterances.slice(0, 2).map((u, i) => (
-                                <span key={i} className="text-xs bg-white border border-slate-200 px-2 py-0.5 rounded text-slate-600 italic truncate max-w-[200px]">
+                                <span key={i} className="text-sm bg-white border border-slate-200 px-2.5 py-1 rounded text-slate-600 italic truncate max-w-[240px]">
                                   "{u}"
                                 </span>
                               ))}
                               {diff.utterances.length > 2 && (
-                                <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded">+{diff.utterances.length - 2} more</span>
+                                <span className="text-sm bg-slate-100 text-slate-500 px-2.5 py-1 rounded">+{diff.utterances.length - 2} more</span>
                               )}
                             </div>
                           </div>
 
-                          <div className="flex flex-col gap-1 mt-1 pl-7">
-                            <span className="text-xs font-bold text-slate-400 uppercase">Response</span>
-                            <p className="text-sm text-slate-600 line-clamp-2 italic">"{diff.response}"</p>
+                          <div className="flex flex-col gap-1.5 mt-1 pl-8">
+                            <span className="text-sm font-bold text-slate-400 uppercase">Response</span>
+                            <p className="text-base text-slate-600 line-clamp-2 italic">"{diff.response}"</p>
                           </div>
 
                           {diff.whatsChanged && (
-                            <div className="mt-1 ml-7 p-2.5 bg-amber-50/50 border border-amber-100 rounded-lg">
-                              <span className="text-xs font-bold text-amber-700 uppercase block mb-0.5">What's Changed</span>
-                              <ul className="text-xs text-amber-800 leading-relaxed list-disc list-inside space-y-0.5">
+                            <div className="mt-1.5 ml-8 p-3.5 bg-amber-50/50 border border-amber-100 rounded-lg">
+                              <span className="text-sm font-bold text-amber-700 uppercase block mb-1">{diff.status === 'deleted' ? 'Why' : "What's Changed"}</span>
+                              <ul className="text-sm text-amber-800 leading-relaxed list-disc list-inside space-y-0.5">
                                 {Array.isArray(diff.whatsChanged) ? diff.whatsChanged.map((change, idx) => (
                                   <li key={idx}>{change}</li>
                                 )) : <li>{diff.whatsChanged}</li>}
@@ -592,7 +587,7 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
                       ))}
                     </div>
                     <div className="mt-auto pt-4 border-t border-slate-100 flex items-center justify-between">
-                      <span className="text-base font-bold text-[#E3000F]">Total Effort</span>
+                      <span className="text-xl font-black text-emerald-600 tracking-tighter">Total Effort</span>
                       <div className="flex flex-col items-end">
                         <span className="text-xl font-black text-emerald-600 tracking-tighter">&lt; 2 SECONDS</span>
                       </div>
@@ -644,6 +639,14 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
               Review Intents ({displayDiffs.length})
             </button>
             <button
+              onClick={handleDeploy}
+              disabled={isDeploying || selectedIntents.size === 0}
+              className="px-6 py-3 bg-white/10 hover:bg-white/20 rounded-xl font-semibold flex items-center gap-2 transition-all disabled:opacity-50 whitespace-nowrap text-base"
+            >
+              {isDeploying ? <RefreshCw className="animate-spin" size={20} /> : <CheckCircle2 size={20} />}
+              {isDeploying ? "Deploying..." : `Approve Selected (${selectedIntents.size})`}
+            </button>
+            <button
               onClick={() => {
                 if (selectedIntents.size < displayDiffs.length) {
                   setSelectedIntents(new Set(displayDiffs.map(d => d.id)));
@@ -651,17 +654,9 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
                 handleDeploy();
               }}
               disabled={isDeploying}
-              className="px-6 py-3 bg-white/10 hover:bg-white/20 rounded-xl font-semibold transition-all whitespace-nowrap disabled:opacity-50 text-base"
+              className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 rounded-xl font-bold transition-all shadow-lg shadow-emerald-900/20 whitespace-nowrap disabled:opacity-50 text-base"
             >
               Approve All & Deploy
-            </button>
-            <button
-              onClick={handleDeploy}
-              disabled={isDeploying || selectedIntents.size === 0}
-              className="px-6 py-3 bg-[#E3000F] hover:bg-[#E3000F]/90 rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg shadow-[#E3000F]/20 disabled:opacity-50 whitespace-nowrap text-base"
-            >
-              {isDeploying ? <RefreshCw className="animate-spin" size={20} /> : <CheckCircle2 size={20} />}
-              {isDeploying ? "Deploying..." : `Approve Selected (${selectedIntents.size})`}
             </button>
           </div>
         </motion.div>
@@ -783,7 +778,7 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
 
                     {diff.whatsChanged && (
                       <div className="p-3.5 bg-amber-50 border border-amber-100 rounded-xl flex flex-col gap-1">
-                        <span className="text-xs font-bold text-amber-700 uppercase tracking-widest">What's Changed</span>
+                        <span className="text-xs font-bold text-amber-700 uppercase tracking-widest">{diff.status === 'deleted' ? 'Why' : "What's Changed"}</span>
                         <ul className="text-sm text-amber-800 list-disc list-inside space-y-0.5">
                           {Array.isArray(diff.whatsChanged) ? diff.whatsChanged.map((change, idx) => (
                             <li key={idx}>{change}</li>
