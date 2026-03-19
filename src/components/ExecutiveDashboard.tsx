@@ -147,23 +147,23 @@ export default function ExecutiveDashboard() {
               <div className="p-2.5 bg-white/20 rounded-xl backdrop-blur-sm">
                 <Brain size={24} />
               </div>
-              <span className="text-sm font-bold uppercase tracking-widest text-emerald-100">LLM Guardrail</span>
+              <span className="text-base font-bold uppercase tracking-widest text-emerald-100">LLM Guardrail</span>
             </div>
             <div className="flex items-end gap-3">
-              <span className="text-6xl font-black leading-none">247</span>
-              <span className="text-lg font-semibold text-emerald-200 pb-1">hallucinations caught</span>
+              <span className="text-7xl font-black leading-none">247</span>
+              <span className="text-xl font-semibold text-emerald-200 pb-1">hallucinations caught</span>
             </div>
-            <p className="text-base text-emerald-100 leading-relaxed">
+            <p className="text-lg text-emerald-100 leading-relaxed">
               Deterministic fact-checking layer intercepted 247 inaccurate responses this week before they reached customers.
             </p>
             <div className="flex items-center gap-4 mt-2">
               <div className="flex items-center gap-2 px-4 py-2 bg-white/15 rounded-xl">
-                <Eye size={16} />
-                <span className="text-sm font-bold">0.75% Caught</span>
+                <Eye size={18} />
+                <span className="text-base font-bold">0.75% of Total Queries</span>
               </div>
               <div className="flex items-center gap-2 px-4 py-2 bg-white/15 rounded-xl">
-                <Activity size={16} />
-                <span className="text-sm font-bold">-12% vs Last Period</span>
+                <Activity size={18} />
+                <span className="text-base font-bold">-12% vs Last Period</span>
               </div>
             </div>
           </div>
@@ -179,23 +179,23 @@ export default function ExecutiveDashboard() {
               <div className="p-2.5 bg-white/20 rounded-xl backdrop-blur-sm">
                 <ShieldCheck size={24} />
               </div>
-              <span className="text-sm font-bold uppercase tracking-widest text-violet-100">Security Guardrail</span>
+              <span className="text-base font-bold uppercase tracking-widest text-violet-100">Security Guardrail</span>
             </div>
             <div className="flex items-end gap-3">
-              <span className="text-6xl font-black leading-none">89</span>
-              <span className="text-lg font-semibold text-violet-200 pb-1">injection attacks blocked</span>
+              <span className="text-7xl font-black leading-none">89</span>
+              <span className="text-xl font-semibold text-violet-200 pb-1">injection attacks blocked</span>
             </div>
-            <p className="text-base text-violet-100 leading-relaxed">
+            <p className="text-lg text-violet-100 leading-relaxed">
               Prompt injection detection shielded the chatbot from 89 adversarial attempts across 12 unique threat vectors.
             </p>
             <div className="flex items-center gap-4 mt-2">
               <div className="flex items-center gap-2 px-4 py-2 bg-white/15 rounded-xl">
-                <AlertTriangle size={16} />
-                <span className="text-sm font-bold">2.4% Caught</span>
+                <AlertTriangle size={18} />
+                <span className="text-base font-bold">2.4% of Total Queries</span>
               </div>
               <div className="flex items-center gap-2 px-4 py-2 bg-white/15 rounded-xl">
-                <ShieldAlert size={16} />
-                <span className="text-sm font-bold">+8% vs Last Period</span>
+                <ShieldAlert size={18} />
+                <span className="text-base font-bold">+8% vs Last Period</span>
               </div>
             </div>
           </div>
