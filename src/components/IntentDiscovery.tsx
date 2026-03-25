@@ -15,7 +15,12 @@ import {
   Trash2,
   History,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  GitBranch,
+  RotateCcw,
+  Info,
+  GitCompare,
+  ArrowUpCircle,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
@@ -129,9 +134,46 @@ interface SyncSession {
   id: string;
   date: string;
   sources: { id: string; name: string; type: string; url?: string }[];
-  status: 'pending' | 'deployed';
+  status: 'pending' | 'staging' | 'deployed';
+  pendingApproval?: boolean;
   diffs: IntentDiff[];
 }
+
+interface SnapshotEntry {
+  version: string;
+  label: string;
+  deployedAt: string;
+  deployedBy: string;
+  intentCount: number;
+  isLive: boolean;
+}
+
+const MOCK_SNAPSHOTS: SnapshotEntry[] = [
+  { version: 'v3', label: 'v3', deployedAt: '2026-03-20', deployedBy: 'Sarah Chen', intentCount: 6, isLive: true },
+  { version: 'v2', label: 'v2', deployedAt: '2026-03-10', deployedBy: 'Admin', intentCount: 5, isLive: false },
+  { version: 'v1', label: 'v1', deployedAt: '2026-02-28', deployedBy: 'Admin', intentCount: 4, isLive: false },
+];
+
+// Mock production intent DB (what staging diffs are compared against)
+const MOCK_PRODUCTION_INTENTS: Record<string, { utterances: string[]; response: string }> = {
+  'Home_Loan_Repayment_Impact': {
+    utterances: [
+      'I am getting a new house, how does it affect my savings?',
+      'Impact of mortgage on OCBC 360 wealth bonus',
+      'Can I use CPF for my house?'
+    ],
+    response: "A new mortgage will reduce your monthly voluntary contributions. This shifts your 'Comfortable Retirement' milestone by 3 years."
+  },
+  'CPF_Life_Explanation': {
+    utterances: [
+      'Explain CPF Life',
+      'How does the annuity work?',
+      'What is CPF Life?',
+      'Tell me about the national annuity scheme'
+    ],
+    response: "CPF LIFE is a national longevity multi-purpose annuity scheme that provides you with monthly payouts for as long as you live."
+  }
+};
 
 const INITIAL_SOURCES = [
   { id: '1', type: 'doc', name: 'OCBC_360_Account_T&Cs_2026.pdf' },
@@ -156,6 +198,18 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
 
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
 
+  // Version history
+  const [showVersionHistory, setShowVersionHistory] = useState(false);
+  const [showRestoreModal, setShowRestoreModal] = useState(false);
+  const [restoreTargetVersion, setRestoreTargetVersion] = useState<string | null>(null);
+
+  // Staging review modals
+  const [showCompareModal, setShowCompareModal] = useState(false);
+  const [showPromoteConfirmModal, setShowPromoteConfirmModal] = useState(false);
+
+  // Toast
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
   const [syncHistory, setSyncHistory] = useState<SyncSession[]>(() => {
     const saved = localStorage.getItem('ocbc_sync_history');
     return saved ? JSON.parse(saved) : [];
@@ -164,6 +218,11 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
   useEffect(() => {
     localStorage.setItem('ocbc_sync_history', JSON.stringify(syncHistory));
   }, [syncHistory]);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3500);
+  };
 
   const handleGenerate = () => {
     setIsGenerating(true);
@@ -183,20 +242,38 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
     }, 2000);
   };
 
-  const handleDeploy = () => {
+  // Approves selected or all intents → moves session to 'staging' (not deployed)
+  const handleApproveToStaging = (approveAll: boolean) => {
+    setIsDeploying(true);
+    if (approveAll) {
+      setSelectedIntents(new Set(displayDiffs.map(d => d.id)));
+    }
+    setTimeout(() => {
+      setIsDeploying(false);
+      setSyncHistory(prev => prev.map(s => {
+        if (s.id !== activeSyncId) return s;
+        const approvedIds = approveAll ? new Set(s.diffs.map(d => d.id)) : selectedIntents;
+        return {
+          ...s,
+          status: 'staging',
+          diffs: s.diffs.filter(d => approvedIds.has(d.id))
+        };
+      }));
+    }, 1200);
+  };
+
+  // Legacy deploy used internally by promote-to-production flow
+  const handlePromoteToProduction = () => {
     setIsDeploying(true);
     setTimeout(() => {
       setIsDeploying(false);
       setSyncHistory(prev => prev.map(s => {
         if (s.id !== activeSyncId) return s;
-        return {
-          ...s,
-          status: 'deployed',
-          diffs: s.diffs.filter(d => selectedIntents.has(d.id))
-        };
+        return { ...s, status: 'deployed', pendingApproval: true };
       }));
       onDeploy();
-    }, 1500);
+      showToast('Promotion submitted for approval');
+    }, 1000);
   };
 
   const handleSaveEdit = () => {
@@ -289,8 +366,29 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
     }
   };
 
+  const statusBadgeClass = (status: SyncSession['status']) => {
+    if (status === 'deployed') return 'bg-emerald-100 text-emerald-700';
+    if (status === 'staging') return 'bg-amber-100 text-amber-700';
+    return 'bg-slate-100 text-slate-500';
+  };
+
   return (
     <div className="flex flex-col gap-8 p-8 max-w-[1600px] mx-auto min-h-[calc(100vh-4rem)]">
+
+      {/* Toast notification */}
+      <AnimatePresence>
+        {toastMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: -20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.95 }}
+            className="fixed top-6 left-1/2 -translate-x-1/2 z-[200] bg-slate-900 text-white px-6 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3 text-base font-semibold"
+          >
+            <CheckCircle2 size={20} className="text-emerald-400 shrink-0" />
+            {toastMessage}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Knowledge Synchronization */}
       <div className="flex flex-col gap-8">
@@ -457,12 +555,17 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
                   >
                     <div className="flex items-center justify-between w-full">
                       <span className="text-base font-bold text-slate-900 truncate pr-2">{sync.date}</span>
-                      <span className={cn(
-                        "text-xs px-2.5 py-0.5 rounded-full font-bold uppercase shrink-0",
-                        sync.status === 'deployed' ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
-                      )}>
-                        {sync.status}
-                      </span>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {sync.status === 'deployed' && sync.pendingApproval && (
+                          <Clock size={13} className="text-amber-500" />
+                        )}
+                        <span className={cn(
+                          "text-xs px-2.5 py-0.5 rounded-full font-bold uppercase",
+                          statusBadgeClass(sync.status)
+                        )}>
+                          {sync.status}
+                        </span>
+                      </div>
                     </div>
                     <span className="text-base text-slate-500">{sync.sources.length} sources analyzed</span>
                   </button>
@@ -470,6 +573,73 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
               </div>
             </div>
           )}
+
+          {/* Intent DB Snapshots — Version History */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex flex-col gap-0 shrink-0">
+            <button
+              onClick={() => setShowVersionHistory(!showVersionHistory)}
+              className="flex items-center justify-between w-full group py-1"
+            >
+              <span className="text-base font-semibold text-slate-700 flex items-center gap-2">
+                <GitBranch size={18} className="text-slate-500" />
+                Intent DB Snapshots
+              </span>
+              {showVersionHistory
+                ? <ChevronUp size={18} className="text-slate-400" />
+                : <ChevronDown size={18} className="text-slate-400" />}
+            </button>
+
+            <AnimatePresence>
+              {showVersionHistory && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="overflow-hidden"
+                >
+                  <div className="flex flex-col gap-2 mt-4">
+                    {MOCK_SNAPSHOTS.map(snap => (
+                      <div
+                        key={snap.version}
+                        className={cn(
+                          "flex items-center justify-between p-3.5 rounded-xl border",
+                          snap.isLive ? "bg-emerald-50 border-emerald-200" : "bg-slate-50 border-slate-200"
+                        )}
+                      >
+                        <div className="flex flex-col gap-0.5">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-bold text-slate-800">{snap.label}</span>
+                            {snap.isLive && (
+                              <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-600 text-white font-bold uppercase tracking-wide">
+                                LIVE
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-xs text-slate-500">
+                            Deployed {snap.deployedAt} by {snap.deployedBy} — {snap.intentCount} intents
+                          </span>
+                        </div>
+                        {!snap.isLive && (
+                          <button
+                            onClick={() => {
+                              setRestoreTargetVersion(snap.version);
+                              setShowRestoreModal(true);
+                            }}
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg hover:border-slate-400 transition-all"
+                          >
+                            <RotateCcw size={13} />
+                            Restore
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
         </div>
 
           {/* Right Panel: Comparison View */}
@@ -599,8 +769,8 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
           </div>
         </div>
 
-        {/* Deployment Summary - Concise Point Form */}
-        {activeSyncId && activeSync?.status !== 'deployed' && (
+        {/* Deployment Summary — PENDING status */}
+        {activeSyncId && activeSync?.status === 'pending' && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -608,7 +778,7 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
           >
           <div className="flex flex-col gap-3">
             <h3 className="text-2xl font-bold flex items-center gap-2">
-              <CheckCircle2 className="text-[#E3000F]" size={24} /> Ready for Deployment
+              <CheckCircle2 className="text-[#E3000F]" size={24} /> Ready for Staging
             </h3>
             <ul className="text-slate-300 text-base space-y-1.5">
               {displayDiffs.filter(d => d.status === 'new').length > 0 && (
@@ -639,28 +809,80 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
               Review Intents ({displayDiffs.length})
             </button>
             <button
-              onClick={handleDeploy}
+              onClick={() => handleApproveToStaging(false)}
               disabled={isDeploying || selectedIntents.size === 0}
               className="px-6 py-3 bg-white/10 hover:bg-white/20 rounded-xl font-semibold flex items-center gap-2 transition-all disabled:opacity-50 whitespace-nowrap text-base"
             >
-              {isDeploying ? <RefreshCw className="animate-spin" size={20} /> : <CheckCircle2 size={20} />}
-              {isDeploying ? "Deploying..." : `Approve Selected (${selectedIntents.size})`}
+              {isDeploying ? <RefreshCw className="animate-spin" size={20} /> : <ArrowRight size={20} />}
+              {isDeploying ? "Moving to Staging..." : `Approve Selected \u2192 Staging (${selectedIntents.size})`}
             </button>
             <button
-              onClick={() => {
-                if (selectedIntents.size < displayDiffs.length) {
-                  setSelectedIntents(new Set(displayDiffs.map(d => d.id)));
-                }
-                handleDeploy();
-              }}
+              onClick={() => handleApproveToStaging(true)}
               disabled={isDeploying}
-              className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 rounded-xl font-bold transition-all shadow-lg shadow-emerald-900/20 whitespace-nowrap disabled:opacity-50 text-base"
+              className="px-6 py-3 bg-amber-500 hover:bg-amber-600 rounded-xl font-bold transition-all shadow-lg shadow-amber-900/20 whitespace-nowrap disabled:opacity-50 text-base flex items-center gap-2"
             >
-              Approve All & Deploy
+              <ArrowRight size={20} />
+              Approve All \u2192 Staging
             </button>
           </div>
         </motion.div>
       )}
+
+        {/* Staging Review Panel — STAGING status */}
+        {activeSyncId && activeSync?.status === 'staging' && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white border-2 border-amber-300 rounded-2xl p-8 flex flex-col gap-6"
+          >
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div className="flex items-center gap-3">
+                <h3 className="text-2xl font-bold text-slate-900">Staging Review</h3>
+                <span className="text-sm px-3 py-1 rounded-full bg-amber-100 text-amber-700 font-bold uppercase tracking-wide">
+                  STAGING
+                </span>
+              </div>
+              <div className="flex gap-3 flex-wrap">
+                <button
+                  onClick={() => setShowCompareModal(true)}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl transition-all text-sm"
+                >
+                  <GitCompare size={18} />
+                  Compare with Production
+                </button>
+                <button
+                  onClick={() => setShowPromoteConfirmModal(true)}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition-all shadow-lg shadow-emerald-900/20 text-sm"
+                >
+                  <ArrowUpCircle size={18} />
+                  Promote to Production
+                </button>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <span className="text-sm font-bold text-slate-500 uppercase tracking-widest">Approved Intents in Staging</span>
+              <div className="flex flex-col gap-2">
+                {activeSync.diffs.map(diff => (
+                  <div
+                    key={diff.id}
+                    className="flex items-center justify-between p-3.5 bg-amber-50 border border-amber-100 rounded-xl"
+                  >
+                    <span className="text-base font-bold font-mono text-slate-800">{diff.intent}</span>
+                    <span className={cn(
+                      "text-xs px-2.5 py-0.5 rounded-full font-bold uppercase",
+                      diff.status === 'new' ? "bg-emerald-100 text-emerald-700" :
+                      diff.status === 'changed' ? "bg-amber-100 text-amber-700" :
+                      "bg-red-100 text-red-700"
+                    )}>
+                      {diff.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        )}
 
       </div>
 
@@ -756,7 +978,17 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
                         </span>
                       </div>
                       <div className="flex items-center gap-4">
-                        <span className="text-sm font-bold text-slate-400">Confidence: {(diff.confidence * 100).toFixed(1)}%</span>
+                        {/* Confidence score with tooltip — Change 4 */}
+                        <div className="relative group/tip flex items-center gap-1.5">
+                          <span className="text-sm font-bold text-slate-400">
+                            Confidence: {(diff.confidence * 100).toFixed(1)}%
+                          </span>
+                          <Info size={14} className="text-slate-400 cursor-help" />
+                          <div className="absolute bottom-full right-0 mb-2 w-72 bg-slate-900 text-white text-xs rounded-xl px-3.5 py-2.5 shadow-xl leading-relaxed opacity-0 group-hover/tip:opacity-100 pointer-events-none transition-opacity duration-150 z-10">
+                            How clearly the source material supports this as a distinct, well-scoped intent. High = specific and unambiguous. Low = vague or overlapping with other intents.
+                            <div className="absolute top-full right-4 border-4 border-transparent border-t-slate-900" />
+                          </div>
+                        </div>
                         {editingIntentId === diff.id ? (
                           <div className="flex items-center gap-2">
                             <button onClick={handleSaveEdit} className="text-sm font-bold text-emerald-600 hover:text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded">Save</button>
@@ -901,11 +1133,270 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
                   Cancel
                 </button>
                 <button
-                  onClick={() => { setShowReviewModal(false); handleDeploy(); }}
+                  onClick={() => { setShowReviewModal(false); handleApproveToStaging(false); }}
                   disabled={selectedIntents.size === 0}
                   className="px-8 py-3 bg-[#E3000F] hover:bg-[#E3000F]/90 text-white font-bold rounded-xl shadow-lg shadow-[#E3000F]/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-base"
                 >
-                  Approve & Sync Selected ({selectedIntents.size})
+                  Approve Selected \u2192 Staging ({selectedIntents.size})
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Compare with Production Modal */}
+      <AnimatePresence>
+        {showCompareModal && activeSync?.status === 'staging' && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowCompareModal(false)}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-white w-full max-w-5xl max-h-[85vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col relative z-10"
+            >
+              <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+                <div>
+                  <h3 className="text-2xl font-bold text-slate-900">Compare: Production vs Staging</h3>
+                  <p className="text-slate-500 text-sm mt-1">{activeSync.diffs.length} intent(s) pending promotion</p>
+                </div>
+                <button
+                  onClick={() => setShowCompareModal(false)}
+                  className="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-all"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6 custom-scrollbar">
+                {/* Column headers */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex items-center gap-2 px-4 py-2 bg-slate-100 rounded-xl">
+                    <span className="w-2.5 h-2.5 rounded-full bg-slate-400 shrink-0" />
+                    <span className="text-sm font-bold text-slate-600 uppercase tracking-widest">Production (current)</span>
+                  </div>
+                  <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 border border-amber-200 rounded-xl">
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0" />
+                    <span className="text-sm font-bold text-amber-700 uppercase tracking-widest">Staging (pending)</span>
+                  </div>
+                </div>
+
+                {activeSync.diffs.map(diff => {
+                  const prod = MOCK_PRODUCTION_INTENTS[diff.intent];
+                  return (
+                    <div key={diff.id} className="border border-slate-200 rounded-2xl overflow-hidden">
+                      <div className="px-5 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                        <span className="text-sm font-bold font-mono text-slate-800">{diff.intent}</span>
+                        <span className={cn(
+                          "text-xs px-2.5 py-0.5 rounded-full font-bold uppercase",
+                          diff.status === 'new' ? "bg-emerald-100 text-emerald-700" :
+                          diff.status === 'changed' ? "bg-amber-100 text-amber-700" :
+                          "bg-red-100 text-red-700"
+                        )}>
+                          {diff.status}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 divide-x divide-slate-200">
+                        {/* Production side */}
+                        <div className="p-5 flex flex-col gap-3">
+                          {diff.status === 'new' ? (
+                            <div className="flex flex-col items-center justify-center h-24 text-slate-400 gap-2">
+                              <Plus size={20} className="opacity-30" />
+                              <span className="text-sm italic">No existing record</span>
+                            </div>
+                          ) : prod ? (
+                            <>
+                              <div>
+                                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest block mb-1.5">Utterances</span>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {prod.utterances.map((u, i) => (
+                                    <span
+                                      key={i}
+                                      className={cn(
+                                        "text-xs px-2 py-0.5 rounded border italic",
+                                        diff.status === 'deleted'
+                                          ? "bg-red-50 border-red-200 text-red-600 line-through"
+                                          : "bg-white border-slate-200 text-slate-500"
+                                      )}
+                                    >
+                                      "{u}"
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                              <div>
+                                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest block mb-1.5">Response</span>
+                                <p className={cn(
+                                  "text-xs leading-relaxed p-3 rounded-xl border",
+                                  diff.status === 'deleted'
+                                    ? "bg-red-50 border-red-200 text-red-600 line-through"
+                                    : "bg-white border-slate-100 text-slate-500"
+                                )}>
+                                  {prod.response}
+                                </p>
+                              </div>
+                            </>
+                          ) : (
+                            <p className="text-xs text-slate-400 italic">No production record found</p>
+                          )}
+                        </div>
+                        {/* Staging side */}
+                        <div className="p-5 flex flex-col gap-3">
+                          {diff.status === 'deleted' ? (
+                            <div className="flex flex-col items-center justify-center h-24 text-red-400 gap-2">
+                              <Trash2 size={20} className="opacity-50" />
+                              <span className="text-sm italic font-medium">Will be removed</span>
+                            </div>
+                          ) : (
+                            <>
+                              <div>
+                                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest block mb-1.5">Utterances</span>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {diff.utterances.map((u, i) => (
+                                    <span
+                                      key={i}
+                                      className="text-xs px-2 py-0.5 rounded border bg-emerald-50 border-emerald-200 text-emerald-700 italic"
+                                    >
+                                      "{u}"
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                              <div>
+                                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest block mb-1.5">Response</span>
+                                <p className="text-xs leading-relaxed bg-emerald-50 border border-emerald-200 text-emerald-800 p-3 rounded-xl">
+                                  {diff.response}
+                                </p>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
+                <button
+                  onClick={() => setShowCompareModal(false)}
+                  className="px-6 py-3 font-bold text-slate-600 hover:text-slate-900 transition-all text-base"
+                >
+                  Close
+                </button>
+                <button
+                  onClick={() => { setShowCompareModal(false); setShowPromoteConfirmModal(true); }}
+                  className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-lg shadow-emerald-900/20 transition-all text-base flex items-center gap-2"
+                >
+                  <ArrowUpCircle size={18} />
+                  Promote to Production
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Promote to Production Confirmation Modal */}
+      <AnimatePresence>
+        {showPromoteConfirmModal && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-6">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowPromoteConfirmModal(false)}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-white w-full max-w-md rounded-3xl shadow-2xl p-8 flex flex-col gap-6 relative z-10"
+            >
+              <div className="flex flex-col gap-2">
+                <div className="w-14 h-14 rounded-2xl bg-emerald-100 flex items-center justify-center mb-2">
+                  <ArrowUpCircle size={28} className="text-emerald-600" />
+                </div>
+                <h3 className="text-xl font-bold text-slate-900">Submit for Approval?</h3>
+                <p className="text-slate-500 text-base leading-relaxed">
+                  Submit for maker-checker approval? A checker must approve before this goes live.
+                </p>
+              </div>
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => setShowPromoteConfirmModal(false)}
+                  className="px-5 py-2.5 font-bold text-slate-600 hover:text-slate-900 transition-all text-base"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    setShowPromoteConfirmModal(false);
+                    handlePromoteToProduction();
+                  }}
+                  disabled={isDeploying}
+                  className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-lg shadow-emerald-900/20 transition-all text-base disabled:opacity-50 flex items-center gap-2"
+                >
+                  {isDeploying ? <RefreshCw className="animate-spin" size={18} /> : <CheckCircle2 size={18} />}
+                  Submit for Approval
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Restore Snapshot Confirmation Modal */}
+      <AnimatePresence>
+        {showRestoreModal && restoreTargetVersion && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-6">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowRestoreModal(false)}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-white w-full max-w-md rounded-3xl shadow-2xl p-8 flex flex-col gap-6 relative z-10"
+            >
+              <div className="flex flex-col gap-2">
+                <div className="w-14 h-14 rounded-2xl bg-amber-100 flex items-center justify-center mb-2">
+                  <RotateCcw size={28} className="text-amber-600" />
+                </div>
+                <h3 className="text-xl font-bold text-slate-900">Restore to {restoreTargetVersion}?</h3>
+                <p className="text-slate-500 text-base leading-relaxed">
+                  This will overwrite the current live intent database. This action requires maker-checker approval.
+                </p>
+              </div>
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => { setShowRestoreModal(false); setRestoreTargetVersion(null); }}
+                  className="px-5 py-2.5 font-bold text-slate-600 hover:text-slate-900 transition-all text-base"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    setShowRestoreModal(false);
+                    setRestoreTargetVersion(null);
+                    showToast('Restore request submitted for approval');
+                  }}
+                  className="px-6 py-2.5 bg-[#E3000F] hover:bg-[#E3000F]/90 text-white font-bold rounded-xl shadow-lg shadow-[#E3000F]/20 transition-all text-base flex items-center gap-2"
+                >
+                  <RotateCcw size={18} />
+                  Submit Restore Request
                 </button>
               </div>
             </motion.div>
