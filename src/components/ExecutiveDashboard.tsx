@@ -21,7 +21,6 @@ import {
   Layers,
   DollarSign,
   Download,
-  Cloud,
   TrendingDown,
 } from 'lucide-react';
 import {
@@ -119,7 +118,7 @@ const HERO_CONTENT: Record<ProjectOption, HeroContent> = {
   },
 };
 
-// ─── AWS Cost Intelligence mock data ─────────────────────────────────────────
+// ─── Cost Intelligence mock data ─────────────────────────────────────────────
 
 interface AgentCostRow {
   agent: string;
@@ -289,7 +288,11 @@ const AGENT_PERF_DATA: AgentPerfRow[] = [
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export default function ExecutiveDashboard() {
+interface ExecutiveDashboardProps {
+  onNavigate: (tab: string, opts?: { autoOpenCreate?: boolean }) => void;
+}
+
+export default function ExecutiveDashboard({ onNavigate }: ExecutiveDashboardProps) {
   const [showDetailedAnalytics, setShowDetailedAnalytics] = useState(false);
   const [showAgentPerformance, setShowAgentPerformance] = useState(false);
   const [selectedProject, setSelectedProject] = useState<ProjectOption>('Retirement Planning');
@@ -419,13 +422,8 @@ export default function ExecutiveDashboard() {
         </div>
         <div className="absolute bottom-0 left-0 w-96 h-96 bg-[#E3000F]/10 rounded-full blur-3xl -translate-x-1/2 translate-y-1/2" />
 
-        {/* AWS Powered badge */}
-        <div className="absolute top-8 right-8 flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[#FF9900]/40 bg-[#FF9900]/10 no-print">
-          <Cloud size={13} className="text-[#FF9900]" />
-          <span className="text-xs font-bold tracking-wider" style={{ color: '#FF9900' }}>AWS Powered</span>
-        </div>
 
-        <div className="relative z-10 flex flex-col gap-6">
+<div className="relative z-10 flex flex-col gap-6">
           <div className="flex items-center gap-3 px-4 py-2 bg-[#E3000F]/20 border border-[#E3000F]/30 rounded-full w-fit">
             <Zap size={18} className="text-red-400" fill="currentColor" />
             <span className="text-sm font-bold text-red-300 uppercase tracking-wider">OCBC AI Insight Engine</span>
@@ -471,7 +469,10 @@ export default function ExecutiveDashboard() {
           </p>
         </div>
         <div className="flex flex-col gap-3 shrink-0 no-print">
-          <button className="px-6 py-3 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200">
+          <button
+            onClick={() => onNavigate('active-intents', { autoOpenCreate: true })}
+            className="px-6 py-3 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200"
+          >
             Generate New Intent
           </button>
           <button className="px-6 py-3 bg-white text-indigo-600 border border-indigo-200 rounded-xl text-sm font-bold hover:bg-indigo-50 transition-all">
@@ -547,22 +548,22 @@ export default function ExecutiveDashboard() {
         </div>
       </div>
 
-      {/* ── Change 2: AWS Cost Intelligence ──────────────────────────────────── */}
+      {/* ── Change 2: Cost Intelligence ──────────────────────────────────────── */}
       <div className="flex flex-col gap-6 print-avoid-break">
         {/* Section header */}
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/20">
             <DollarSign size={20} className="text-amber-500" />
           </div>
-          <h3 className="text-base font-bold text-slate-900 uppercase tracking-widest">AWS Cost Intelligence</h3>
-          <span className="text-xs font-medium text-slate-400 ml-1">Powered by AWS Cost Explorer</span>
+          <h3 className="text-base font-bold text-slate-900 uppercase tracking-widest">Cost Intelligence</h3>
+          <span className="text-xs font-medium text-slate-400 ml-1">AI-powered usage analytics</span>
         </div>
 
         {/* Three stat cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Monthly Bedrock Cost */}
           <div className="bg-slate-900 rounded-2xl p-6 border border-amber-500/20 flex flex-col gap-3">
-            <span className="text-xs font-bold text-amber-400 uppercase tracking-widest">Monthly Bedrock Cost</span>
+            <span className="text-xs font-bold text-amber-400 uppercase tracking-widest">Monthly AI Cost</span>
             <div className="flex items-end gap-3">
               <span className="text-4xl font-black text-white leading-none">$1,247.30</span>
             </div>

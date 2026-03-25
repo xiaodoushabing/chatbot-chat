@@ -21,9 +21,17 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { PendingApproval, AuditEvent } from '../types';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
+}
+
+interface ActiveIntentsProps {
+  onAddApproval: (a: Omit<PendingApproval, 'id' | 'submittedAt' | 'status'>) => void;
+  onAddAuditEvent: (e: Omit<AuditEvent, 'id' | 'timestamp'>) => void;
+  autoOpenCreate?: boolean;
+  onClearAutoOpen?: () => void;
 }
 
 type RiskLevel = 'high' | 'low';
@@ -167,7 +175,7 @@ interface ToastMsg {
 
 let toastIdCounter = 0;
 
-export default function ActiveIntents() {
+export default function ActiveIntents({ onAddApproval, onAddAuditEvent, autoOpenCreate, onClearAutoOpen }: ActiveIntentsProps) {
   const [topics, setTopics] = useState<Topic[]>(INITIAL_TOPICS);
   const [editingTopic, setEditingTopic] = useState<Topic | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -187,6 +195,9 @@ export default function ActiveIntents() {
   const [suggestedUtterances, setSuggestedUtterances] = useState<string[]>([]);
   const [originalResponse, setOriginalResponse] = useState<string | null>(null);
 
+  // Confirmation dialog
+  const [confirmDialog, setConfirmDialog] = useState<{ title: string; message: string; onConfirm: () => void } | null>(null);
+
   // Toasts
   const [toasts, setToasts] = useState<ToastMsg[]>([]);
 
@@ -203,6 +214,24 @@ export default function ActiveIntents() {
     setSuggestedUtterances([]);
     setOriginalResponse(null);
   }, [editingTopic?.id]);
+
+  // Auto-open create modal when prop signals it
+  useEffect(() => {
+    if (autoOpenCreate) {
+      setEditingTopic({
+        id: `new-${Date.now()}`,
+        name: '',
+        utterances: [],
+        response: '',
+        riskLevel: 'low',
+        responseMode: 'genai',
+        status: 'active',
+        environment: 'staging',
+        queries: 0,
+      });
+      onClearAutoOpen?.();
+    }
+  }, [autoOpenCreate]);
 
   const activeFilterCount = [
     filterRisk !== 'all',
@@ -223,9 +252,40 @@ export default function ActiveIntents() {
   };
 
   const handleToggleStatus = (id: string) => {
-    setTopics(prev => prev.map(t =>
-      t.id === id ? { ...t, status: t.status === 'active' ? 'inactive' : 'active' } : t
-    ));
+    const topic = topics.find(t => t.id === id);
+    if (!topic) return;
+    const newStatus = topic.status === 'active' ? 'inactive' : 'active';
+    setConfirmDialog({
+      title: `${newStatus === 'inactive' ? 'Deactivate' : 'Activate'} Topic`,
+      message: `Submit a request to ${newStatus === 'inactive' ? 'deactivate' : 'activate'} "${topic.name}"? This change will require checker approval before taking effect.`,
+      onConfirm: () => doToggleStatus(id),
+    });
+  };
+
+  const doToggleStatus = (id: string) => {
+    const topic = topics.find(t => t.id === id);
+    if (!topic) return;
+    const newStatus = topic.status === 'active' ? 'inactive' : 'active';
+    onAddApproval({
+      actionType: 'intent.toggle_status',
+      entityName: topic.name,
+      entityId: topic.id,
+      description: `Set status: ${topic.status} → ${newStatus}`,
+      detail: `Status change for intent "${topic.name}" submitted for checker approval. Current status: ${topic.status}.`,
+      submittedBy: 'System Admin',
+    });
+    onAddAuditEvent({
+      actor: 'System Admin',
+      actorRole: 'BA',
+      actionType: 'approval.submit',
+      entityType: 'intent',
+      entityId: topic.id,
+      entityName: topic.name,
+      description: `Submitted status toggle for approval: ${topic.status} → ${newStatus}`,
+      severity: 'info',
+    });
+    setTopics(prev => prev.map(t => t.id === id ? { ...t, pendingApproval: true } : t));
+    showToast(`Status change submitted for approval`);
   };
 
   const handleDelete = (id: string) => {
@@ -235,7 +295,38 @@ export default function ActiveIntents() {
   };
 
   const handlePromoteToProd = (id: string) => {
-    if (window.confirm('Submit for approval? This will send the intent to a checker before going live.')) {
+    const topic = topics.find(t => t.id === id);
+    if (!topic) return;
+    setConfirmDialog({
+      title: 'Promote to Production',
+      message: `Submit "${topic.name}" for production promotion? A checker must approve before it goes live.`,
+      onConfirm: () => doPromoteToProd(id),
+    });
+  };
+
+  const doPromoteToProd = (id: string) => {
+    {
+      const topic = topics.find(t => t.id === id);
+      if (!topic) return;
+      onAddApproval({
+        actionType: 'intent.promote_batch',
+        entityName: topic.name,
+        entityId: id,
+        description: `Promote intent "${topic.name}" to Production`,
+        detail: `Intent in staging submitted for production promotion. Submitted by System Admin.`,
+        submittedBy: 'System Admin',
+        batchItems: [topic.name],
+      });
+      onAddAuditEvent({
+        actor: 'System Admin',
+        actorRole: 'BA',
+        actionType: 'approval.submit',
+        entityType: 'intent',
+        entityId: id,
+        entityName: topic.name,
+        description: `Intent promotion to Production submitted for approval`,
+        severity: 'info',
+      });
       setTopics(prev => prev.map(t => t.id === id ? { ...t, pendingApproval: true } : t));
       showToast('Submitted for maker-checker approval');
     }
@@ -243,10 +334,40 @@ export default function ActiveIntents() {
 
   const handleSaveEdit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingTopic) {
-      setTopics(prev => prev.map(t => t.id === editingTopic.id ? editingTopic : t));
-      setEditingTopic(null);
-    }
+    if (!editingTopic) return;
+    setConfirmDialog({
+      title: 'Submit for Approval',
+      message: `Submit changes to "${editingTopic.name}" for checker approval? The changes will not take effect until approved.`,
+      onConfirm: () => doSaveEdit(),
+    });
+  };
+
+  const doSaveEdit = () => {
+    if (!editingTopic) return;
+    const original = topics.find(t => t.id === editingTopic.id);
+    onAddApproval({
+      actionType: 'intent.edit',
+      entityName: editingTopic.name,
+      entityId: editingTopic.id,
+      description: `Edit intent "${editingTopic.name}"`,
+      detail: `Updated utterances (${editingTopic.utterances.length}) and response text. Submitted by System Admin.`,
+      submittedBy: 'System Admin',
+    });
+    onAddAuditEvent({
+      actor: 'System Admin',
+      actorRole: 'BA',
+      actionType: 'approval.submit',
+      entityType: 'intent',
+      entityId: editingTopic.id,
+      entityName: editingTopic.name,
+      description: `Intent edit submitted for approval`,
+      severity: 'info',
+      before: original ? { utterances: original.utterances, response: original.response } : undefined,
+      after: { utterances: editingTopic.utterances, response: editingTopic.response },
+    });
+    setTopics(prev => prev.map(t => t.id === editingTopic.id ? { ...t, pendingApproval: true } : t));
+    setEditingTopic(null);
+    showToast('Edit submitted for approval');
   };
 
   const handleRemoveUtterance = (index: number) => {
@@ -307,9 +428,37 @@ export default function ActiveIntents() {
   };
 
   const handleRestoreVersion = (entry: HistoryEntry) => {
-    if (window.confirm(`Restore to version from ${entry.timestamp}? Current changes will be overwritten.`)) {
-      showToast(`Restored to version from ${entry.timestamp} by ${entry.actor}`);
-    }
+    if (!historyTopic) return;
+    setConfirmDialog({
+      title: 'Request Rollback',
+      message: `Submit a request to restore "${historyTopic.name}" to the version from ${entry.timestamp}? This will require checker approval before taking effect.`,
+      onConfirm: () => doRestoreVersion(entry),
+    });
+  };
+
+  const doRestoreVersion = (entry: HistoryEntry) => {
+    if (!historyTopic) return;
+    onAddApproval({
+      actionType: 'intent.rollback',
+      entityName: historyTopic.name,
+      entityId: historyTopic.id,
+      description: `Rollback intent "${historyTopic.name}" to version from ${entry.timestamp}`,
+      detail: `Restore to version authored by ${entry.actor} on ${entry.timestamp}. Description: ${entry.description}. Submitted by System Admin.`,
+      submittedBy: 'System Admin',
+    });
+    onAddAuditEvent({
+      actor: 'System Admin',
+      actorRole: 'BA',
+      actionType: 'approval.submit',
+      entityType: 'intent',
+      entityId: historyTopic.id,
+      entityName: historyTopic.name,
+      description: `Rollback to version from ${entry.timestamp} submitted for approval`,
+      severity: 'warning',
+    });
+    setTopics(prev => prev.map(t => t.id === historyTopic.id ? { ...t, pendingApproval: true } : t));
+    setHistoryTopic(null);
+    showToast('Rollback submitted for approval');
   };
 
   return (
@@ -511,12 +660,6 @@ export default function ActiveIntents() {
                           </button>
                         ))}
                       </div>
-                      {topic.responseMode === 'exclude' && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 border border-slate-300 text-slate-500 text-xs font-bold">
-                          <Ban size={11} />
-                          No AI
-                        </span>
-                      )}
                     </div>
                   </td>
 
@@ -670,7 +813,7 @@ export default function ActiveIntents() {
                       <button
                         type="button"
                         onClick={handleGenerateUtterances}
-                        disabled={isGeneratingUtterances}
+                        disabled={isGeneratingUtterances || editingTopic.name.trim() === ''}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-bold text-[#E3000F] hover:bg-red-50 border border-[#E3000F] transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                       >
                         {isGeneratingUtterances ? (
@@ -896,6 +1039,46 @@ export default function ActiveIntents() {
                     </button>
                   </motion.div>
                 ))}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Confirmation dialog */}
+      <AnimatePresence>
+        {confirmDialog && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[150]"
+              onClick={() => setConfirmDialog(null)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="fixed inset-0 flex items-center justify-center z-[160] pointer-events-none"
+            >
+              <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 pointer-events-auto">
+                <h3 className="text-xl font-bold text-slate-900 mb-2">{confirmDialog.title}</h3>
+                <p className="text-slate-600 mb-6">{confirmDialog.message}</p>
+                <div className="flex gap-3 justify-end">
+                  <button
+                    onClick={() => setConfirmDialog(null)}
+                    className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 font-medium transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => { confirmDialog.onConfirm(); setConfirmDialog(null); }}
+                    className="px-4 py-2 rounded-xl bg-[#E3000F] text-white hover:bg-red-700 font-medium transition-all"
+                  >
+                    Submit for Approval
+                  </button>
+                </div>
               </div>
             </motion.div>
           </>

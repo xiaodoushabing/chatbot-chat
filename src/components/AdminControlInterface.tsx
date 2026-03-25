@@ -7,35 +7,17 @@ import {
   Check,
   X,
   Clock,
-  FileText,
   Layers,
-  Database,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import TemplateManagement from './TemplateManagement';
-import DocumentManagement from './DocumentManagement';
+import { PendingApproval, AuditEvent, AuditActionType, ApprovalActionType } from '../types';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
-}
-
-type AciSubView = 'templates' | 'documents';
-type ApprovalStatus = 'pending' | 'approved' | 'rejected';
-
-type ApprovalActionType = 'template_publish' | 'intent_promote' | 'kill_switch_deactivate';
-
-interface PendingApproval {
-  id: string;
-  actionType: ApprovalActionType;
-  entityName: string;
-  description: string;
-  detail: string;
-  submittedBy: string;
-  submittedAt: string;
-  status: ApprovalStatus;
-  actionReviewNote?: string;
 }
 
 interface ToastMsg {
@@ -49,19 +31,67 @@ const ACTION_TYPE_CONFIG: Record<
   ApprovalActionType,
   { label: string; bgClass: string; textClass: string; borderClass: string }
 > = {
-  template_publish: {
-    label: 'Template Publish',
-    bgClass: 'bg-amber-50',
-    textClass: 'text-amber-700',
-    borderClass: 'border-amber-200',
+  'intent.toggle_status': {
+    label: 'Intent Toggle',
+    bgClass: 'bg-sky-50',
+    textClass: 'text-sky-700',
+    borderClass: 'border-sky-200',
   },
-  intent_promote: {
-    label: 'Intent Promote',
+  'intent.edit': {
+    label: 'Intent Edit',
+    bgClass: 'bg-emerald-50',
+    textClass: 'text-emerald-700',
+    borderClass: 'border-emerald-200',
+  },
+  'intent.rollback': {
+    label: 'Intent Rollback',
+    bgClass: 'bg-orange-50',
+    textClass: 'text-orange-700',
+    borderClass: 'border-orange-200',
+  },
+  'intent.promote_batch': {
+    label: 'Intent Promote (Batch)',
     bgClass: 'bg-blue-50',
     textClass: 'text-blue-700',
     borderClass: 'border-blue-200',
   },
-  kill_switch_deactivate: {
+  'agent.config_change': {
+    label: 'Agent Config Change',
+    bgClass: 'bg-purple-50',
+    textClass: 'text-purple-700',
+    borderClass: 'border-purple-200',
+  },
+  'agent.status_change': {
+    label: 'Agent Status Change',
+    bgClass: 'bg-violet-50',
+    textClass: 'text-violet-700',
+    borderClass: 'border-violet-200',
+  },
+  'agent.kill_switch': {
+    label: 'Agent Kill Switch',
+    bgClass: 'bg-red-50',
+    textClass: 'text-red-700',
+    borderClass: 'border-red-200',
+  },
+  'guardrail.policy_change': {
+    label: 'Guardrail Policy Change',
+    bgClass: 'bg-amber-50',
+    textClass: 'text-amber-700',
+    borderClass: 'border-amber-200',
+  },
+  'template.publish': {
+    label: 'Template Publish',
+    bgClass: 'bg-teal-50',
+    textClass: 'text-teal-700',
+    borderClass: 'border-teal-200',
+  },
+  'template.restore': {
+    label: 'Template Restore',
+    bgClass: 'bg-cyan-50',
+    textClass: 'text-cyan-700',
+    borderClass: 'border-cyan-200',
+  },
+  'system.kill_switch_deactivate': {
     label: 'Kill Switch Deactivate',
     bgClass: 'bg-red-50',
     textClass: 'text-red-700',
@@ -69,53 +99,19 @@ const ACTION_TYPE_CONFIG: Record<
   },
 };
 
-const INITIAL_APPROVALS: PendingApproval[] = [
-  {
-    id: '1',
-    actionType: 'template_publish',
-    entityName: 'CPF_Life_Standard_Response',
-    description: 'Publish updated template content',
-    detail:
-      'Sarah Chen updated the CPF Life Standard Response template to include CPF LIFE plan options detail and personalised balance substitution ({{cpf_balance}}). This change affects all queries routed to OCBC_Life_Goals_Retirement intent.',
-    submittedBy: 'Sarah Chen',
-    submittedAt: '2026-03-26 09:15',
-    status: 'pending',
-  },
-  {
-    id: '2',
-    actionType: 'intent_promote',
-    entityName: 'CPF_Retirement_Advisory',
-    description: 'Promote intent from Staging → Production',
-    detail:
-      'CPF_Retirement_Advisory intent has been reviewed and tested in staging with 4 utterances. Risk level: High. Response mode: GenAI. Promoting to production will make it live for all users immediately.',
-    submittedBy: 'Sarah Chen',
-    submittedAt: '2026-03-26 10:40',
-    status: 'pending',
-  },
-  {
-    id: '3',
-    actionType: 'kill_switch_deactivate',
-    entityName: 'Global Kill Switch',
-    description: 'Deactivate kill switch — re-enable GenAI responses',
-    detail:
-      'Kill switch was activated at 11:30 following a guardrail alert. The injection attempt has been resolved and blocked. DEV team has confirmed system is safe to resume GenAI responses. Deactivation will immediately re-enable all LLM agent calls.',
-    submittedBy: 'Dev Team',
-    submittedAt: '2026-03-26 11:55',
-    status: 'pending',
-  },
-];
-
 interface AdminControlInterfaceProps {
+  approvals: PendingApproval[];
+  onApprovalDecision: (id: string, decision: 'approved' | 'rejected', note?: string) => void;
+  onAddAuditEvent: (e: Omit<AuditEvent, 'id' | 'timestamp'>) => void;
   onKillSwitchChange?: (active: boolean) => void;
 }
 
-export default function AdminControlInterface({ onKillSwitchChange }: AdminControlInterfaceProps = {}) {
+export default function AdminControlInterface({ approvals, onApprovalDecision, onAddAuditEvent, onKillSwitchChange }: AdminControlInterfaceProps) {
   const [killSwitchActive, setKillSwitchActive] = useState(false);
   const [showActivateConfirm, setShowActivateConfirm] = useState(false);
   const [showDeactivateSubmit, setShowDeactivateSubmit] = useState(false);
-  const [activeSubView, setActiveSubView] = useState<AciSubView>('templates');
-  const [approvals, setApprovals] = useState<PendingApproval[]>(INITIAL_APPROVALS);
   const [toasts, setToasts] = useState<ToastMsg[]>([]);
+  const [showRecentDecisions, setShowRecentDecisions] = useState(false);
 
   // Per-card state for approve/reject flows
   const [approveNote, setApproveNote] = useState<Record<string, string>>({});
@@ -130,6 +126,7 @@ export default function AdminControlInterface({ onKillSwitchChange }: AdminContr
   };
 
   const pendingApprovals = approvals.filter(a => a.status === 'pending');
+  const recentDecisions = approvals.filter(a => a.status !== 'pending').slice(0, 5);
 
   const handleActivateKillSwitch = () => {
     setKillSwitchActive(true);
@@ -142,21 +139,19 @@ export default function AdminControlInterface({ onKillSwitchChange }: AdminContr
     setShowDeactivateSubmit(false);
     // Add kill switch deactivate to approvals if not already pending
     const alreadyPending = approvals.some(
-      a => a.actionType === 'kill_switch_deactivate' && a.status === 'pending'
+      a => a.actionType === 'system.kill_switch_deactivate' && a.status === 'pending'
     );
     if (!alreadyPending) {
-      const newApproval: PendingApproval = {
-        id: String(Date.now()),
-        actionType: 'kill_switch_deactivate',
+      onAddAuditEvent({
+        actor: 'System Admin',
+        actorRole: 'ADMIN',
+        actionType: 'approval.submit' as AuditActionType,
+        entityType: 'approval',
+        entityId: 'kill-switch-deactivate-' + Date.now(),
         entityName: 'Global Kill Switch',
-        description: 'Deactivate kill switch — re-enable GenAI responses',
-        detail:
-          'Deactivation submitted by System Admin. Re-enabling GenAI will allow all LLM agent calls to resume immediately after approval.',
-        submittedBy: 'System Admin',
-        submittedAt: '2026-03-26 ' + new Date().toTimeString().slice(0, 5),
-        status: 'pending',
-      };
-      setApprovals(prev => [newApproval, ...prev]);
+        description: 'Deactivation submitted for checker approval. Re-enabling GenAI will resume all LLM agent calls.',
+        severity: 'critical',
+      });
     }
     showToast('Deactivation submitted for checker approval');
   };
@@ -164,17 +159,11 @@ export default function AdminControlInterface({ onKillSwitchChange }: AdminContr
   const handleApprove = (id: string) => {
     const approval = approvals.find(a => a.id === id);
     // If kill switch deactivate, actually deactivate it
-    if (approval?.actionType === 'kill_switch_deactivate') {
+    if (approval?.actionType === 'system.kill_switch_deactivate') {
       setKillSwitchActive(false);
       onKillSwitchChange?.(false);
     }
-    setApprovals(prev =>
-      prev.map(a =>
-        a.id === id
-          ? { ...a, status: 'approved', actionReviewNote: approveNote[id] ?? '' }
-          : a
-      )
-    );
+    onApprovalDecision(id, 'approved', approveNote[id]);
     setActiveApproveId(null);
     setApproveNote(prev => { const next = { ...prev }; delete next[id]; return next; });
     showToast('Approval confirmed');
@@ -183,37 +172,10 @@ export default function AdminControlInterface({ onKillSwitchChange }: AdminContr
   const handleReject = (id: string) => {
     const reason = rejectReason[id];
     if (!reason?.trim()) return;
-    setApprovals(prev =>
-      prev.map(a =>
-        a.id === id ? { ...a, status: 'rejected', actionReviewNote: reason } : a
-      )
-    );
+    onApprovalDecision(id, 'rejected', reason);
     setActiveRejectId(null);
     setRejectReason(prev => { const next = { ...prev }; delete next[id]; return next; });
     showToast('Approval rejected');
-  };
-
-  const handleTemplatePublish = (templateName: string, _content: string) => {
-    // Add approval to the queue from TemplateManagement's Publish action
-    const alreadyPending = approvals.some(
-      a =>
-        a.actionType === 'template_publish' &&
-        a.entityName === templateName &&
-        a.status === 'pending'
-    );
-    if (!alreadyPending) {
-      const newApproval: PendingApproval = {
-        id: String(Date.now()),
-        actionType: 'template_publish',
-        entityName: templateName,
-        description: `Publish updated template content`,
-        detail: `System Admin submitted template "${templateName}" for publishing. Changes will take effect for all intents linked to this template once approved.`,
-        submittedBy: 'System Admin',
-        submittedAt: '2026-03-26 ' + new Date().toTimeString().slice(0, 5),
-        status: 'pending',
-      };
-      setApprovals(prev => [newApproval, ...prev]);
-    }
   };
 
   return (
@@ -287,9 +249,9 @@ export default function AdminControlInterface({ onKillSwitchChange }: AdminContr
       <div className="flex flex-col gap-6 p-8 max-w-7xl mx-auto w-full">
         {/* Page Header */}
         <div className="flex flex-col gap-1">
-          <h2 className="text-4xl font-bold tracking-tight text-slate-900">Admin Control Interface</h2>
+          <h2 className="text-4xl font-bold tracking-tight text-slate-900">Change Control</h2>
           <p className="text-slate-500 text-lg">
-            Kill switch, maker-checker approvals, template and document management.
+            Kill switch management and maker-checker approval queue.
           </p>
         </div>
 
@@ -356,6 +318,17 @@ export default function AdminControlInterface({ onKillSwitchChange }: AdminContr
                               {approval.description}
                             </p>
 
+                            {/* Batch items */}
+                            {approval.batchItems && approval.batchItems.length > 0 && (
+                              <div className="flex flex-wrap gap-1.5">
+                                {approval.batchItems.map(item => (
+                                  <span key={item} className="px-2 py-0.5 bg-blue-50 border border-blue-200 text-blue-700 text-xs font-medium rounded-lg">
+                                    {item}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+
                             {/* Detail box */}
                             <div className="p-3 bg-slate-50 border border-slate-100 rounded-xl">
                               <p className="text-xs text-slate-600 leading-relaxed">
@@ -369,7 +342,7 @@ export default function AdminControlInterface({ onKillSwitchChange }: AdminContr
                               <span className="text-xs text-slate-400">
                                 Submitted by{' '}
                                 <span className="font-bold text-slate-600">{approval.submittedBy}</span>{' '}
-                                at {approval.submittedAt}
+                                at {new Date(approval.submittedAt).toLocaleString()}
                               </span>
                             </div>
                           </div>
@@ -498,44 +471,70 @@ export default function AdminControlInterface({ onKillSwitchChange }: AdminContr
           </div>
         </div>
 
-        {/* Sub-View Tab Switcher */}
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center gap-1 border-b border-slate-200">
-            {([
-              { id: 'templates', label: 'Template Management', icon: <FileText size={16} /> },
-              { id: 'documents', label: 'Document Management', icon: <Database size={16} /> },
-            ] as { id: AciSubView; label: string; icon: React.ReactNode }[]).map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveSubView(tab.id)}
-                className={cn(
-                  'flex items-center gap-2 px-5 py-3 font-bold text-sm transition-all border-b-2 -mb-px',
-                  activeSubView === tab.id
-                    ? 'text-[#E3000F] border-[#E3000F]'
-                    : 'text-slate-500 border-transparent hover:text-slate-700 hover:border-slate-200'
-                )}
-              >
-                {tab.icon}
-                {tab.label}
-              </button>
-            ))}
-          </div>
-
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={activeSubView}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.18 }}
+        {/* Recent Decisions */}
+        {recentDecisions.length > 0 && (
+          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+            <button
+              onClick={() => setShowRecentDecisions(v => !v)}
+              className="w-full px-6 py-4 flex items-center gap-3 hover:bg-slate-50 transition-all"
             >
-              {activeSubView === 'templates' && (
-                <TemplateManagement onPublish={handleTemplatePublish} />
+              <ClipboardCheck size={20} className="text-slate-400" />
+              <h3 className="text-lg font-bold text-slate-900 flex-1 text-left">Recent Decisions</h3>
+              <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 text-xs font-bold border border-slate-200 mr-2">
+                {recentDecisions.length}
+              </span>
+              {showRecentDecisions ? <ChevronUp size={18} className="text-slate-400" /> : <ChevronDown size={18} className="text-slate-400" />}
+            </button>
+
+            <AnimatePresence>
+              {showRecentDecisions && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="overflow-hidden"
+                >
+                  <div className="p-6 pt-0 flex flex-col gap-3">
+                    {recentDecisions.map(approval => {
+                      const actionCfg = ACTION_TYPE_CONFIG[approval.actionType];
+                      return (
+                        <div key={approval.id} className="border border-slate-100 rounded-xl p-4 flex items-start gap-4 bg-slate-50/50">
+                          <div className="flex flex-col gap-1.5 flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span
+                                className={cn(
+                                  'px-2 py-0.5 rounded-lg border text-xs font-bold',
+                                  actionCfg.bgClass,
+                                  actionCfg.textClass,
+                                  actionCfg.borderClass
+                                )}
+                              >
+                                {actionCfg.label}
+                              </span>
+                              <span className="font-bold text-slate-700 text-sm">{approval.entityName}</span>
+                              <span className={cn(
+                                'px-2 py-0.5 rounded-full text-xs font-bold',
+                                approval.status === 'approved'
+                                  ? 'bg-emerald-100 text-emerald-700'
+                                  : 'bg-red-100 text-red-700'
+                              )}>
+                                {approval.status === 'approved' ? 'Approved' : 'Rejected'}
+                              </span>
+                            </div>
+                            <p className="text-xs text-slate-500">{approval.description}</p>
+                            {approval.actionReviewNote && (
+                              <p className="text-xs text-slate-400 italic">"{approval.actionReviewNote}"</p>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </motion.div>
               )}
-              {activeSubView === 'documents' && <DocumentManagement />}
-            </motion.div>
-          </AnimatePresence>
-        </div>
+            </AnimatePresence>
+          </div>
+        )}
       </div>
 
       {/* Kill Switch Activate Confirmation Modal */}

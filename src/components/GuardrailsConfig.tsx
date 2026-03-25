@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   ShieldAlert,
-  ArrowRightLeft,
+  ShieldCheck,
   Brain,
   Eye,
   FlaskConical,
@@ -17,6 +17,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { PendingApproval, AuditEvent } from '../types';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -39,40 +40,12 @@ interface ToastMsg {
   message: string;
 }
 
-type ProviderId = 'aws-bedrock' | 'azure-content-safety' | 'custom-rule-engine';
-
-interface Provider {
-  id: ProviderId;
-  name: string;
-  description: string;
-  icon: string;
+interface GuardrailsConfigProps {
+  onAddApproval: (a: Omit<PendingApproval, 'id' | 'submittedAt' | 'status'>) => void;
+  onAddAuditEvent: (e: Omit<AuditEvent, 'id' | 'timestamp'>) => void;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-
-const PROVIDERS: Provider[] = [
-  {
-    id: 'aws-bedrock',
-    name: 'AWS Bedrock Guardrails',
-    description:
-      'Managed guardrails via AWS Bedrock. Supports topic blocking, content filtering, grounding, and injection detection.',
-    icon: 'AWS',
-  },
-  {
-    id: 'azure-content-safety',
-    name: 'Azure Content Safety',
-    description:
-      "Microsoft Azure's content moderation API. Supports harm categories and custom blocklists.",
-    icon: 'AZ',
-  },
-  {
-    id: 'custom-rule-engine',
-    name: 'Custom Rule Engine',
-    description:
-      'Bring-your-own rule set. Configure regex and keyword-based policy rules in-house.',
-    icon: 'CRE',
-  },
-];
 
 const SENSITIVITY_LEVELS: SensitivityLevel[] = ['Off', 'Low', 'Medium', 'High', 'Strict'];
 
@@ -118,12 +91,7 @@ let toastIdCounter = 0;
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function GuardrailsConfig() {
-  // Provider
-  const [activeProvider] = useState<ProviderId>('aws-bedrock');
-  const [showProviderModal, setShowProviderModal] = useState(false);
-  const [selectedProvider, setSelectedProvider] = useState<ProviderId | null>(null);
-
+export default function GuardrailsConfig({ onAddApproval, onAddAuditEvent }: GuardrailsConfigProps) {
   // Blocked topics
   const [blockedTopics, setBlockedTopics] = useState<string[]>(INITIAL_BLOCKED_TOPICS);
   const [topicInput, setTopicInput] = useState('');
@@ -162,10 +130,50 @@ export default function GuardrailsConfig() {
     if (!trimmed || blockedTopics.includes(trimmed)) return;
     setBlockedTopics((prev) => [...prev, trimmed]);
     setTopicInput('');
+    onAddApproval({
+      actionType: 'guardrail.policy_change',
+      entityName: 'Guardrail Policy',
+      entityId: 'guardrail-config',
+      description: `Blocked topic added: "${trimmed}"`,
+      detail: `Added "${trimmed}" to the blocked topics list. All queries matching this topic will be excluded from AI processing.`,
+      submittedBy: 'System Admin',
+    });
+    onAddAuditEvent({
+      actor: 'System Admin',
+      actorRole: 'DEV',
+      actionType: 'approval.submit',
+      entityType: 'guardrail',
+      entityId: 'guardrail-config',
+      entityName: 'Guardrail Policy',
+      description: `Blocked topic added: "${trimmed}"`,
+      severity: 'warning',
+      after: { blockedTopic: trimmed },
+    });
+    showToast('Policy change submitted for approval');
   };
 
   const handleRemoveTopic = (topic: string) => {
     setBlockedTopics((prev) => prev.filter((t) => t !== topic));
+    onAddApproval({
+      actionType: 'guardrail.policy_change',
+      entityName: 'Guardrail Policy',
+      entityId: 'guardrail-config',
+      description: `Blocked topic removed: "${topic}"`,
+      detail: `Removed "${topic}" from the blocked topics list.`,
+      submittedBy: 'System Admin',
+    });
+    onAddAuditEvent({
+      actor: 'System Admin',
+      actorRole: 'DEV',
+      actionType: 'approval.submit',
+      entityType: 'guardrail',
+      entityId: 'guardrail-config',
+      entityName: 'Guardrail Policy',
+      description: `Blocked topic removed: "${topic}"`,
+      severity: 'warning',
+      before: { blockedTopic: topic },
+    });
+    showToast('Policy change submitted for approval');
   };
 
   const handleAddWord = () => {
@@ -173,18 +181,155 @@ export default function GuardrailsConfig() {
     if (!trimmed || deniedWords.includes(trimmed)) return;
     setDeniedWords((prev) => [...prev, trimmed]);
     setWordInput('');
+    onAddApproval({
+      actionType: 'guardrail.policy_change',
+      entityName: 'Guardrail Policy',
+      entityId: 'guardrail-config',
+      description: `Denied phrase added: "${trimmed}"`,
+      detail: `Added "${trimmed}" to the denied words/phrases list.`,
+      submittedBy: 'System Admin',
+    });
+    onAddAuditEvent({
+      actor: 'System Admin',
+      actorRole: 'DEV',
+      actionType: 'approval.submit',
+      entityType: 'guardrail',
+      entityId: 'guardrail-config',
+      entityName: 'Guardrail Policy',
+      description: `Denied phrase added: "${trimmed}"`,
+      severity: 'warning',
+      after: { deniedWord: trimmed },
+    });
+    showToast('Policy change submitted for approval');
   };
 
   const handleRemoveWord = (word: string) => {
     setDeniedWords((prev) => prev.filter((w) => w !== word));
+    onAddApproval({
+      actionType: 'guardrail.policy_change',
+      entityName: 'Guardrail Policy',
+      entityId: 'guardrail-config',
+      description: `Denied phrase removed: "${word}"`,
+      detail: `Removed "${word}" from the denied words/phrases list.`,
+      submittedBy: 'System Admin',
+    });
+    onAddAuditEvent({
+      actor: 'System Admin',
+      actorRole: 'DEV',
+      actionType: 'approval.submit',
+      entityType: 'guardrail',
+      entityId: 'guardrail-config',
+      entityName: 'Guardrail Policy',
+      description: `Denied phrase removed: "${word}"`,
+      severity: 'warning',
+      before: { deniedWord: word },
+    });
+    showToast('Policy change submitted for approval');
   };
 
   const handleSaveTemplate = () => {
     setIsSavingTemplate(true);
     setTimeout(() => {
       setIsSavingTemplate(false);
-      showToast('Exclusion response template saved — pending checker approval');
+      onAddApproval({
+        actionType: 'guardrail.policy_change',
+        entityName: 'Guardrail Policy',
+        entityId: 'guardrail-config',
+        description: 'Exclusion response template updated',
+        detail: `New exclusion response template: "${exclusionTemplate}"`,
+        submittedBy: 'System Admin',
+      });
+      onAddAuditEvent({
+        actor: 'System Admin',
+        actorRole: 'DEV',
+        actionType: 'guardrail.policy_change',
+        entityType: 'guardrail',
+        entityId: 'guardrail-config',
+        entityName: 'Guardrail Policy',
+        description: 'Exclusion response template updated',
+        severity: 'warning',
+        after: { exclusionTemplate },
+      });
+      showToast('Policy change submitted for approval');
     }, 900);
+  };
+
+  const handleHallucinationChange = (newLevel: SensitivityLevel) => {
+    const oldLevel = hallucinationLevel;
+    setHallucinationLevel(newLevel);
+    onAddApproval({
+      actionType: 'guardrail.policy_change',
+      entityName: 'Guardrail Policy',
+      entityId: 'guardrail-config',
+      description: `Hallucination detection sensitivity changed from ${oldLevel} to ${newLevel}`,
+      detail: `Hallucination detection level updated to ${newLevel}. ${HALLUCINATION_DESCRIPTIONS[newLevel]}`,
+      submittedBy: 'System Admin',
+    });
+    onAddAuditEvent({
+      actor: 'System Admin',
+      actorRole: 'DEV',
+      actionType: 'guardrail.policy_change',
+      entityType: 'guardrail',
+      entityId: 'guardrail-config',
+      entityName: 'Guardrail Policy',
+      description: `Hallucination detection sensitivity changed from ${oldLevel} to ${newLevel}`,
+      severity: 'warning',
+      before: { level: oldLevel },
+      after: { level: newLevel },
+    });
+    showToast('Policy change submitted for approval');
+  };
+
+  const handleInjectionChange = (newLevel: SensitivityLevel) => {
+    const oldLevel = injectionLevel;
+    setInjectionLevel(newLevel);
+    onAddApproval({
+      actionType: 'guardrail.policy_change',
+      entityName: 'Guardrail Policy',
+      entityId: 'guardrail-config',
+      description: `Injection shield sensitivity changed from ${oldLevel} to ${newLevel}`,
+      detail: `Prompt injection shield level updated to ${newLevel}. ${INJECTION_DESCRIPTIONS[newLevel]}`,
+      submittedBy: 'System Admin',
+    });
+    onAddAuditEvent({
+      actor: 'System Admin',
+      actorRole: 'DEV',
+      actionType: 'guardrail.policy_change',
+      entityType: 'guardrail',
+      entityId: 'guardrail-config',
+      entityName: 'Guardrail Policy',
+      description: `Injection shield sensitivity changed from ${oldLevel} to ${newLevel}`,
+      severity: 'warning',
+      before: { level: oldLevel },
+      after: { level: newLevel },
+    });
+    showToast('Policy change submitted for approval');
+  };
+
+  const handlePiiToggle = () => {
+    const newValue = !piiMasking;
+    setPiiMasking(newValue);
+    onAddApproval({
+      actionType: 'guardrail.policy_change',
+      entityName: 'Guardrail Policy',
+      entityId: 'guardrail-config',
+      description: `PII masking ${newValue ? 'enabled' : 'disabled'}`,
+      detail: `PII masking has been ${newValue ? 'enabled' : 'disabled'}.`,
+      submittedBy: 'System Admin',
+    });
+    onAddAuditEvent({
+      actor: 'System Admin',
+      actorRole: 'DEV',
+      actionType: 'guardrail.policy_change',
+      entityType: 'guardrail',
+      entityId: 'guardrail-config',
+      entityName: 'Guardrail Policy',
+      description: `PII masking ${newValue ? 'enabled' : 'disabled'}`,
+      severity: 'warning',
+      before: { piiMasking },
+      after: { piiMasking: newValue },
+    });
+    showToast('Policy change submitted for approval');
   };
 
   const handleRunTest = () => {
@@ -265,25 +410,19 @@ export default function GuardrailsConfig() {
 
       {/* ── Section 1: Provider Summary Card ── */}
       <div className="bg-slate-900 rounded-2xl p-6 flex flex-col md:flex-row items-start md:items-center gap-6 shadow-xl">
-        {/* Provider info */}
+        {/* Engine info */}
         <div className="flex items-center gap-4 flex-1">
-          {/* AWS icon */}
-          <div
-            className="w-14 h-14 rounded-xl flex items-center justify-center text-white font-black text-xs shrink-0 shadow-lg"
-            style={{ backgroundColor: '#FF9900' }}
-          >
-            AWS
+          {/* Engine icon */}
+          <div className="w-14 h-14 rounded-xl flex items-center justify-center bg-slate-700 shrink-0 shadow-lg">
+            <ShieldCheck size={24} className="text-slate-200" />
           </div>
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center gap-3 flex-wrap">
-              <span className="text-xl font-bold text-white">AWS Bedrock Guardrails</span>
-              {/* Active provider badge */}
+              <span className="text-xl font-bold text-white">AI Guardrails Engine</span>
+              {/* Active badge */}
               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-xs font-bold text-slate-300">
-                <span
-                  className="w-2 h-2 rounded-full animate-pulse"
-                  style={{ backgroundColor: '#FF9900' }}
-                />
-                Active Provider
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                Active
               </span>
             </div>
 
@@ -294,16 +433,16 @@ export default function GuardrailsConfig() {
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                 Active
               </span>
-              {/* Version */}
-              <span className="font-mono text-xs text-slate-400 bg-slate-800 px-2 py-0.5 rounded">
-                guardrail-v2
-              </span>
             </div>
           </div>
         </div>
 
         {/* Stat chips */}
         <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-2 bg-slate-700/50 border border-slate-600 px-4 py-2 rounded-xl">
+            <ShieldCheck size={16} className="text-slate-300" />
+            <span className="text-slate-200 font-bold text-sm">847 queries screened</span>
+          </div>
           <div className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/30 px-4 py-2 rounded-xl">
             <ShieldAlert size={16} className="text-amber-400" />
             <span className="text-amber-300 font-bold text-sm">247 blocks this week</span>
@@ -313,15 +452,6 @@ export default function GuardrailsConfig() {
             <span className="text-red-300 font-bold text-sm">89 injection attempts blocked</span>
           </div>
         </div>
-
-        {/* Switch Provider button */}
-        <button
-          onClick={() => { setShowProviderModal(true); setSelectedProvider(null); }}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold text-sm transition-all shrink-0"
-        >
-          <ArrowRightLeft size={16} />
-          Switch Provider
-        </button>
       </div>
 
       {/* ── Section 2: Policy Configuration ── */}
@@ -518,7 +648,7 @@ export default function GuardrailsConfig() {
               label="Hallucination Detection"
               descriptions={HALLUCINATION_DESCRIPTIONS}
               level={hallucinationLevel}
-              onChangeLevel={setHallucinationLevel}
+              onChangeLevel={handleHallucinationChange}
             />
 
             {/* 2e. Prompt Injection Shield */}
@@ -527,7 +657,7 @@ export default function GuardrailsConfig() {
               label="Prompt Injection Shield"
               descriptions={INJECTION_DESCRIPTIONS}
               level={injectionLevel}
-              onChangeLevel={setInjectionLevel}
+              onChangeLevel={handleInjectionChange}
             />
 
             {/* 2f. PII Detection */}
@@ -548,7 +678,7 @@ export default function GuardrailsConfig() {
 
                 {/* Toggle */}
                 <button
-                  onClick={() => setPiiMasking((v) => !v)}
+                  onClick={handlePiiToggle}
                   className={cn(
                     "relative w-12 h-6 rounded-full transition-all duration-200 shrink-0",
                     piiMasking ? "bg-emerald-500" : "bg-slate-300"
@@ -716,146 +846,6 @@ export default function GuardrailsConfig() {
           )}
         </AnimatePresence>
       </div>
-
-      {/* ── Switch Provider Modal ── */}
-      <AnimatePresence>
-        {showProviderModal && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowProviderModal(false)}
-              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden flex flex-col relative z-10"
-            >
-              {/* Modal header */}
-              <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-                <div>
-                  <h3 className="text-2xl font-bold text-slate-900">Switch Guardrail Provider</h3>
-                  <p className="text-slate-500 text-sm mt-1">
-                    Select a provider to view details. Provider switches require DEV admin action.
-                  </p>
-                </div>
-                <button
-                  onClick={() => setShowProviderModal(false)}
-                  className="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-all"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-
-              {/* Provider cards */}
-              <div className="p-6 flex flex-col gap-4">
-                {PROVIDERS.map((provider) => {
-                  const isActive = provider.id === activeProvider;
-                  const isSelected = selectedProvider === provider.id;
-
-                  return (
-                    <button
-                      key={provider.id}
-                      onClick={() => !isActive && setSelectedProvider(provider.id)}
-                      className={cn(
-                        "w-full text-left rounded-2xl border-2 p-4 flex items-start gap-4 transition-all",
-                        isActive
-                          ? "border-[#FF9900] bg-amber-50 cursor-default"
-                          : isSelected
-                          ? "border-slate-400 bg-slate-50"
-                          : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
-                      )}
-                    >
-                      {/* Provider icon */}
-                      <div
-                        className={cn(
-                          "w-12 h-12 rounded-xl flex items-center justify-center font-black text-xs text-white shrink-0",
-                          isActive ? "" : "opacity-50"
-                        )}
-                        style={{
-                          backgroundColor:
-                            provider.id === 'aws-bedrock'
-                              ? '#FF9900'
-                              : provider.id === 'azure-content-safety'
-                              ? '#0089D6'
-                              : '#64748b',
-                        }}
-                      >
-                        {provider.icon}
-                      </div>
-
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span
-                            className={cn(
-                              "font-bold text-base",
-                              isActive ? "text-slate-900" : "text-slate-500"
-                            )}
-                          >
-                            {provider.name}
-                          </span>
-                          {isActive && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 border border-amber-200 text-amber-700 text-xs font-bold">
-                              <Check size={10} />
-                              Active
-                            </span>
-                          )}
-                          {!isActive && (
-                            <span className="px-2 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-slate-500 text-xs font-bold">
-                              Available
-                            </span>
-                          )}
-                        </div>
-                        <p
-                          className={cn(
-                            "text-sm mt-1",
-                            isActive ? "text-slate-600" : "text-slate-400"
-                          )}
-                        >
-                          {provider.description}
-                        </p>
-                      </div>
-                    </button>
-                  );
-                })}
-
-                {/* Contact admin notice */}
-                <AnimatePresence>
-                  {selectedProvider && selectedProvider !== activeProvider && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="flex items-start gap-3 px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl">
-                        <Info size={16} className="text-amber-600 shrink-0 mt-0.5" />
-                        <span className="text-amber-700 text-sm">
-                          Contact your DEV admin to switch guardrail providers. Provider changes
-                          require infrastructure-level updates and cannot be applied from the UI.
-                        </span>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-
-              {/* Footer */}
-              <div className="px-6 pb-6 flex justify-end">
-                <button
-                  onClick={() => setShowProviderModal(false)}
-                  className="px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm transition-all"
-                >
-                  Close
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
 
       {/* ── Toasts ── */}
       <div className="fixed bottom-6 right-6 z-[200] flex flex-col gap-2 pointer-events-none">

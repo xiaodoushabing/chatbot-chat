@@ -25,6 +25,13 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { PendingApproval, AuditEvent } from '../types';
+
+interface IntentDiscoveryProps {
+  onDeploy: () => void;
+  onAddApproval: (a: Omit<PendingApproval, 'id' | 'submittedAt' | 'status'>) => void;
+  onAddAuditEvent: (e: Omit<AuditEvent, 'id' | 'timestamp'>) => void;
+}
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -181,7 +188,48 @@ const INITIAL_SOURCES = [
   { id: '3', type: 'folder', name: '/internal/policies/q3_wealth_updates/' }
 ];
 
-export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) {
+interface SnapshotIntent {
+  name: string;
+  responseMode: string;
+  utterances: string[];
+  response: string;
+}
+
+const SNAPSHOT_MOCK_INTENTS: Record<string, SnapshotIntent[]> = {
+  'v3': [
+    { name: 'CPF Withdrawal Planning', responseMode: 'GenAI', utterances: ['How do I withdraw my CPF?', 'CPF withdrawal age', 'Can I take out my CPF savings?', 'What is the CPF withdrawal limit?', 'CPF full withdrawal rules', 'How to access CPF at 55', 'CPF OA withdrawal process', 'Can I withdraw CPF for medical'], response: 'You may withdraw your CPF savings upon reaching 55, subject to the Retirement Sum requirement. Withdrawals can be made online via the CPF portal.' },
+    { name: 'SRS Account Enquiry', responseMode: 'Template', utterances: ['What is SRS?', 'How to open SRS account', 'SRS contribution limit', 'SRS tax relief', 'Can foreigners open SRS'], response: '{{srs_template_response}}' },
+    { name: 'Home Loan Eligibility', responseMode: 'GenAI', utterances: ['Am I eligible for a home loan?', 'Home loan income requirements', 'HDB loan vs bank loan', 'Maximum home loan amount', 'Home loan eligibility check', 'What affects home loan approval'], response: 'Your home loan eligibility depends on your income, existing debts, and the property value. We assess your Total Debt Servicing Ratio (TDSR) to determine the maximum loan amount.' },
+    { name: 'Retirement Sum Schemes', responseMode: 'Template', utterances: ['What is Basic Retirement Sum?', 'CPF Full Retirement Sum', 'Enhanced Retirement Sum explained', 'How much CPF for retirement'], response: '{{retirement_sum_template}}' },
+    { name: 'Investment Risk Profile', responseMode: 'GenAI', utterances: ['What is my risk profile?', 'How to determine investment risk tolerance', 'Risk appetite assessment', 'Conservative vs aggressive portfolio', 'Should I invest in equities', 'Risk profile questionnaire', 'Change my investment risk level'], response: 'Your investment risk profile is based on factors including your investment horizon, financial goals, and comfort with market volatility. Take our risk assessment to get personalised recommendations.' },
+    { name: 'CPF LIFE Premium Plan', responseMode: 'GenAI', utterances: ['What is CPF LIFE Premium Plan?', 'CPF LIFE plan comparison', 'How much monthly payout CPF LIFE', 'CPF LIFE vs CPF Retirement Account'], response: 'CPF LIFE is a national longevity insurance annuity scheme. The Premium Plan provides higher monthly payouts for life in exchange for a larger premium at the point of joining.' },
+  ],
+  'v2': [
+    { name: 'CPF Withdrawal Planning', responseMode: 'GenAI', utterances: ['How do I withdraw my CPF?', 'CPF withdrawal age', 'Can I take out my CPF savings?', 'What is the CPF withdrawal limit?', 'CPF full withdrawal rules', 'CPF OA withdrawal process'], response: 'You may withdraw your CPF savings upon reaching 55, subject to the Retirement Sum requirement.' },
+    { name: 'SRS Account Enquiry', responseMode: 'Template', utterances: ['What is SRS?', 'How to open SRS account', 'SRS contribution limit', 'SRS tax relief', 'Can foreigners open SRS'], response: '{{srs_template_response}}' },
+    { name: 'Home Loan Eligibility', responseMode: 'Template', utterances: ['Am I eligible for a home loan?', 'Home loan income requirements', 'HDB loan vs bank loan', 'Maximum home loan amount'], response: '{{home_loan_eligibility_template}}' },
+    { name: 'Retirement Sum Schemes', responseMode: 'Template', utterances: ['What is Basic Retirement Sum?', 'CPF Full Retirement Sum', 'Enhanced Retirement Sum explained', 'How much CPF for retirement'], response: '{{retirement_sum_template}}' },
+    { name: 'Investment Risk Profile', responseMode: 'GenAI', utterances: ['What is my risk profile?', 'How to determine investment risk tolerance', 'Risk appetite assessment', 'Conservative vs aggressive portfolio', 'Should I invest in equities'], response: 'Your investment risk profile is based on your investment horizon, financial goals, and comfort with market volatility.' },
+  ],
+  'v1': [
+    { name: 'CPF Withdrawal Planning', responseMode: 'GenAI', utterances: ['How do I withdraw my CPF?', 'CPF withdrawal age', 'Can I take out my CPF savings?', 'What is the CPF withdrawal limit?', 'CPF OA withdrawal process'], response: 'You may withdraw your CPF savings upon reaching 55.' },
+    { name: 'SRS Account Enquiry', responseMode: 'Template', utterances: ['What is SRS?', 'How to open SRS account', 'SRS contribution limit'], response: '{{srs_template_response}}' },
+    { name: 'Home Loan Eligibility', responseMode: 'Template', utterances: ['Am I eligible for a home loan?', 'Home loan income requirements', 'HDB loan vs bank loan'], response: '{{home_loan_eligibility_template}}' },
+    { name: 'Retirement Sum Schemes', responseMode: 'GenAI', utterances: ['What is Basic Retirement Sum?', 'CPF Full Retirement Sum', 'Enhanced Retirement Sum explained'], response: 'CPF Retirement Sums define how much you need to set aside for retirement income.' },
+  ],
+};
+
+// Current production state (slightly different from v3 to show diff)
+const CURRENT_PRODUCTION_INTENTS: SnapshotIntent[] = [
+  { name: 'CPF Withdrawal Planning', responseMode: 'GenAI', utterances: ['How do I withdraw my CPF?', 'CPF withdrawal age', 'Can I take out my CPF savings?', 'What is the CPF withdrawal limit?', 'CPF full withdrawal rules', 'How to access CPF at 55', 'CPF OA withdrawal process', 'Can I withdraw CPF for medical'], response: 'You may withdraw your CPF savings upon reaching 55, subject to the Retirement Sum requirement. Withdrawals can be made online via the CPF portal.' },
+  { name: 'SRS Account Enquiry', responseMode: 'Template', utterances: ['What is SRS?', 'How to open SRS account', 'SRS contribution limit', 'SRS tax relief', 'Can foreigners open SRS'], response: '{{srs_template_response}}' },
+  { name: 'Home Loan Eligibility', responseMode: 'GenAI', utterances: ['Am I eligible for a home loan?', 'Home loan income requirements', 'HDB loan vs bank loan', 'Maximum home loan amount', 'Home loan eligibility check', 'What affects home loan approval'], response: 'Your home loan eligibility depends on your income, existing debts, and the property value. We assess your Total Debt Servicing Ratio (TDSR) to determine the maximum loan amount.' },
+  { name: 'Retirement Sum Schemes', responseMode: 'Template', utterances: ['What is Basic Retirement Sum?', 'CPF Full Retirement Sum', 'Enhanced Retirement Sum explained', 'How much CPF for retirement'], response: '{{retirement_sum_template}}' },
+  { name: 'Investment Risk Profile', responseMode: 'Template', utterances: ['What is my risk profile?', 'How to determine investment risk tolerance', 'Risk appetite assessment', 'Conservative vs aggressive portfolio', 'Should I invest in equities', 'Risk profile questionnaire', 'Change my investment risk level'], response: '{{investment_risk_template}}' },
+  // CPF LIFE Premium Plan is NEW in v3 (not in production yet)
+];
+
+export default function IntentDiscovery({ onDeploy, onAddApproval, onAddAuditEvent }: IntentDiscoveryProps) {
   const [sources, setSources] = useState(INITIAL_SOURCES);
   const [isGenerating, setIsGenerating] = useState(false);
   const [activeSyncId, setActiveSyncId] = useState<string | null>(null);
@@ -206,6 +254,10 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
   // Staging review modals
   const [showCompareModal, setShowCompareModal] = useState(false);
   const [showPromoteConfirmModal, setShowPromoteConfirmModal] = useState(false);
+
+  // Snapshot diff modal
+  const [showSnapshotModal, setShowSnapshotModal] = useState<SnapshotEntry | null>(null);
+  const [snapshotExpandedRows, setSnapshotExpandedRows] = useState<Set<string>>(new Set());
 
   // Toast
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -272,6 +324,31 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
         return { ...s, status: 'deployed', pendingApproval: true };
       }));
       onDeploy();
+
+      const approvedDiffNames = activeSync?.diffs
+        .map(d => d.intent) ?? [];
+
+      onAddApproval({
+        actionType: 'intent.promote_batch',
+        entityName: 'Intent Promotion Batch',
+        entityId: activeSyncId ?? 'unknown',
+        description: `Promote ${approvedDiffNames.length} intent(s) to Production`,
+        detail: `Intents: ${approvedDiffNames.join(', ')}. Submitted for checker approval before going live.`,
+        submittedBy: 'System Admin',
+        batchItems: approvedDiffNames,
+      });
+      onAddAuditEvent({
+        actor: 'System Admin',
+        actorRole: 'BA',
+        actionType: 'approval.submit',
+        entityType: 'intent',
+        entityId: activeSyncId ?? 'unknown',
+        entityName: 'Intent Promotion Batch',
+        description: `Batch promotion of ${approvedDiffNames.length} intent(s) submitted for approval`,
+        severity: 'info',
+        batchItems: approvedDiffNames,
+      });
+
       showToast('Promotion submitted for approval');
     }, 1000);
   };
@@ -602,9 +679,10 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
                     {MOCK_SNAPSHOTS.map(snap => (
                       <div
                         key={snap.version}
+                        onClick={() => setShowSnapshotModal(snap)}
                         className={cn(
-                          "flex items-center justify-between p-3.5 rounded-xl border",
-                          snap.isLive ? "bg-emerald-50 border-emerald-200" : "bg-slate-50 border-slate-200"
+                          "flex items-center justify-between p-3.5 rounded-xl border cursor-pointer transition-all hover:shadow-sm",
+                          snap.isLive ? "bg-emerald-50 border-emerald-200 hover:border-emerald-300" : "bg-slate-50 border-slate-200 hover:border-slate-300"
                         )}
                       >
                         <div className="flex flex-col gap-0.5">
@@ -622,7 +700,8 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
                         </div>
                         {!snap.isLive && (
                           <button
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
                               setRestoreTargetVersion(snap.version);
                               setShowRestoreModal(true);
                             }}
@@ -667,11 +746,18 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
                   className="flex flex-col gap-5 h-full min-h-0"
                 >
                   {/* Next-Gen Column */}
-                  <div className="flex items-center justify-between px-2">
-                    <span className="text-lg font-bold text-[#E3000F] uppercase tracking-widest">GenAI Sync</span>
-                    <span className="text-base font-medium text-emerald-600 flex items-center gap-1.5">
-                      <Zap size={16} fill="currentColor" /> Automated Discovery
-                    </span>
+                  <div className="flex flex-col gap-1 px-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-lg font-bold text-[#E3000F] uppercase tracking-widest">GenAI Sync</span>
+                      <span className="text-base font-medium text-emerald-600 flex items-center gap-1.5">
+                        <Zap size={16} fill="currentColor" /> Automated Discovery
+                      </span>
+                    </div>
+                    {activeSync && (
+                      <span className="text-sm text-slate-500">
+                        Session: {activeSync.date} · {activeSync.sources.length} sources analyzed
+                      </span>
+                    )}
                   </div>
                   <div className="bg-white border-2 border-[#E3000F] rounded-2xl p-8 shadow-xl shadow-[#E3000F]/10 flex flex-col gap-5 flex-1 min-h-0">
                     <div className="flex items-center justify-between pb-3 border-b border-slate-100 shrink-0">
@@ -813,16 +899,14 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
               disabled={isDeploying || selectedIntents.size === 0}
               className="px-6 py-3 bg-white/10 hover:bg-white/20 rounded-xl font-semibold flex items-center gap-2 transition-all disabled:opacity-50 whitespace-nowrap text-base"
             >
-              {isDeploying ? <RefreshCw className="animate-spin" size={20} /> : <ArrowRight size={20} />}
-              {isDeploying ? "Moving to Staging..." : `Approve Selected \u2192 Staging (${selectedIntents.size})`}
+              {isDeploying ? "Moving to Staging..." : `Approve Selected to Staging (${selectedIntents.size})`}
             </button>
             <button
               onClick={() => handleApproveToStaging(true)}
               disabled={isDeploying}
               className="px-6 py-3 bg-amber-500 hover:bg-amber-600 rounded-xl font-bold transition-all shadow-lg shadow-amber-900/20 whitespace-nowrap disabled:opacity-50 text-base flex items-center gap-2"
             >
-              <ArrowRight size={20} />
-              Approve All \u2192 Staging
+              Approve All to Staging
             </button>
           </div>
         </motion.div>
@@ -1352,6 +1436,239 @@ export default function IntentDiscovery({ onDeploy }: { onDeploy: () => void }) 
             </motion.div>
           </div>
         )}
+      </AnimatePresence>
+
+      {/* Snapshot Diff Modal */}
+      <AnimatePresence>
+        {showSnapshotModal && (() => {
+          const snap = showSnapshotModal;
+          const snapshotIntents = SNAPSHOT_MOCK_INTENTS[snap.version] ?? [];
+          // Build union of all intent names
+          const allNames = Array.from(new Set([
+            ...snapshotIntents.map(i => i.name),
+            ...CURRENT_PRODUCTION_INTENTS.map(i => i.name),
+          ]));
+          return (
+            <div className="fixed inset-0 z-[110] flex items-center justify-center p-6">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => { setShowSnapshotModal(null); setSnapshotExpandedRows(new Set()); }}
+                className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+              />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                className="bg-white w-full max-w-3xl max-h-[85vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col relative z-10"
+              >
+                <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+                  <div className="flex flex-col gap-1">
+                    <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                      <GitBranch size={20} className="text-slate-500" />
+                      Snapshot {snap.label}
+                    </h3>
+                    <p className="text-sm text-slate-500">{snap.deployedAt} · {snap.intentCount} intents</p>
+                  </div>
+                  <button
+                    onClick={() => { setShowSnapshotModal(null); setSnapshotExpandedRows(new Set()); }}
+                    className="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-all"
+                  >
+                    <X size={24} />
+                  </button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+                  <div className="grid grid-cols-2 gap-3 mb-4">
+                    <div className="px-4 py-2 bg-slate-100 rounded-xl">
+                      <span className="text-xs font-bold text-slate-600 uppercase tracking-widest">This Snapshot</span>
+                    </div>
+                    <div className="px-4 py-2 bg-amber-50 border border-amber-200 rounded-xl">
+                      <span className="text-xs font-bold text-amber-700 uppercase tracking-widest">Current Production</span>
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    {allNames.map(name => {
+                      const inSnapshot = snapshotIntents.find(i => i.name === name);
+                      const inProd = CURRENT_PRODUCTION_INTENTS.find(i => i.name === name);
+                      const modeChanged = inSnapshot && inProd && inSnapshot.responseMode !== inProd.responseMode;
+                      const onlyInSnapshot = inSnapshot && !inProd;
+                      const onlyInProd = !inSnapshot && inProd;
+                      const hasDetail = modeChanged || onlyInSnapshot || onlyInProd;
+                      const isExpanded = snapshotExpandedRows.has(name);
+
+                      return (
+                        <div
+                          key={name}
+                          className={cn(
+                            "rounded-xl border overflow-hidden",
+                            modeChanged ? "border-amber-300" : onlyInSnapshot ? "border-emerald-300" : onlyInProd ? "border-red-300" : "border-slate-200"
+                          )}
+                        >
+                          {/* Row header */}
+                          <div
+                            className={cn("grid grid-cols-2 divide-x", hasDetail && "cursor-pointer")}
+                            onClick={() => hasDetail && setSnapshotExpandedRows(prev => {
+                              const next = new Set(prev);
+                              next.has(name) ? next.delete(name) : next.add(name);
+                              return next;
+                            })}
+                          >
+                            {/* Snapshot cell */}
+                            <div className={cn(
+                              "p-3 flex flex-col gap-1",
+                              modeChanged ? "bg-amber-50" : onlyInSnapshot ? "bg-emerald-50" : "bg-white"
+                            )}>
+                              {inSnapshot ? (
+                                <>
+                                  <div className="flex items-center justify-between gap-2">
+                                    <span className="text-sm font-semibold text-slate-800">{name}</span>
+                                    {hasDetail && (
+                                      <ChevronDown size={14} className={cn("text-slate-400 transition-transform shrink-0", isExpanded && "rotate-180")} />
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="text-xs text-slate-500">{inSnapshot.responseMode}</span>
+                                    <span className="text-xs text-slate-400">· {inSnapshot.utterances.length} utterances</span>
+                                    {modeChanged && <span className="text-xs font-bold text-amber-600 bg-amber-100 px-1.5 py-0.5 rounded">Mode changed</span>}
+                                    {onlyInSnapshot && <span className="text-xs font-bold text-emerald-600 bg-emerald-100 px-1.5 py-0.5 rounded">Will be added</span>}
+                                  </div>
+                                </>
+                              ) : (
+                                <span className="text-sm text-slate-400 italic">—</span>
+                              )}
+                            </div>
+                            {/* Production cell */}
+                            <div className={cn(
+                              "p-3 flex flex-col gap-1",
+                              modeChanged ? "bg-amber-50" : onlyInProd ? "bg-red-50" : "bg-white"
+                            )}>
+                              {inProd ? (
+                                <>
+                                  <span className="text-sm font-semibold text-slate-800">{name}</span>
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="text-xs text-slate-500">{inProd.responseMode}</span>
+                                    <span className="text-xs text-slate-400">· {inProd.utterances.length} utterances</span>
+                                    {onlyInProd && <span className="text-xs font-bold text-red-600 bg-red-100 px-1.5 py-0.5 rounded">Will be removed</span>}
+                                  </div>
+                                </>
+                              ) : (
+                                <span className="text-sm text-slate-400 italic">— not in production</span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Expandable detail */}
+                          {hasDetail && isExpanded && (
+                            <div className={cn(
+                              "border-t p-4 flex flex-col gap-3 text-xs",
+                              modeChanged ? "bg-amber-50/60 border-amber-200" : onlyInSnapshot ? "bg-emerald-50/60 border-emerald-200" : "bg-red-50/60 border-red-200"
+                            )}>
+                              {modeChanged && inSnapshot && inProd && (
+                                <>
+                                  <div className="flex flex-col gap-1">
+                                    <span className="font-bold text-slate-600 uppercase tracking-wide">Response Mode</span>
+                                    <div className="flex items-center gap-2">
+                                      <span className="px-2 py-0.5 bg-white border border-red-200 text-red-700 rounded font-mono">{inProd.responseMode}</span>
+                                      <span className="text-slate-400">in production</span>
+                                      <span className="text-slate-400">→ will become</span>
+                                      <span className="px-2 py-0.5 bg-white border border-emerald-200 text-emerald-700 rounded font-mono">{inSnapshot.responseMode}</span>
+                                    </div>
+                                  </div>
+                                  <div className="flex flex-col gap-1">
+                                    <span className="font-bold text-slate-600 uppercase tracking-wide">Response Text</span>
+                                    <div className="grid grid-cols-2 gap-2">
+                                      <div className="p-2 bg-red-50 border border-red-200 rounded-lg text-slate-700 leading-relaxed">{inProd.response}</div>
+                                      <div className="p-2 bg-emerald-50 border border-emerald-200 rounded-lg text-slate-700 leading-relaxed">{inSnapshot.response}</div>
+                                    </div>
+                                  </div>
+                                </>
+                              )}
+                              {onlyInSnapshot && inSnapshot && (
+                                <>
+                                  <div className="flex flex-col gap-1">
+                                    <span className="font-bold text-slate-600 uppercase tracking-wide">Content to be Added</span>
+                                    <div className="p-2 bg-white border border-emerald-200 rounded-lg text-slate-700 leading-relaxed mb-1">{inSnapshot.response}</div>
+                                  </div>
+                                  <div className="flex flex-col gap-1">
+                                    <span className="font-bold text-slate-600 uppercase tracking-wide">Utterances ({inSnapshot.utterances.length})</span>
+                                    <div className="flex flex-wrap gap-1">
+                                      {inSnapshot.utterances.map((u, i) => (
+                                        <span key={i} className="px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full">{u}</span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </>
+                              )}
+                              {onlyInProd && inProd && (
+                                <>
+                                  <div className="flex flex-col gap-1">
+                                    <span className="font-bold text-slate-600 uppercase tracking-wide">Content to be Removed</span>
+                                    <div className="p-2 bg-white border border-red-200 rounded-lg text-slate-700 leading-relaxed mb-1">{inProd.response}</div>
+                                  </div>
+                                  <div className="flex flex-col gap-1">
+                                    <span className="font-bold text-slate-600 uppercase tracking-wide">Utterances ({inProd.utterances.length})</span>
+                                    <div className="flex flex-wrap gap-1">
+                                      {inProd.utterances.map((u, i) => (
+                                        <span key={i} className="px-2 py-0.5 bg-red-100 text-red-800 rounded-full">{u}</span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
+                  <button
+                    onClick={() => { setShowSnapshotModal(null); setSnapshotExpandedRows(new Set()); }}
+                    className="px-5 py-2.5 font-bold text-slate-600 hover:text-slate-900 transition-all text-base"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      const snapshotIntentsList = SNAPSHOT_MOCK_INTENTS[snap.version] ?? [];
+                      onAddApproval({
+                        actionType: 'intent.rollback',
+                        entityName: snap.label,
+                        entityId: snap.version,
+                        description: `Restore intent DB to ${snap.label}`,
+                        detail: `Submitted by System Admin. This will overwrite the current production intent database with snapshot ${snap.label} (${snap.intentCount} intents, deployed ${snap.deployedAt}).`,
+                        submittedBy: 'System Admin',
+                        batchItems: snapshotIntentsList.map(i => i.name),
+                      });
+                      onAddAuditEvent({
+                        actor: 'System Admin',
+                        actorRole: 'DEV',
+                        actionType: 'approval.submit',
+                        entityType: 'intent',
+                        entityId: snap.version,
+                        entityName: snap.label,
+                        description: `Snapshot restore request submitted for approval`,
+                        severity: 'warning',
+                        batchItems: snapshotIntentsList.map(i => i.name),
+                      });
+                      setShowSnapshotModal(null);
+                      setSnapshotExpandedRows(new Set());
+                      showToast('Restore request submitted for approval');
+                    }}
+                    className="px-6 py-2.5 bg-[#E3000F] hover:bg-[#E3000F]/90 text-white font-bold rounded-xl shadow-lg shadow-[#E3000F]/20 transition-all text-base flex items-center gap-2"
+                  >
+                    <RotateCcw size={18} />
+                    Request Restore
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          );
+        })()}
       </AnimatePresence>
 
       {/* Restore Snapshot Confirmation Modal */}

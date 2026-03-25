@@ -13,13 +13,21 @@ import {
   Settings2,
   ChevronDown,
   CheckCircle2,
+  ShieldOff,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { PendingApproval, AuditEvent } from '../types';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
+}
+
+interface ActiveAgentsProps {
+  onAddApproval: (a: Omit<PendingApproval, 'id' | 'submittedAt' | 'status'>) => void;
+  onAddAuditEvent: (e: Omit<AuditEvent, 'id' | 'timestamp'>) => void;
+  onNavigate: (tab: string) => void;
 }
 
 type AgentStatus = 'active' | 'inactive';
@@ -38,6 +46,7 @@ interface Agent {
   maxTokens: number;
   fallbackRate: number;   // percentage, e.g. 3.1 = 3.1%
   avgLatencyMs: number;   // milliseconds, e.g. 1400 = 1.4s; 0 = inactive/display as "—"
+  pendingApproval?: boolean;
 }
 
 // Intent routing mock — keyed by agent id
@@ -49,6 +58,17 @@ const MOCK_INTENT_ROUTING: Record<string, string[]> = {
   '5': [],
   '6': ['Suspicious_Activity_Alert', 'Prompt_Injection_Detected'],
 };
+
+const ALL_INTENTS = [
+  'CPF Withdrawal Planning',
+  'SRS Account Enquiry',
+  'Home Loan Eligibility',
+  'Retirement Sum Schemes',
+  'Investment Risk Profile',
+  'CPF LIFE Premium Plan',
+  'Account Balance Enquiry',
+  'Card Replacement Request',
+];
 
 const INITIAL_AGENTS: Agent[] = [
   {
@@ -157,12 +177,75 @@ interface ToastState {
   id: number;
 }
 
-export default function ActiveAgents() {
+// Inline routing editor sub-component
+function RoutingEditor({
+  agentId,
+  agentName,
+  onSave,
+  onCancel,
+}: {
+  agentId: string;
+  agentName: string;
+  onSave: (agentId: string, agentName: string, selectedIntents: string[]) => void;
+  onCancel: () => void;
+}) {
+  const initial = new Set<string>(MOCK_INTENT_ROUTING[agentId] ?? []);
+  // Map old intent IDs → display names for pre-checked state: use ALL_INTENTS as the canonical list
+  const [selected, setSelected] = useState<Set<string>>(initial);
+
+  const toggle = (intent: string) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(intent)) next.delete(intent);
+      else next.add(intent);
+      return next;
+    });
+  };
+
+  return (
+    <div className="mt-3 p-4 bg-slate-50 border border-slate-200 rounded-xl flex flex-col gap-3">
+      <span className="text-sm font-bold text-slate-700">Edit Intent Routing</span>
+      <div className="grid grid-cols-2 gap-2">
+        {ALL_INTENTS.map(intent => (
+          <label key={intent} className="flex items-center gap-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={selected.has(intent)}
+              onChange={() => toggle(intent)}
+              className="accent-[#E3000F] w-4 h-4"
+            />
+            <span className="text-sm text-slate-600">{intent}</span>
+          </label>
+        ))}
+      </div>
+      <div className="flex items-center gap-2 pt-1">
+        <button
+          type="button"
+          onClick={() => onSave(agentId, agentName, Array.from(selected))}
+          className="px-4 py-2 bg-[#E3000F] hover:bg-red-700 text-white font-bold text-sm rounded-lg transition-all"
+        >
+          Save Routing
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="px-4 py-2 text-slate-600 hover:text-slate-900 font-semibold text-sm transition-all"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export default function ActiveAgents({ onAddApproval, onAddAuditEvent, onNavigate }: ActiveAgentsProps) {
   const [agents, setAgents] = useState<Agent[]>(INITIAL_AGENTS);
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [toast, setToast] = useState<ToastState | null>(null);
+  const [editingRoutingAgentId, setEditingRoutingAgentId] = useState<string | null>(null);
+  const [pendingRouting, setPendingRouting] = useState<Record<string, boolean>>({});
 
   const showToast = useCallback((message: string) => {
     const id = Date.now();
@@ -176,12 +259,49 @@ export default function ActiveAgents() {
     agent.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleToggleStatus = (id: string) => {
-    setAgents(prev => prev.map(agent =>
-      agent.id === id
-        ? { ...agent, status: agent.status === 'active' ? 'inactive' : 'active' }
-        : agent
-    ));
+  const handleToggleStatus = (agent: Agent) => {
+    if (agent.status === 'active') {
+      // Deactivation is immediate — no maker-checker needed
+      setAgents(prev => prev.map(a => a.id === agent.id ? { ...a, status: 'inactive' } : a));
+      onAddAuditEvent({
+        actor: 'System Admin',
+        actorRole: 'ADMIN',
+        actionType: 'agent.status_change',
+        entityType: 'agent',
+        entityId: agent.id,
+        entityName: agent.name,
+        description: `Agent deactivated`,
+        severity: 'warning',
+        before: { status: 'active' },
+        after: { status: 'inactive' },
+      });
+      showToast(`${agent.name} deactivated`);
+      return;
+    }
+    // Activation requires maker-checker
+    const newStatus = 'active';
+    onAddApproval({
+      actionType: 'agent.status_change',
+      entityName: agent.name,
+      entityId: agent.id,
+      description: `Set agent status: ${agent.status} → ${newStatus}`,
+      detail: `Agent "${agent.name}" status change submitted for checker approval.`,
+      submittedBy: 'System Admin',
+    });
+    onAddAuditEvent({
+      actor: 'System Admin',
+      actorRole: 'DEV',
+      actionType: 'approval.submit',
+      entityType: 'agent',
+      entityId: agent.id,
+      entityName: agent.name,
+      description: `Agent status change submitted for approval`,
+      severity: 'info',
+      before: { status: agent.status },
+      after: { status: newStatus },
+    });
+    setAgents(prev => prev.map(a => a.id === agent.id ? { ...a, pendingApproval: true } : a));
+    showToast('Status change submitted for approval');
   };
 
   const handleDelete = (id: string) => {
@@ -193,11 +313,31 @@ export default function ActiveAgents() {
   const handleSaveEdit = (e: React.FormEvent) => {
     e.preventDefault();
     if (editingAgent) {
-      setAgents(prev => prev.map(agent =>
-        agent.id === editingAgent.id ? editingAgent : agent
-      ));
+      const original = agents.find(a => a.id === editingAgent.id);
+      onAddApproval({
+        actionType: 'agent.config_change',
+        entityName: editingAgent.name,
+        entityId: editingAgent.id,
+        description: `Agent configuration updated: ${editingAgent.name}`,
+        detail: `System prompt and/or model configuration updated. Submitted by System Admin. Changes take effect after checker approval.`,
+        submittedBy: 'System Admin',
+      });
+      onAddAuditEvent({
+        actor: 'System Admin',
+        actorRole: 'DEV',
+        actionType: 'approval.submit',
+        entityType: 'agent',
+        entityId: editingAgent.id,
+        entityName: editingAgent.name,
+        description: `Agent config change submitted for approval`,
+        severity: 'info',
+        before: original ? { systemPrompt: original.systemPrompt, modelId: original.modelId, temperature: original.temperature, maxTokens: original.maxTokens } : undefined,
+        after: { systemPrompt: editingAgent.systemPrompt, modelId: editingAgent.modelId, temperature: editingAgent.temperature, maxTokens: editingAgent.maxTokens },
+      });
+      setAgents(prev => prev.map(a => a.id === editingAgent.id ? { ...a, pendingApproval: true } : a));
       setEditingAgent(null);
       setAdvancedOpen(false);
+      showToast('Config change submitted for approval');
     }
   };
 
@@ -211,12 +351,60 @@ export default function ActiveAgents() {
     setAdvancedOpen(false);
   };
 
-  const handleTestAgent = (agent: Agent) => {
-    showToast(`Open Chatbot Preview to test ${agent.name}`);
+  const handleTestAgent = (_agent: Agent) => {
+    onNavigate('preview');
   };
 
-  const handleEditRouting = () => {
-    showToast('Intent routing is managed in the Active Topics tab');
+  const handleKillSwitch = (agent: Agent) => {
+    if (!window.confirm(`Disable "${agent.name}"? This request will be submitted for checker approval before taking effect.`)) return;
+    onAddApproval({
+      actionType: 'agent.kill_switch',
+      entityName: agent.name,
+      entityId: agent.id,
+      description: `Disable agent: ${agent.name}`,
+      detail: `Agent "${agent.name}" will stop handling queries until re-enabled. Requires checker approval before taking effect.`,
+      submittedBy: 'System Admin',
+    });
+    onAddAuditEvent({
+      actor: 'System Admin',
+      actorRole: 'DEV',
+      actionType: 'approval.submit',
+      entityType: 'agent',
+      entityId: agent.id,
+      entityName: agent.name,
+      description: `Agent kill switch submitted for approval`,
+      severity: 'warning',
+    });
+    setAgents(prev => prev.map(a => a.id === agent.id ? { ...a, pendingApproval: true } : a));
+    showToast('Agent disable request submitted for approval');
+  };
+
+  const handleSaveRouting = (agentId: string, agentName: string, selectedIntents: string[]) => {
+    onAddApproval({
+      actionType: 'agent.config_change',
+      entityName: agentName,
+      entityId: agentId,
+      description: `Intent routing updated for ${agentName}`,
+      detail: `Routed intents: ${selectedIntents.join(', ')}. Submitted by System Admin.`,
+      submittedBy: 'System Admin',
+    });
+    onAddAuditEvent({
+      actor: 'System Admin',
+      actorRole: 'DEV',
+      actionType: 'approval.submit',
+      entityType: 'agent',
+      entityId: agentId,
+      entityName: agentName,
+      description: `Intent routing change submitted for approval`,
+      severity: 'info',
+      after: { routedIntents: selectedIntents },
+    });
+    setEditingRoutingAgentId(null);
+    showToast('Routing change submitted for approval');
+  };
+
+  const handleEditRouting = (agent: Agent) => {
+    setEditingRoutingAgentId(prev => prev === agent.id ? null : agent.id);
   };
 
   // Metrics formatting helpers
@@ -305,106 +493,146 @@ export default function ActiveAgents() {
           </thead>
           <tbody>
             {filteredAgents.map((agent) => (
-              <motion.tr
-                key={agent.id}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="border-b border-slate-100 hover:bg-slate-50/50 transition-all group"
-              >
-                {/* Agent Name */}
-                <td className="px-6 py-5">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-red-50 rounded-lg flex items-center justify-center text-[#E3000F] shrink-0">
-                      <Bot size={18} />
+              <React.Fragment key={agent.id}>
+                <motion.tr
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="border-b border-slate-100 hover:bg-slate-50/50 transition-all group"
+                >
+                  {/* Agent Name */}
+                  <td className="px-6 py-5">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-red-50 rounded-lg flex items-center justify-center text-[#E3000F] shrink-0">
+                        <Bot size={18} />
+                      </div>
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-slate-900 text-lg">{agent.name}</span>
+                          {agent.pendingApproval && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 border border-amber-200 text-amber-700 text-xs font-semibold rounded-full">
+                              <Clock size={11} />
+                              Pending
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-base text-slate-500 max-w-xs truncate">{agent.description}</span>
+                      </div>
                     </div>
-                    <div className="flex flex-col">
-                      <span className="font-bold text-slate-900 text-lg">{agent.name}</span>
-                      <span className="text-base text-slate-500 max-w-xs truncate">{agent.description}</span>
-                    </div>
-                  </div>
-                </td>
+                  </td>
 
-                {/* Category */}
-                <td className="px-6 py-5">
-                  <span className="text-base font-medium text-slate-500 bg-slate-100 px-3 py-1.5 rounded-md">
-                    {agent.category}
-                  </span>
-                </td>
-
-                {/* Status */}
-                <td className="px-6 py-5">
-                  <div className="flex items-center gap-2">
-                    <div className={cn("w-2 h-2 rounded-full", agent.status === 'active' ? "bg-emerald-500" : "bg-slate-400")} />
-                    <span className={cn("text-base font-bold uppercase tracking-wider", agent.status === 'active' ? "text-emerald-700" : "text-slate-500")}>
-                      {agent.status}
+                  {/* Category */}
+                  <td className="px-6 py-5">
+                    <span className="text-base font-medium text-slate-500 bg-slate-100 px-3 py-1.5 rounded-md">
+                      {agent.category}
                     </span>
-                  </div>
-                </td>
+                  </td>
 
-                {/* Sessions */}
-                <td className="px-6 py-5 text-center">
-                  <span className="text-lg font-mono text-slate-600">{agent.sessionsHandled.toLocaleString()}</span>
-                </td>
+                  {/* Status */}
+                  <td className="px-6 py-5">
+                    <div className="flex items-center gap-2">
+                      <div className={cn("w-2 h-2 rounded-full", agent.status === 'active' ? "bg-emerald-500" : "bg-slate-400")} />
+                      <span className={cn("text-base font-bold uppercase tracking-wider", agent.status === 'active' ? "text-emerald-700" : "text-slate-500")}>
+                        {agent.status}
+                      </span>
+                    </div>
+                  </td>
 
-                {/* Live Metrics */}
-                <td className="px-6 py-5">
-                  {formatMetrics(agent)}
-                </td>
+                  {/* Sessions */}
+                  <td className="px-6 py-5 text-center">
+                    <span className="text-lg font-mono text-slate-600">{agent.sessionsHandled.toLocaleString()}</span>
+                  </td>
 
-                {/* Last Active */}
-                <td className="px-6 py-5">
-                  <div className="flex items-center gap-2 text-slate-500">
-                    <Clock size={16} />
-                    <span className="text-sm">{agent.lastUpdated}</span>
-                  </div>
-                </td>
+                  {/* Live Metrics */}
+                  <td className="px-6 py-5">
+                    {formatMetrics(agent)}
+                  </td>
 
-                {/* Actions */}
-                <td className="px-6 py-5 text-right">
-                  <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all">
-                    {/* Test button */}
-                    <button
-                      onClick={() => handleTestAgent(agent)}
-                      title="Test agent in Chatbot Preview"
-                      className="p-2 border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-400 hover:text-slate-700 rounded-lg transition-all flex items-center gap-1"
+                  {/* Last Active */}
+                  <td className="px-6 py-5">
+                    <div className="flex items-center gap-2 text-slate-500">
+                      <Clock size={16} />
+                      <span className="text-sm">{agent.lastUpdated}</span>
+                    </div>
+                  </td>
+
+                  {/* Actions */}
+                  <td className="px-6 py-5 text-right">
+                    <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all">
+                      {/* Test button */}
+                      <button
+                        onClick={() => handleTestAgent(agent)}
+                        title="Test agent in Chatbot Preview"
+                        className="p-2 border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-400 hover:text-slate-700 rounded-lg transition-all flex items-center gap-1"
+                      >
+                        <Play size={14} />
+                        <span className="text-xs font-semibold">Test</span>
+                      </button>
+
+                      {/* Toggle status */}
+                      <button
+                        onClick={() => handleToggleStatus(agent)}
+                        title={agent.status === 'active' ? 'Deactivate (immediate)' : 'Request Activation (requires approval)'}
+                        className={cn(
+                          "p-2.5 rounded-lg transition-all",
+                          agent.status === 'active' ? "hover:bg-amber-50 text-slate-400 hover:text-amber-600" : "hover:bg-emerald-50 text-slate-400 hover:text-emerald-600"
+                        )}
+                      >
+                        {agent.status === 'active' ? <PowerOff size={18} /> : <Power size={18} />}
+                      </button>
+
+                      {/* Disable agent (kill switch) */}
+                      <button
+                        onClick={() => handleKillSwitch(agent)}
+                        title="Disable Agent"
+                        className="p-2.5 border border-slate-200 hover:border-red-300 hover:bg-red-50 text-slate-400 hover:text-red-600 rounded-lg transition-all"
+                      >
+                        <ShieldOff size={18} />
+                      </button>
+
+                      {/* Edit */}
+                      <button
+                        onClick={() => handleOpenEdit(agent)}
+                        title="Edit"
+                        className="p-2.5 hover:bg-red-50 text-slate-400 hover:text-[#E3000F] rounded-lg transition-all"
+                      >
+                        <Edit3 size={18} />
+                      </button>
+
+                      {/* Delete */}
+                      <button
+                        onClick={() => handleDelete(agent.id)}
+                        title="Delete"
+                        className="p-2.5 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-lg transition-all"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
+                  </td>
+                </motion.tr>
+
+                {/* Inline routing editor row */}
+                <AnimatePresence>
+                  {editingRoutingAgentId === agent.id && (
+                    <motion.tr
+                      key={`routing-${agent.id}`}
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.2 }}
                     >
-                      <Play size={14} />
-                      <span className="text-xs font-semibold">Test</span>
-                    </button>
-
-                    {/* Toggle status */}
-                    <button
-                      onClick={() => handleToggleStatus(agent.id)}
-                      title={agent.status === 'active' ? 'Deactivate' : 'Activate'}
-                      className={cn(
-                        "p-2.5 rounded-lg transition-all",
-                        agent.status === 'active' ? "hover:bg-amber-50 text-slate-400 hover:text-amber-600" : "hover:bg-emerald-50 text-slate-400 hover:text-emerald-600"
-                      )}
-                    >
-                      {agent.status === 'active' ? <PowerOff size={18} /> : <Power size={18} />}
-                    </button>
-
-                    {/* Edit */}
-                    <button
-                      onClick={() => handleOpenEdit(agent)}
-                      title="Edit"
-                      className="p-2.5 hover:bg-red-50 text-slate-400 hover:text-[#E3000F] rounded-lg transition-all"
-                    >
-                      <Edit3 size={18} />
-                    </button>
-
-                    {/* Delete */}
-                    <button
-                      onClick={() => handleDelete(agent.id)}
-                      title="Delete"
-                      className="p-2.5 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-lg transition-all"
-                    >
-                      <Trash2 size={18} />
-                    </button>
-                  </div>
-                </td>
-              </motion.tr>
+                      <td colSpan={7} className="px-6 pb-4">
+                        <RoutingEditor
+                          agentId={agent.id}
+                          agentName={agent.name}
+                          onSave={handleSaveRouting}
+                          onCancel={() => setEditingRoutingAgentId(null)}
+                        />
+                      </td>
+                    </motion.tr>
+                  )}
+                </AnimatePresence>
+              </React.Fragment>
             ))}
             {filteredAgents.length === 0 && (
               <tr>
@@ -546,11 +774,19 @@ export default function ActiveAgents() {
                     )}
                     <button
                       type="button"
-                      onClick={handleEditRouting}
+                      onClick={() => handleEditRouting(editingAgent)}
                       className="self-start text-xs text-[#E3000F] hover:underline font-medium mt-0.5"
                     >
                       Edit routing →
                     </button>
+                    {editingRoutingAgentId === editingAgent.id && (
+                      <RoutingEditor
+                        agentId={editingAgent.id}
+                        agentName={editingAgent.name}
+                        onSave={handleSaveRouting}
+                        onCancel={() => setEditingRoutingAgentId(null)}
+                      />
+                    )}
                   </div>
 
                   {/* Advanced / Model Configuration — collapsible */}
