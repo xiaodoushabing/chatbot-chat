@@ -13,7 +13,11 @@ import {
   Bell,
   User,
   Activity,
-  Users2
+  Users2,
+  ClipboardList,
+  ShieldAlert,
+  Shield,
+  Power,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import IntentDiscovery from './components/IntentDiscovery';
@@ -21,6 +25,9 @@ import ExecutiveDashboard from './components/ExecutiveDashboard';
 import ChatbotPreview from './components/ChatbotPreview';
 import ActiveIntents from './components/ActiveIntents';
 import ActiveAgents from './components/ActiveAgents';
+import AuditTrail from './components/AuditTrail';
+import GuardrailsConfig from './components/GuardrailsConfig';
+import AdminControlInterface from './components/AdminControlInterface';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import ocbcLogo from './assets/Logo-ocbc.png';
@@ -29,11 +36,12 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-type Tab = 'discovery' | 'dashboard' | 'preview' | 'active-intents' | 'active-agents';
+type Tab = 'discovery' | 'dashboard' | 'preview' | 'active-intents' | 'active-agents' | 'audit-trail' | 'guardrails' | 'aci';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('active-intents');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [killSwitchActive, setKillSwitchActive] = useState(false);
 
   const navItems = [
     { id: 'active-intents', label: 'Active Topics', icon: <MessageSquare size={22} />, description: 'Manage Live Database' },
@@ -41,6 +49,9 @@ export default function App() {
     { id: 'dashboard', label: 'Observability', icon: <Activity size={22} />, description: 'Intelligence & Monitoring' },
     { id: 'preview', label: 'Chatbot Preview', icon: <Bot size={22} />, description: 'Next-Gen Experience' },
     { id: 'active-agents', label: 'Active Agents', icon: <Users2 size={22} />, description: 'Manage AI Agents' },
+    { id: 'audit-trail', label: 'Audit Trail', icon: <ClipboardList size={22} />, description: 'Compliance & Change History' },
+    { id: 'guardrails', label: 'Guardrails', icon: <ShieldAlert size={22} />, description: 'Policy & Provider Config' },
+    { id: 'aci', label: 'Admin Controls', icon: <Shield size={22} />, description: 'Kill Switch, Templates, Docs' },
   ];
 
   const handleDeploySuccess = () => {
@@ -159,6 +170,15 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-4">
+            {killSwitchActive && (
+              <button
+                onClick={() => setActiveTab('aci')}
+                className="flex items-center gap-2 px-3 py-2 bg-red-600 text-white rounded-lg animate-pulse hover:bg-red-700 transition-all"
+              >
+                <Power size={14} />
+                <span className="text-xs font-bold uppercase tracking-widest">Kill Switch Active</span>
+              </button>
+            )}
             <button className="p-2.5 text-slate-500 hover:bg-slate-100 rounded-xl relative transition-all">
               <Bell size={22} />
               <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-[#E3000F] rounded-full border-2 border-white" />
@@ -166,10 +186,17 @@ export default function App() {
             <button className="p-2.5 text-slate-500 hover:bg-slate-100 rounded-xl transition-all">
               <Settings size={22} />
             </button>
-            <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 border border-emerald-100 rounded-lg">
-              <ShieldCheck size={16} className="text-emerald-600" />
-              <span className="text-xs font-bold text-emerald-700 uppercase tracking-widest">System Secure</span>
-            </div>
+            {killSwitchActive ? (
+              <div className="flex items-center gap-2 px-4 py-2 bg-red-50 border border-red-200 rounded-lg">
+                <X size={16} className="text-red-600" />
+                <span className="text-xs font-bold text-red-700 uppercase tracking-widest">GenAI Disabled</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 border border-emerald-100 rounded-lg">
+                <ShieldCheck size={16} className="text-emerald-600" />
+                <span className="text-xs font-bold text-emerald-700 uppercase tracking-widest">System Secure</span>
+              </div>
+            )}
           </div>
         </header>
 
@@ -188,6 +215,9 @@ export default function App() {
               {activeTab === 'dashboard' && <ExecutiveDashboard />}
               {activeTab === 'active-intents' && <ActiveIntents />}
               {activeTab === 'active-agents' && <ActiveAgents />}
+              {activeTab === 'audit-trail' && <AuditTrail />}
+              {activeTab === 'guardrails' && <GuardrailsConfig />}
+              {activeTab === 'aci' && <AdminControlInterface onKillSwitchChange={setKillSwitchActive} />}
               {activeTab === 'preview' && (
                 <div className="p-8 flex flex-col items-center justify-center min-h-[calc(100vh-80px)]">
                   <div className="max-w-lg w-full">
