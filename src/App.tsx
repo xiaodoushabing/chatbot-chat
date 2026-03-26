@@ -563,7 +563,7 @@ export default function App() {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-3 py-4 flex flex-col gap-1">
+        <nav className="flex-1 px-3 py-4 flex flex-col gap-1 overflow-y-auto min-h-0">
           {navItems.map((item) => (
             <button
               key={item.id}
@@ -598,7 +598,7 @@ export default function App() {
         </nav>
 
         {/* User Section */}
-        <div className="p-4 border-t border-slate-100">
+        <div className="p-4 border-t border-slate-100 shrink-0">
           <div className={cn(
             "flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100",
             !isSidebarOpen && "justify-center"
@@ -685,10 +685,10 @@ export default function App() {
               transition={{ duration: 0.2 }}
               className="h-full"
             >
-              {activeTab === 'discovery' && <IntentDiscovery onDeploy={handleDeploySuccess} onAddApproval={addApproval} onAddAuditEvent={addAuditEvent} />}
+              {activeTab === 'discovery' && <IntentDiscovery onDeploy={handleDeploySuccess} onAddApproval={addApproval} onAddAuditEvent={addAuditEvent} autoOpenCreate={autoOpenCreate} onClearAutoOpen={() => setAutoOpenCreate(false)} />}
               {activeTab === 'dashboard' && <ExecutiveDashboard onNavigate={(tab, opts) => { setActiveTab(tab as Tab); if (opts?.autoOpenCreate) setAutoOpenCreate(true); }} />}
-              {activeTab === 'active-intents' && <ActiveIntents onAddApproval={addApproval} onAddAuditEvent={addAuditEvent} autoOpenCreate={autoOpenCreate} onClearAutoOpen={() => setAutoOpenCreate(false)} />}
-              {activeTab === 'active-agents' && <ActiveAgents onAddApproval={addApproval} onAddAuditEvent={addAuditEvent} onNavigate={(tab) => setActiveTab(tab as Tab)} />}
+              {activeTab === 'active-intents' && <ActiveIntents onAddApproval={addApproval} onAddAuditEvent={addAuditEvent} autoOpenCreate={autoOpenCreate} onClearAutoOpen={() => setAutoOpenCreate(false)} pendingApprovals={pendingApprovals} />}
+              {activeTab === 'active-agents' && <ActiveAgents onAddApproval={addApproval} onAddAuditEvent={addAuditEvent} onNavigate={(tab) => setActiveTab(tab as Tab)} pendingApprovals={pendingApprovals} />}
               {activeTab === 'audit-trail' && <AuditTrail auditEvents={auditEvents} />}
               {activeTab === 'guardrails' && <GuardrailsConfig onAddApproval={addApproval} onAddAuditEvent={addAuditEvent} />}
               {activeTab === 'change-control' && <AdminControlInterface approvals={pendingApprovals} onApprovalDecision={processApproval} onAddAuditEvent={addAuditEvent} onKillSwitchChange={setKillSwitchActive} />}

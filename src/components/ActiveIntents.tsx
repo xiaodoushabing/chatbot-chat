@@ -32,6 +32,7 @@ interface ActiveIntentsProps {
   onAddAuditEvent: (e: Omit<AuditEvent, 'id' | 'timestamp'>) => void;
   autoOpenCreate?: boolean;
   onClearAutoOpen?: () => void;
+  pendingApprovals?: PendingApproval[];
 }
 
 type RiskLevel = 'high' | 'low';
@@ -175,8 +176,13 @@ interface ToastMsg {
 
 let toastIdCounter = 0;
 
-export default function ActiveIntents({ onAddApproval, onAddAuditEvent, autoOpenCreate, onClearAutoOpen }: ActiveIntentsProps) {
-  const [topics, setTopics] = useState<Topic[]>(INITIAL_TOPICS);
+export default function ActiveIntents({ onAddApproval, onAddAuditEvent, autoOpenCreate, onClearAutoOpen, pendingApprovals = [] }: ActiveIntentsProps) {
+  const [topics, setTopics] = useState<Topic[]>(() => {
+    try {
+      const saved = localStorage.getItem('ocbc_topics');
+      return saved ? JSON.parse(saved) : INITIAL_TOPICS;
+    } catch { return INITIAL_TOPICS; }
+  });
   const [editingTopic, setEditingTopic] = useState<Topic | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -200,6 +206,10 @@ export default function ActiveIntents({ onAddApproval, onAddAuditEvent, autoOpen
 
   // Toasts
   const [toasts, setToasts] = useState<ToastMsg[]>([]);
+
+  useEffect(() => {
+    try { localStorage.setItem('ocbc_topics', JSON.stringify(topics)); } catch {}
+  }, [topics]);
 
   const showToast = (message: string) => {
     const id = ++toastIdCounter;
@@ -248,7 +258,35 @@ export default function ActiveIntents({ onAddApproval, onAddAuditEvent, autoOpen
   });
 
   const handleSetResponseMode = (id: string, mode: ResponseMode) => {
-    setTopics(prev => prev.map(t => t.id === id ? { ...t, responseMode: mode } : t));
+    const topic = topics.find(t => t.id === id);
+    if (!topic || topic.responseMode === mode) return;
+    setConfirmDialog({
+      title: 'Change Response Mode',
+      message: `Submit a request to change "${topic.name}" from ${MODE_CONFIG[topic.responseMode].label} to ${MODE_CONFIG[mode].label}? This requires checker approval before taking effect.`,
+      onConfirm: () => {
+        onAddApproval({
+          actionType: 'intent.edit',
+          entityName: topic.name,
+          entityId: topic.id,
+          description: `Response mode change: ${topic.responseMode} → ${mode}`,
+          detail: `Response mode for "${topic.name}" changed from ${topic.responseMode} to ${mode}. Submitted by System Admin.`,
+          submittedBy: 'System Admin',
+        });
+        onAddAuditEvent({
+          actor: 'System Admin',
+          actorRole: 'BA',
+          actionType: 'approval.submit',
+          entityType: 'intent',
+          entityId: topic.id,
+          entityName: topic.name,
+          description: `Response mode change submitted for approval: ${topic.responseMode} → ${mode}`,
+          severity: 'info',
+          before: { responseMode: topic.responseMode },
+          after: { responseMode: mode },
+        });
+        showToast('Response mode change submitted for approval');
+      },
+    });
   };
 
   const handleToggleStatus = (id: string) => {
@@ -284,14 +322,37 @@ export default function ActiveIntents({ onAddApproval, onAddAuditEvent, autoOpen
       description: `Submitted status toggle for approval: ${topic.status} → ${newStatus}`,
       severity: 'info',
     });
-    setTopics(prev => prev.map(t => t.id === id ? { ...t, pendingApproval: true } : t));
     showToast(`Status change submitted for approval`);
   };
 
   const handleDelete = (id: string) => {
-    if (window.confirm('Are you sure you want to delete this topic?')) {
-      setTopics(prev => prev.filter(t => t.id !== id));
-    }
+    const topic = topics.find(t => t.id === id);
+    if (!topic) return;
+    setConfirmDialog({
+      title: 'Delete Topic',
+      message: `Submit a request to delete "${topic.name}"? This requires checker approval before the topic is removed.`,
+      onConfirm: () => {
+        onAddApproval({
+          actionType: 'intent.edit',
+          entityName: topic.name,
+          entityId: topic.id,
+          description: `Delete intent "${topic.name}"`,
+          detail: `Deletion of intent "${topic.name}" submitted for checker approval. Submitted by System Admin.`,
+          submittedBy: 'System Admin',
+        });
+        onAddAuditEvent({
+          actor: 'System Admin',
+          actorRole: 'BA',
+          actionType: 'approval.submit',
+          entityType: 'intent',
+          entityId: topic.id,
+          entityName: topic.name,
+          description: `Intent deletion submitted for approval`,
+          severity: 'warning',
+        });
+        showToast('Delete request submitted for approval');
+      },
+    });
   };
 
   const handlePromoteToProd = (id: string) => {
@@ -327,7 +388,6 @@ export default function ActiveIntents({ onAddApproval, onAddAuditEvent, autoOpen
         description: `Intent promotion to Production submitted for approval`,
         severity: 'info',
       });
-      setTopics(prev => prev.map(t => t.id === id ? { ...t, pendingApproval: true } : t));
       showToast('Submitted for maker-checker approval');
     }
   };
@@ -365,7 +425,6 @@ export default function ActiveIntents({ onAddApproval, onAddAuditEvent, autoOpen
       before: original ? { utterances: original.utterances, response: original.response } : undefined,
       after: { utterances: editingTopic.utterances, response: editingTopic.response },
     });
-    setTopics(prev => prev.map(t => t.id === editingTopic.id ? { ...t, pendingApproval: true } : t));
     setEditingTopic(null);
     showToast('Edit submitted for approval');
   };
@@ -456,28 +515,27 @@ export default function ActiveIntents({ onAddApproval, onAddAuditEvent, autoOpen
       description: `Rollback to version from ${entry.timestamp} submitted for approval`,
       severity: 'warning',
     });
-    setTopics(prev => prev.map(t => t.id === historyTopic.id ? { ...t, pendingApproval: true } : t));
     setHistoryTopic(null);
     showToast('Rollback submitted for approval');
   };
 
   return (
-    <div className="flex flex-col gap-8 p-8 max-w-7xl mx-auto">
+    <div className="flex flex-col gap-4 p-5">
       {/* Header */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div className="flex flex-col gap-1">
-          <h2 className="text-4xl font-bold tracking-tight text-slate-900">Active Topics</h2>
-          <p className="text-slate-500 text-lg">Manage chatbot topics and response modes.</p>
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+        <div className="flex flex-col gap-0.5">
+          <h2 className="text-2xl font-bold tracking-tight text-slate-900">Active Topics</h2>
+          <p className="text-slate-500 text-sm">Manage chatbot topics and response modes.</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <div className="relative">
-            <Search className="absolute left-3 top-3 text-slate-400" size={20} />
+            <Search className="absolute left-3 top-2.5 text-slate-400" size={16} />
             <input
               type="text"
               placeholder="Filter topics..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-11 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-lg focus:ring-2 focus:ring-[#E3000F] outline-none transition-all w-72"
+              className="pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-[#E3000F] outline-none transition-all w-56"
             />
           </div>
           <button
@@ -574,11 +632,11 @@ export default function ActiveIntents({ onAddApproval, onAddAuditEvent, autoOpen
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-200">
-              <th className="px-6 py-4 text-base font-bold text-slate-500 uppercase tracking-widest">Topic</th>
-              <th className="px-6 py-4 text-base font-bold text-slate-500 uppercase tracking-widest">Risk</th>
-              <th className="px-6 py-4 text-base font-bold text-slate-500 uppercase tracking-widest">Response Mode</th>
-              <th className="px-6 py-4 text-base font-bold text-slate-500 uppercase tracking-widest text-center">Queries</th>
-              <th className="px-6 py-4 text-base font-bold text-slate-500 uppercase tracking-widest text-right">Actions</th>
+              <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-widest">Topic</th>
+              <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-widest">Risk</th>
+              <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-widest">Response Mode</th>
+              <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-widest text-center">Queries</th>
+              <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-widest text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -596,7 +654,7 @@ export default function ActiveIntents({ onAddApproval, onAddAuditEvent, autoOpen
                   className="border-b border-slate-100 hover:bg-slate-50/50 transition-all group"
                 >
                   {/* Topic name + env badge */}
-                  <td className="px-6 py-5">
+                  <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 bg-red-50 rounded-lg flex items-center justify-center text-[#E3000F] shrink-0">
                         <MessageSquare size={18} />
@@ -613,7 +671,7 @@ export default function ActiveIntents({ onAddApproval, onAddAuditEvent, autoOpen
                               PROD
                             </span>
                           )}
-                          {topic.pendingApproval && (
+                          {pendingApprovals.some(a => a.entityId === topic.id && a.status === 'pending') && (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 border border-amber-300 text-amber-600 text-xs font-bold">
                               <Clock size={11} />
                               Pending
@@ -631,7 +689,7 @@ export default function ActiveIntents({ onAddApproval, onAddAuditEvent, autoOpen
                   </td>
 
                   {/* Risk */}
-                  <td className="px-6 py-5">
+                  <td className="px-4 py-3">
                     <div
                       className={cn("inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border", risk.bg, risk.border)}
                       title={risk.hint}
@@ -642,7 +700,7 @@ export default function ActiveIntents({ onAddApproval, onAddAuditEvent, autoOpen
                   </td>
 
                   {/* Response Mode — 3-way selector */}
-                  <td className="px-6 py-5">
+                  <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       <div className="inline-flex rounded-xl overflow-hidden border border-slate-200 bg-slate-100">
                         {(['genai', 'template', 'exclude'] as ResponseMode[]).map(mode => (
@@ -664,12 +722,12 @@ export default function ActiveIntents({ onAddApproval, onAddAuditEvent, autoOpen
                   </td>
 
                   {/* Queries */}
-                  <td className="px-6 py-5 text-center">
-                    <span className="text-lg font-mono text-slate-600">{topic.queries.toLocaleString()}</span>
+                  <td className="px-4 py-3 text-center">
+                    <span className="text-sm font-mono text-slate-600">{topic.queries.toLocaleString()}</span>
                   </td>
 
                   {/* Actions */}
-                  <td className="px-6 py-5 text-right">
+                  <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all">
                       <button
                         onClick={() => handleToggleStatus(topic.id)}

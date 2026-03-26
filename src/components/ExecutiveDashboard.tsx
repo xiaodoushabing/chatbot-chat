@@ -470,7 +470,7 @@ export default function ExecutiveDashboard({ onNavigate }: ExecutiveDashboardPro
         </div>
         <div className="flex flex-col gap-3 shrink-0 no-print">
           <button
-            onClick={() => onNavigate('active-intents', { autoOpenCreate: true })}
+            onClick={() => onNavigate('discovery', { autoOpenCreate: true })}
             className="px-6 py-3 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200"
           >
             Generate New Intent

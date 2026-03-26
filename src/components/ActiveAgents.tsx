@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   Search,
   Filter,
@@ -28,6 +28,7 @@ interface ActiveAgentsProps {
   onAddApproval: (a: Omit<PendingApproval, 'id' | 'submittedAt' | 'status'>) => void;
   onAddAuditEvent: (e: Omit<AuditEvent, 'id' | 'timestamp'>) => void;
   onNavigate: (tab: string) => void;
+  pendingApprovals?: PendingApproval[];
 }
 
 type AgentStatus = 'active' | 'inactive';
@@ -238,14 +239,24 @@ function RoutingEditor({
   );
 }
 
-export default function ActiveAgents({ onAddApproval, onAddAuditEvent, onNavigate }: ActiveAgentsProps) {
-  const [agents, setAgents] = useState<Agent[]>(INITIAL_AGENTS);
+export default function ActiveAgents({ onAddApproval, onAddAuditEvent, onNavigate, pendingApprovals = [] }: ActiveAgentsProps) {
+  const [agents, setAgents] = useState<Agent[]>(() => {
+    try {
+      const saved = localStorage.getItem('ocbc_agents');
+      return saved ? JSON.parse(saved) : INITIAL_AGENTS;
+    } catch { return INITIAL_AGENTS; }
+  });
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [toast, setToast] = useState<ToastState | null>(null);
   const [editingRoutingAgentId, setEditingRoutingAgentId] = useState<string | null>(null);
   const [pendingRouting, setPendingRouting] = useState<Record<string, boolean>>({});
+  const [confirmDialog, setConfirmDialog] = useState<{ title: string; message: string; onConfirm: () => void } | null>(null);
+
+  useEffect(() => {
+    try { localStorage.setItem('ocbc_agents', JSON.stringify(agents)); } catch {}
+  }, [agents]);
 
   const showToast = useCallback((message: string) => {
     const id = Date.now();
@@ -260,26 +271,16 @@ export default function ActiveAgents({ onAddApproval, onAddAuditEvent, onNavigat
   );
 
   const handleToggleStatus = (agent: Agent) => {
-    if (agent.status === 'active') {
-      // Deactivation is immediate — no maker-checker needed
-      setAgents(prev => prev.map(a => a.id === agent.id ? { ...a, status: 'inactive' } : a));
-      onAddAuditEvent({
-        actor: 'System Admin',
-        actorRole: 'ADMIN',
-        actionType: 'agent.status_change',
-        entityType: 'agent',
-        entityId: agent.id,
-        entityName: agent.name,
-        description: `Agent deactivated`,
-        severity: 'warning',
-        before: { status: 'active' },
-        after: { status: 'inactive' },
-      });
-      showToast(`${agent.name} deactivated`);
-      return;
-    }
-    // Activation requires maker-checker
-    const newStatus = 'active';
+    const newStatus = agent.status === 'active' ? 'inactive' : 'active';
+    setConfirmDialog({
+      title: `${newStatus === 'inactive' ? 'Deactivate' : 'Activate'} Agent`,
+      message: `Submit a request to ${newStatus === 'inactive' ? 'deactivate' : 'activate'} "${agent.name}"? This change will require checker approval before taking effect.`,
+      onConfirm: () => doToggleStatus(agent),
+    });
+  };
+
+  const doToggleStatus = (agent: Agent) => {
+    const newStatus = agent.status === 'active' ? 'inactive' : 'active';
     onAddApproval({
       actionType: 'agent.status_change',
       entityName: agent.name,
@@ -300,7 +301,6 @@ export default function ActiveAgents({ onAddApproval, onAddAuditEvent, onNavigat
       before: { status: agent.status },
       after: { status: newStatus },
     });
-    setAgents(prev => prev.map(a => a.id === agent.id ? { ...a, pendingApproval: true } : a));
     showToast('Status change submitted for approval');
   };
 
@@ -334,7 +334,6 @@ export default function ActiveAgents({ onAddApproval, onAddAuditEvent, onNavigat
         before: original ? { systemPrompt: original.systemPrompt, modelId: original.modelId, temperature: original.temperature, maxTokens: original.maxTokens } : undefined,
         after: { systemPrompt: editingAgent.systemPrompt, modelId: editingAgent.modelId, temperature: editingAgent.temperature, maxTokens: editingAgent.maxTokens },
       });
-      setAgents(prev => prev.map(a => a.id === editingAgent.id ? { ...a, pendingApproval: true } : a));
       setEditingAgent(null);
       setAdvancedOpen(false);
       showToast('Config change submitted for approval');
@@ -375,7 +374,6 @@ export default function ActiveAgents({ onAddApproval, onAddAuditEvent, onNavigat
       description: `Agent kill switch submitted for approval`,
       severity: 'warning',
     });
-    setAgents(prev => prev.map(a => a.id === agent.id ? { ...a, pendingApproval: true } : a));
     showToast('Agent disable request submitted for approval');
   };
 
@@ -453,22 +451,22 @@ export default function ActiveAgents({ onAddApproval, onAddAuditEvent, onNavigat
   const routedIntents = editingAgent ? (MOCK_INTENT_ROUTING[editingAgent.id] ?? []) : [];
 
   return (
-    <div className="flex flex-col gap-8 p-8 max-w-7xl mx-auto">
+    <div className="flex flex-col gap-4 p-5">
       {/* Header */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div className="flex flex-col gap-1">
-          <h2 className="text-4xl font-bold tracking-tight text-slate-900">Active Agents</h2>
-          <p className="text-slate-500 text-lg">Manage AI agents available for this chatbot instance.</p>
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+        <div className="flex flex-col gap-0.5">
+          <h2 className="text-2xl font-bold tracking-tight text-slate-900">Active Agents</h2>
+          <p className="text-slate-500 text-sm">Manage AI agents available for this chatbot instance.</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <div className="relative">
-            <Search className="absolute left-3 top-3 text-slate-400" size={20} />
+            <Search className="absolute left-3 top-2.5 text-slate-400" size={16} />
             <input
               type="text"
               placeholder="Filter agents..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-11 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-lg focus:ring-2 focus:ring-[#E3000F] outline-none transition-all w-72"
+              className="pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-[#E3000F] outline-none transition-all w-56"
             />
           </div>
           <button className="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-500 hover:text-slate-900 transition-all">
@@ -482,13 +480,12 @@ export default function ActiveAgents({ onAddApproval, onAddAuditEvent, onNavigat
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-200">
-              <th className="px-6 py-4 text-base font-bold text-slate-500 uppercase tracking-widest">Agent Name</th>
-              <th className="px-6 py-4 text-base font-bold text-slate-500 uppercase tracking-widest">Category</th>
-              <th className="px-6 py-4 text-base font-bold text-slate-500 uppercase tracking-widest">Status</th>
-              <th className="px-6 py-4 text-base font-bold text-slate-500 uppercase tracking-widest text-center">Sessions</th>
-              <th className="px-6 py-4 text-base font-bold text-slate-500 uppercase tracking-widest">Live Metrics</th>
-              <th className="px-6 py-4 text-base font-bold text-slate-500 uppercase tracking-widest">Last Active</th>
-              <th className="px-6 py-4 text-base font-bold text-slate-500 uppercase tracking-widest text-right">Actions</th>
+              <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-widest">Agent Name</th>
+              <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-widest">Category</th>
+              <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-widest">Status</th>
+              <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-widest text-center">Sessions</th>
+              <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-widest">Live Metrics</th>
+              <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-widest text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -501,111 +498,67 @@ export default function ActiveAgents({ onAddApproval, onAddAuditEvent, onNavigat
                   className="border-b border-slate-100 hover:bg-slate-50/50 transition-all group"
                 >
                   {/* Agent Name */}
-                  <td className="px-6 py-5">
+                  <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 bg-red-50 rounded-lg flex items-center justify-center text-[#E3000F] shrink-0">
                         <Bot size={18} />
                       </div>
                       <div className="flex flex-col">
                         <div className="flex items-center gap-2">
-                          <span className="font-bold text-slate-900 text-lg">{agent.name}</span>
-                          {agent.pendingApproval && (
+                          <span className="font-bold text-slate-900 text-sm">{agent.name}</span>
+                          {pendingApprovals.some(a => a.entityId === agent.id && a.status === 'pending') && (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 border border-amber-200 text-amber-700 text-xs font-semibold rounded-full">
                               <Clock size={11} />
                               Pending
                             </span>
                           )}
                         </div>
-                        <span className="text-base text-slate-500 max-w-xs truncate">{agent.description}</span>
+                        <span className="text-sm text-slate-500 max-w-xs truncate">{agent.description}</span>
                       </div>
                     </div>
                   </td>
 
                   {/* Category */}
-                  <td className="px-6 py-5">
-                    <span className="text-base font-medium text-slate-500 bg-slate-100 px-3 py-1.5 rounded-md">
+                  <td className="px-4 py-3">
+                    <span className="text-sm font-medium text-slate-500 bg-slate-100 px-2 py-1 rounded-md">
                       {agent.category}
                     </span>
                   </td>
 
                   {/* Status */}
-                  <td className="px-6 py-5">
+                  <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       <div className={cn("w-2 h-2 rounded-full", agent.status === 'active' ? "bg-emerald-500" : "bg-slate-400")} />
-                      <span className={cn("text-base font-bold uppercase tracking-wider", agent.status === 'active' ? "text-emerald-700" : "text-slate-500")}>
+                      <span className={cn("text-sm font-bold uppercase tracking-wider", agent.status === 'active' ? "text-emerald-700" : "text-slate-500")}>
                         {agent.status}
                       </span>
                     </div>
                   </td>
 
                   {/* Sessions */}
-                  <td className="px-6 py-5 text-center">
-                    <span className="text-lg font-mono text-slate-600">{agent.sessionsHandled.toLocaleString()}</span>
+                  <td className="px-4 py-3 text-center">
+                    <span className="text-sm font-mono text-slate-600">{agent.sessionsHandled.toLocaleString()}</span>
                   </td>
 
                   {/* Live Metrics */}
-                  <td className="px-6 py-5">
+                  <td className="px-4 py-3">
                     {formatMetrics(agent)}
                   </td>
 
-                  {/* Last Active */}
-                  <td className="px-6 py-5">
-                    <div className="flex items-center gap-2 text-slate-500">
-                      <Clock size={16} />
-                      <span className="text-sm">{agent.lastUpdated}</span>
-                    </div>
-                  </td>
-
                   {/* Actions */}
-                  <td className="px-6 py-5 text-right">
-                    <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all">
-                      {/* Test button */}
-                      <button
-                        onClick={() => handleTestAgent(agent)}
-                        title="Test agent in Chatbot Preview"
-                        className="p-2 border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-400 hover:text-slate-700 rounded-lg transition-all flex items-center gap-1"
-                      >
-                        <Play size={14} />
-                        <span className="text-xs font-semibold">Test</span>
-                      </button>
-
-                      {/* Toggle status */}
+                  <td className="px-4 py-3 text-right">
+                    <div className="flex items-center justify-end gap-2">
                       <button
                         onClick={() => handleToggleStatus(agent)}
-                        title={agent.status === 'active' ? 'Deactivate (immediate)' : 'Request Activation (requires approval)'}
+                        title={agent.status === 'active' ? 'Deactivate' : 'Activate'}
                         className={cn(
-                          "p-2.5 rounded-lg transition-all",
-                          agent.status === 'active' ? "hover:bg-amber-50 text-slate-400 hover:text-amber-600" : "hover:bg-emerald-50 text-slate-400 hover:text-emerald-600"
+                          "px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border",
+                          agent.status === 'active'
+                            ? "border-amber-200 text-amber-700 bg-amber-50 hover:bg-amber-100"
+                            : "border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100"
                         )}
                       >
-                        {agent.status === 'active' ? <PowerOff size={18} /> : <Power size={18} />}
-                      </button>
-
-                      {/* Disable agent (kill switch) */}
-                      <button
-                        onClick={() => handleKillSwitch(agent)}
-                        title="Disable Agent"
-                        className="p-2.5 border border-slate-200 hover:border-red-300 hover:bg-red-50 text-slate-400 hover:text-red-600 rounded-lg transition-all"
-                      >
-                        <ShieldOff size={18} />
-                      </button>
-
-                      {/* Edit */}
-                      <button
-                        onClick={() => handleOpenEdit(agent)}
-                        title="Edit"
-                        className="p-2.5 hover:bg-red-50 text-slate-400 hover:text-[#E3000F] rounded-lg transition-all"
-                      >
-                        <Edit3 size={18} />
-                      </button>
-
-                      {/* Delete */}
-                      <button
-                        onClick={() => handleDelete(agent.id)}
-                        title="Delete"
-                        className="p-2.5 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-lg transition-all"
-                      >
-                        <Trash2 size={18} />
+                        {agent.status === 'active' ? 'Deactivate' : 'Activate'}
                       </button>
                     </div>
                   </td>
@@ -621,7 +574,7 @@ export default function ActiveAgents({ onAddApproval, onAddAuditEvent, onNavigat
                       exit={{ opacity: 0, height: 0 }}
                       transition={{ duration: 0.2 }}
                     >
-                      <td colSpan={7} className="px-6 pb-4">
+                      <td colSpan={6} className="px-6 pb-4">
                         <RoutingEditor
                           agentId={agent.id}
                           agentName={agent.name}
@@ -636,7 +589,7 @@ export default function ActiveAgents({ onAddApproval, onAddAuditEvent, onNavigat
             ))}
             {filteredAgents.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-6 py-12 text-center text-slate-500 text-base">
+                <td colSpan={6} className="px-6 py-12 text-center text-slate-500 text-base">
                   No agents configured.
                 </td>
               </tr>
@@ -647,10 +600,10 @@ export default function ActiveAgents({ onAddApproval, onAddAuditEvent, onNavigat
 
       {/* Pagination */}
       <div className="flex items-center justify-between px-2">
-        <span className="text-base text-slate-500">Showing {filteredAgents.length} of {agents.length} agents</span>
+        <span className="text-sm text-slate-500">Showing {filteredAgents.length} of {agents.length} agents</span>
         <div className="flex gap-2">
-          <button className="px-5 py-2.5 text-base font-bold text-slate-400 cursor-not-allowed">Previous</button>
-          <button className="px-5 py-2.5 text-base font-bold text-[#E3000F] hover:bg-red-50 rounded-lg transition-all">Next</button>
+          <button className="px-3 py-1.5 text-sm font-bold text-slate-400 cursor-not-allowed">Previous</button>
+          <button className="px-3 py-1.5 text-sm font-bold text-[#E3000F] hover:bg-red-50 rounded-lg transition-all">Next</button>
         </div>
       </div>
 
@@ -898,6 +851,46 @@ export default function ActiveAgents({ onAddApproval, onAddAuditEvent, onNavigat
               </form>
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+
+      {/* Confirmation dialog */}
+      <AnimatePresence>
+        {confirmDialog && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[150]"
+              onClick={() => setConfirmDialog(null)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="fixed inset-0 flex items-center justify-center z-[160] pointer-events-none"
+            >
+              <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 pointer-events-auto">
+                <h3 className="text-xl font-bold text-slate-900 mb-2">{confirmDialog.title}</h3>
+                <p className="text-slate-600 mb-6">{confirmDialog.message}</p>
+                <div className="flex gap-3 justify-end">
+                  <button
+                    onClick={() => setConfirmDialog(null)}
+                    className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 font-medium transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => { confirmDialog.onConfirm(); setConfirmDialog(null); }}
+                    className="px-4 py-2 rounded-xl bg-[#E3000F] text-white hover:bg-red-700 font-medium transition-all"
+                  >
+                    Submit for Approval
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
 

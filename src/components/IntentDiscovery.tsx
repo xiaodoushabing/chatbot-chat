@@ -31,6 +31,8 @@ interface IntentDiscoveryProps {
   onDeploy: () => void;
   onAddApproval: (a: Omit<PendingApproval, 'id' | 'submittedAt' | 'status'>) => void;
   onAddAuditEvent: (e: Omit<AuditEvent, 'id' | 'timestamp'>) => void;
+  autoOpenCreate?: boolean;
+  onClearAutoOpen?: () => void;
 }
 
 function cn(...inputs: ClassValue[]) {
@@ -229,7 +231,7 @@ const CURRENT_PRODUCTION_INTENTS: SnapshotIntent[] = [
   // CPF LIFE Premium Plan is NEW in v3 (not in production yet)
 ];
 
-export default function IntentDiscovery({ onDeploy, onAddApproval, onAddAuditEvent }: IntentDiscoveryProps) {
+export default function IntentDiscovery({ onDeploy, onAddApproval, onAddAuditEvent, autoOpenCreate, onClearAutoOpen }: IntentDiscoveryProps) {
   const [sources, setSources] = useState(INITIAL_SOURCES);
   const [isGenerating, setIsGenerating] = useState(false);
   const [activeSyncId, setActiveSyncId] = useState<string | null>(null);
@@ -257,6 +259,17 @@ export default function IntentDiscovery({ onDeploy, onAddApproval, onAddAuditEve
 
   // Snapshot diff modal
   const [showSnapshotModal, setShowSnapshotModal] = useState<SnapshotEntry | null>(null);
+
+  // Manual intent creation
+  const [showManualCreate, setShowManualCreate] = useState(false);
+  const [manualForm, setManualForm] = useState({ name: '', utterances: '', response: '', responseMode: 'genai' });
+
+  useEffect(() => {
+    if (autoOpenCreate) {
+      setShowManualCreate(true);
+      onClearAutoOpen?.();
+    }
+  }, [autoOpenCreate]);
   const [snapshotExpandedRows, setSnapshotExpandedRows] = useState<Set<string>>(new Set());
 
   // Toast
@@ -469,11 +482,20 @@ export default function IntentDiscovery({ onDeploy, onAddApproval, onAddAuditEve
 
       {/* Knowledge Synchronization */}
       <div className="flex flex-col gap-8">
-        <div className="flex flex-col gap-3">
-          <h2 className="text-4xl font-bold tracking-tight text-slate-900">Knowledge Synchronization</h2>
-          <p className="text-slate-500 text-lg">
-            Automatically discover and update chatbot intents from your latest policy documents and web resources.
-          </p>
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex flex-col gap-3">
+            <h2 className="text-4xl font-bold tracking-tight text-slate-900">Knowledge Synchronization</h2>
+            <p className="text-slate-500 text-lg">
+              Automatically discover and update chatbot intents from your latest policy documents and web resources.
+            </p>
+          </div>
+          <button
+            onClick={() => setShowManualCreate(true)}
+            className="shrink-0 flex items-center gap-2 px-4 py-2.5 bg-[#E3000F] text-white rounded-xl text-sm font-bold hover:bg-red-700 transition-all shadow-md shadow-red-100"
+          >
+            <Plus size={16} />
+            New Intent
+          </button>
         </div>
 
         {/* Main Grid */}
@@ -906,7 +928,7 @@ export default function IntentDiscovery({ onDeploy, onAddApproval, onAddAuditEve
               disabled={isDeploying}
               className="px-6 py-3 bg-amber-500 hover:bg-amber-600 rounded-xl font-bold transition-all shadow-lg shadow-amber-900/20 whitespace-nowrap disabled:opacity-50 text-base flex items-center gap-2"
             >
-              Approve All to Staging
+              Approve All to Staging ({displayDiffs.length})
             </button>
           </div>
         </motion.div>
@@ -1435,6 +1457,114 @@ export default function IntentDiscovery({ onDeploy, onAddApproval, onAddAuditEve
               </div>
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+
+      {/* Manual Intent Creation Modal */}
+      <AnimatePresence>
+        {showManualCreate && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[110]"
+              onClick={() => setShowManualCreate(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="fixed inset-0 flex items-center justify-center z-[120] pointer-events-none p-6"
+            >
+              <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg pointer-events-auto flex flex-col overflow-hidden">
+                <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+                  <h3 className="text-xl font-bold text-slate-900">New Intent</h3>
+                  <button onClick={() => setShowManualCreate(false)} className="p-2 hover:bg-slate-100 rounded-full text-slate-400 transition-all">
+                    <X size={20} />
+                  </button>
+                </div>
+                <div className="p-6 flex flex-col gap-4 overflow-y-auto">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-sm font-bold text-slate-700">Intent Name</label>
+                    <input
+                      type="text"
+                      value={manualForm.name}
+                      onChange={e => setManualForm(f => ({ ...f, name: e.target.value }))}
+                      placeholder="e.g. CPF_Withdrawal_Planning"
+                      className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#E3000F]"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-sm font-bold text-slate-700">Response Mode</label>
+                    <select
+                      value={manualForm.responseMode}
+                      onChange={e => setManualForm(f => ({ ...f, responseMode: e.target.value }))}
+                      className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#E3000F]"
+                    >
+                      <option value="genai">GenAI</option>
+                      <option value="template">Template</option>
+                      <option value="exclude">Exclude</option>
+                    </select>
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-sm font-bold text-slate-700">Utterances <span className="font-normal text-slate-400">(one per line)</span></label>
+                    <textarea
+                      value={manualForm.utterances}
+                      onChange={e => setManualForm(f => ({ ...f, utterances: e.target.value }))}
+                      placeholder={"How do I withdraw my CPF?\nCPF withdrawal age\nCPF withdrawal rules"}
+                      rows={4}
+                      className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#E3000F] resize-none"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-sm font-bold text-slate-700">Response</label>
+                    <textarea
+                      value={manualForm.response}
+                      onChange={e => setManualForm(f => ({ ...f, response: e.target.value }))}
+                      placeholder="Enter the response text..."
+                      rows={3}
+                      className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#E3000F] resize-none"
+                    />
+                  </div>
+                </div>
+                <div className="p-6 border-t border-slate-100 flex justify-end gap-3">
+                  <button
+                    onClick={() => setShowManualCreate(false)}
+                    className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 font-medium text-sm transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    disabled={!manualForm.name.trim()}
+                    onClick={() => {
+                      onAddApproval({
+                        actionType: 'intent.edit',
+                        entityName: manualForm.name,
+                        entityId: `manual-${Date.now()}`,
+                        description: `New intent "${manualForm.name}" submitted for approval`,
+                        detail: `Manually created intent with ${manualForm.utterances.split('\n').filter(Boolean).length} utterances. Response mode: ${manualForm.responseMode}.`,
+                        submittedBy: 'System Admin',
+                      });
+                      onAddAuditEvent({
+                        actor: 'System Admin', actorRole: 'BA',
+                        actionType: 'intent.create',
+                        entityType: 'intent',
+                        entityId: `manual-${Date.now()}`,
+                        entityName: manualForm.name,
+                        description: `New intent submitted for approval`,
+                        severity: 'info',
+                      });
+                      showToast('New intent submitted for approval');
+                      setManualForm({ name: '', utterances: '', response: '', responseMode: 'genai' });
+                      setShowManualCreate(false);
+                    }}
+                    className="px-4 py-2 rounded-xl bg-[#E3000F] text-white hover:bg-red-700 font-bold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Submit for Approval
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
 
