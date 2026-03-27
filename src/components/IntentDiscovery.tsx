@@ -21,6 +21,9 @@ import {
   Info,
   GitCompare,
   ArrowUpCircle,
+  Sparkles,
+  Loader2,
+  Check,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
@@ -263,6 +266,10 @@ export default function IntentDiscovery({ onDeploy, onAddApproval, onAddAuditEve
   // Manual intent creation
   const [showManualCreate, setShowManualCreate] = useState(false);
   const [manualForm, setManualForm] = useState({ name: '', utterances: '', response: '', responseMode: 'genai' });
+  const [isGeneratingManualUtterances, setIsGeneratingManualUtterances] = useState(false);
+  const [suggestedManualUtterances, setSuggestedManualUtterances] = useState<string[]>([]);
+  const [isDraftingManualResponse, setIsDraftingManualResponse] = useState(false);
+  const [originalManualResponse, setOriginalManualResponse] = useState<string | null>(null);
 
   useEffect(() => {
     if (autoOpenCreate) {
@@ -1281,7 +1288,7 @@ export default function IntentDiscovery({ onDeploy, onAddApproval, onAddAuditEve
                 </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6 custom-scrollbar">
+              <div className="flex-1 min-h-0 overflow-y-auto p-6 flex flex-col gap-6 custom-scrollbar">
                 {/* Column headers */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="flex items-center gap-2 px-4 py-2 bg-slate-100 rounded-xl">
@@ -1296,6 +1303,16 @@ export default function IntentDiscovery({ onDeploy, onAddApproval, onAddAuditEve
 
                 {activeSync.diffs.map(diff => {
                   const prod = MOCK_PRODUCTION_INTENTS[diff.intent];
+
+                  // Compute per-utterance diff for 'changed' items
+                  const prodSet = new Set(prod?.utterances ?? []);
+                  const stagingSet = new Set(diff.utterances);
+                  const allUtterances = diff.status === 'changed' && prod
+                    ? [...new Set([...prod.utterances, ...diff.utterances])]
+                    : [];
+
+                  const responseChanged = diff.status === 'changed' && prod && prod.response !== diff.response;
+
                   return (
                     <div key={diff.id} className="border border-slate-200 rounded-2xl overflow-hidden">
                       <div className="px-5 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
@@ -1309,82 +1326,128 @@ export default function IntentDiscovery({ onDeploy, onAddApproval, onAddAuditEve
                           {diff.status}
                         </span>
                       </div>
-                      <div className="grid grid-cols-2 divide-x divide-slate-200">
-                        {/* Production side */}
-                        <div className="p-5 flex flex-col gap-3">
-                          {diff.status === 'new' ? (
-                            <div className="flex flex-col items-center justify-center h-24 text-slate-400 gap-2">
-                              <Plus size={20} className="opacity-30" />
-                              <span className="text-sm italic">No existing record</span>
-                            </div>
-                          ) : prod ? (
-                            <>
-                              <div>
-                                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest block mb-1.5">Utterances</span>
-                                <div className="flex flex-wrap gap-1.5">
-                                  {prod.utterances.map((u, i) => (
-                                    <span
-                                      key={i}
-                                      className={cn(
-                                        "text-xs px-2 py-0.5 rounded border italic",
-                                        diff.status === 'deleted'
-                                          ? "bg-red-50 border-red-200 text-red-600 line-through"
-                                          : "bg-white border-slate-200 text-slate-500"
-                                      )}
-                                    >
-                                      "{u}"
+
+                      {/* Changed: unified diff view */}
+                      {diff.status === 'changed' && prod ? (
+                        <div className="p-5 flex flex-col gap-4">
+                          <div>
+                            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest block mb-2">Utterances</span>
+                            <div className="flex flex-wrap gap-1.5">
+                              {allUtterances.map((u, i) => {
+                                const inProd = prodSet.has(u);
+                                const inStaging = stagingSet.has(u);
+                                if (inProd && inStaging) {
+                                  return (
+                                    <span key={i} className="text-xs px-2 py-0.5 rounded border bg-slate-50 border-slate-200 text-slate-500 italic">
+                                      <span className="text-slate-300 font-mono mr-1">[=]</span>"{u}"
                                     </span>
-                                  ))}
-                                </div>
-                              </div>
+                                  );
+                                } else if (!inProd && inStaging) {
+                                  return (
+                                    <span key={i} className="text-xs px-2 py-0.5 rounded border bg-emerald-50 border-emerald-300 text-emerald-700 font-bold italic">
+                                      <span className="font-mono mr-1">[+]</span>"{u}"
+                                    </span>
+                                  );
+                                } else {
+                                  return (
+                                    <span key={i} className="text-xs px-2 py-0.5 rounded border bg-red-50 border-red-200 text-red-500 italic line-through">
+                                      <span className="font-mono mr-1 no-underline">[−]</span>"{u}"
+                                    </span>
+                                  );
+                                }
+                              })}
+                            </div>
+                            <div className="flex items-center gap-4 mt-2 text-xs text-slate-400">
+                              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-emerald-200 inline-block" />[+] added</span>
+                              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-red-200 inline-block" />[−] removed</span>
+                              <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-slate-200 inline-block" />[=] unchanged</span>
+                            </div>
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Response</span>
+                              {responseChanged && (
+                                <span className="text-xs font-bold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-lg">changed</span>
+                              )}
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
                               <div>
-                                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest block mb-1.5">Response</span>
-                                <p className={cn(
-                                  "text-xs leading-relaxed p-3 rounded-xl border",
-                                  diff.status === 'deleted'
-                                    ? "bg-red-50 border-red-200 text-red-600 line-through"
-                                    : "bg-white border-slate-100 text-slate-500"
-                                )}>
+                                <span className="text-xs font-medium text-slate-400 block mb-1">Old (Production)</span>
+                                <p className="text-xs leading-relaxed bg-white border border-slate-200 text-slate-500 p-3 rounded-xl">
                                   {prod.response}
                                 </p>
                               </div>
-                            </>
-                          ) : (
-                            <p className="text-xs text-slate-400 italic">No production record found</p>
-                          )}
-                        </div>
-                        {/* Staging side */}
-                        <div className="p-5 flex flex-col gap-3">
-                          {diff.status === 'deleted' ? (
-                            <div className="flex flex-col items-center justify-center h-24 text-red-400 gap-2">
-                              <Trash2 size={20} className="opacity-50" />
-                              <span className="text-sm italic font-medium">Will be removed</span>
-                            </div>
-                          ) : (
-                            <>
                               <div>
-                                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest block mb-1.5">Utterances</span>
-                                <div className="flex flex-wrap gap-1.5">
-                                  {diff.utterances.map((u, i) => (
-                                    <span
-                                      key={i}
-                                      className="text-xs px-2 py-0.5 rounded border bg-emerald-50 border-emerald-200 text-emerald-700 italic"
-                                    >
-                                      "{u}"
-                                    </span>
-                                  ))}
-                                </div>
-                              </div>
-                              <div>
-                                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest block mb-1.5">Response</span>
+                                <span className="text-xs font-medium text-emerald-600 block mb-1">New (Staging)</span>
                                 <p className="text-xs leading-relaxed bg-emerald-50 border border-emerald-200 text-emerald-800 p-3 rounded-xl">
                                   {diff.response}
                                 </p>
                               </div>
-                            </>
-                          )}
+                            </div>
+                          </div>
                         </div>
-                      </div>
+                      ) : (
+                        <div className="grid grid-cols-2 divide-x divide-slate-200">
+                          {/* Production side */}
+                          <div className="p-5 flex flex-col gap-3">
+                            {diff.status === 'new' ? (
+                              <div className="flex flex-col items-center justify-center h-24 text-slate-400 gap-2">
+                                <Plus size={20} className="opacity-30" />
+                                <span className="text-sm italic">No existing record</span>
+                              </div>
+                            ) : prod ? (
+                              <>
+                                <div>
+                                  <span className="text-xs font-bold text-slate-400 uppercase tracking-widest block mb-1.5">Utterances</span>
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {prod.utterances.map((u, i) => (
+                                      <span key={i} className="text-xs px-2 py-0.5 rounded border bg-red-50 border-red-200 text-red-600 line-through italic">
+                                        "{u}"
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                                <div>
+                                  <span className="text-xs font-bold text-slate-400 uppercase tracking-widest block mb-1.5">Response</span>
+                                  <p className="text-xs leading-relaxed p-3 rounded-xl border bg-red-50 border-red-200 text-red-600 line-through">
+                                    {prod.response}
+                                  </p>
+                                </div>
+                              </>
+                            ) : (
+                              <p className="text-xs text-slate-400 italic">No production record found</p>
+                            )}
+                          </div>
+                          {/* Staging side */}
+                          <div className="p-5 flex flex-col gap-3">
+                            {diff.status === 'deleted' ? (
+                              <div className="flex flex-col items-center justify-center h-24 text-red-400 gap-2">
+                                <Trash2 size={20} className="opacity-50" />
+                                <span className="text-sm italic font-medium">Will be removed</span>
+                              </div>
+                            ) : (
+                              <>
+                                <div>
+                                  <span className="text-xs font-bold text-slate-400 uppercase tracking-widest block mb-1.5">Utterances</span>
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {diff.utterances.map((u, i) => (
+                                      <span key={i} className="text-xs px-2 py-0.5 rounded border bg-emerald-50 border-emerald-200 text-emerald-700 italic">
+                                        "{u}"
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                                <div>
+                                  <span className="text-xs font-bold text-slate-400 uppercase tracking-widest block mb-1.5">Response</span>
+                                  <p className="text-xs leading-relaxed bg-emerald-50 border border-emerald-200 text-emerald-800 p-3 rounded-xl">
+                                    {diff.response}
+                                  </p>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -1475,7 +1538,7 @@ export default function IntentDiscovery({ onDeploy, onAddApproval, onAddAuditEve
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               className="fixed inset-0 flex items-center justify-center z-[120] pointer-events-none p-6"
             >
-              <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg pointer-events-auto flex flex-col overflow-hidden">
+              <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg pointer-events-auto flex flex-col overflow-hidden max-h-[90vh]">
                 <div className="p-6 border-b border-slate-100 flex items-center justify-between">
                   <h3 className="text-xl font-bold text-slate-900">New Intent</h3>
                   <button onClick={() => setShowManualCreate(false)} className="p-2 hover:bg-slate-100 rounded-full text-slate-400 transition-all">
@@ -1506,7 +1569,66 @@ export default function IntentDiscovery({ onDeploy, onAddApproval, onAddAuditEve
                     </select>
                   </div>
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-sm font-bold text-slate-700">Utterances <span className="font-normal text-slate-400">(one per line)</span></label>
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-bold text-slate-700">Utterances <span className="font-normal text-slate-400">(one per line)</span></label>
+                      <button
+                        type="button"
+                        disabled={!manualForm.name.trim() || isGeneratingManualUtterances}
+                        onClick={() => {
+                          setIsGeneratingManualUtterances(true);
+                          setSuggestedManualUtterances([]);
+                          setTimeout(() => {
+                            const base = manualForm.name.replace(/_/g, ' ').toLowerCase();
+                            setSuggestedManualUtterances([
+                              `Tell me about ${base}`,
+                              `I need help with ${base}`,
+                              `Can you explain ${base}?`,
+                              `What is ${base}?`,
+                              `How does ${base} work?`,
+                            ]);
+                            setIsGeneratingManualUtterances(false);
+                          }, 1200);
+                        }}
+                        className="flex items-center gap-1.5 px-3 py-1 text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-200 rounded-lg hover:bg-indigo-100 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        {isGeneratingManualUtterances ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+                        AI Suggest
+                      </button>
+                    </div>
+                    {suggestedManualUtterances.length > 0 && (
+                      <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-xl flex flex-col gap-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-indigo-700">AI Suggestions</span>
+                          <button onClick={() => setSuggestedManualUtterances([])} className="text-indigo-400 hover:text-indigo-700"><X size={13} /></button>
+                        </div>
+                        {suggestedManualUtterances.map((u, i) => (
+                          <div key={i} className="flex items-center gap-2">
+                            <span className="flex-1 text-xs text-indigo-700 italic">"{u}"</span>
+                            <button
+                              onClick={() => {
+                                const existing = manualForm.utterances.trim();
+                                setManualForm(f => ({ ...f, utterances: existing ? `${existing}\n${u}` : u }));
+                                setSuggestedManualUtterances(prev => prev.filter((_, j) => j !== i));
+                              }}
+                              className="shrink-0 text-xs font-bold text-indigo-600 bg-white border border-indigo-200 px-2 py-0.5 rounded-lg hover:bg-indigo-50 flex items-center gap-1"
+                            >
+                              <Check size={11} /> Add
+                            </button>
+                          </div>
+                        ))}
+                        <button
+                          onClick={() => {
+                            const existing = manualForm.utterances.trim();
+                            const all = suggestedManualUtterances.join('\n');
+                            setManualForm(f => ({ ...f, utterances: existing ? `${existing}\n${all}` : all }));
+                            setSuggestedManualUtterances([]);
+                          }}
+                          className="text-xs font-bold text-indigo-700 bg-indigo-100 hover:bg-indigo-200 border border-indigo-200 px-3 py-1 rounded-lg transition-all"
+                        >
+                          Add All
+                        </button>
+                      </div>
+                    )}
                     <textarea
                       value={manualForm.utterances}
                       onChange={e => setManualForm(f => ({ ...f, utterances: e.target.value }))}
@@ -1516,19 +1638,59 @@ export default function IntentDiscovery({ onDeploy, onAddApproval, onAddAuditEve
                     />
                   </div>
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-sm font-bold text-slate-700">Response</label>
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-bold text-slate-700">Response</label>
+                      <div className="flex items-center gap-2">
+                        {originalManualResponse !== null && (
+                          <button
+                            type="button"
+                            onClick={() => { setManualForm(f => ({ ...f, response: originalManualResponse })); setOriginalManualResponse(null); }}
+                            className="flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-700"
+                          >
+                            <RotateCcw size={11} /> Revert
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          disabled={!manualForm.name.trim() || isDraftingManualResponse}
+                          onClick={() => {
+                            setIsDraftingManualResponse(true);
+                            setTimeout(() => {
+                              const base = manualForm.name.replace(/_/g, ' ').toLowerCase();
+                              const drafted = `Based on our knowledge base, ${base} involves the following key points. Please consult an OCBC advisor for personalised guidance. [AI-drafted — review before saving]`;
+                              setOriginalManualResponse(manualForm.response);
+                              setManualForm(f => ({ ...f, response: drafted }));
+                              setIsDraftingManualResponse(false);
+                            }, 1200);
+                          }}
+                          className="flex items-center gap-1.5 px-3 py-1 text-xs font-bold text-indigo-600 bg-indigo-50 border border-indigo-200 rounded-lg hover:bg-indigo-100 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          {isDraftingManualResponse ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+                          AI Draft
+                        </button>
+                      </div>
+                    </div>
+                    {originalManualResponse !== null && (
+                      <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-lg">
+                        <Sparkles size={12} className="text-amber-500" />
+                        <span className="text-xs font-medium text-amber-700">AI-drafted response — review before saving</span>
+                      </div>
+                    )}
                     <textarea
                       value={manualForm.response}
                       onChange={e => setManualForm(f => ({ ...f, response: e.target.value }))}
                       placeholder="Enter the response text..."
                       rows={3}
-                      className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#E3000F] resize-none"
+                      className={cn(
+                        "px-4 py-2.5 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#E3000F] resize-none",
+                        originalManualResponse !== null ? "bg-amber-50 border-amber-200" : "bg-slate-50 border-slate-200"
+                      )}
                     />
                   </div>
                 </div>
                 <div className="p-6 border-t border-slate-100 flex justify-end gap-3">
                   <button
-                    onClick={() => setShowManualCreate(false)}
+                    onClick={() => { setShowManualCreate(false); setSuggestedManualUtterances([]); setOriginalManualResponse(null); }}
                     className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 font-medium text-sm transition-all"
                   >
                     Cancel
@@ -1555,6 +1717,8 @@ export default function IntentDiscovery({ onDeploy, onAddApproval, onAddAuditEve
                       });
                       showToast('New intent submitted for approval');
                       setManualForm({ name: '', utterances: '', response: '', responseMode: 'genai' });
+                      setSuggestedManualUtterances([]);
+                      setOriginalManualResponse(null);
                       setShowManualCreate(false);
                     }}
                     className="px-4 py-2 rounded-xl bg-[#E3000F] text-white hover:bg-red-700 font-bold text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed"

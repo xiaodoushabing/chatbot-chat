@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Zap,
   MessageSquare,
@@ -18,6 +18,9 @@ import {
   Power,
   CheckSquare,
   Library,
+  MoreHorizontal,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import IntentDiscovery from './components/IntentDiscovery';
@@ -452,19 +455,29 @@ const SEED_AUDIT_EVENTS: AuditEvent[] = [
 ];
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<Tab>('active-intents');
+  const [activeTab, setActiveTab] = useState<Tab>('preview');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [showMoreNav, setShowMoreNav] = useState(false);
   const [killSwitchActive, setKillSwitchActive] = useState(() => {
     return localStorage.getItem('killSwitchActive') === 'true';
   });
   const [autoOpenCreate, setAutoOpenCreate] = useState(false);
-  const [pendingApprovals, setPendingApprovals] = useState<PendingApproval[]>(SEED_APPROVALS);
+  const [pendingApprovals, setPendingApprovals] = useState<PendingApproval[]>(() => {
+    try {
+      const saved = localStorage.getItem('ocbc_pending_approvals');
+      return saved ? JSON.parse(saved) : SEED_APPROVALS;
+    } catch { return SEED_APPROVALS; }
+  });
   const [auditEvents, setAuditEvents] = useState<AuditEvent[]>(SEED_AUDIT_EVENTS);
 
   const updateKillSwitch = (active: boolean) => {
     setKillSwitchActive(active);
     localStorage.setItem('killSwitchActive', String(active));
   };
+
+  useEffect(() => {
+    try { localStorage.setItem('ocbc_pending_approvals', JSON.stringify(pendingApprovals)); } catch {}
+  }, [pendingApprovals]);
 
   const addApproval = (a: Omit<PendingApproval, 'id' | 'submittedAt' | 'status'>) => {
     setPendingApprovals(prev => [{
@@ -531,16 +544,20 @@ export default function App() {
   };
 
   const navItems = [
+    { id: 'preview', label: 'Bot Tech Benchmark', icon: <Bot size={22} />, description: 'Performance Testing' },
     { id: 'active-intents', label: 'Active Topics', icon: <MessageSquare size={22} />, description: 'Manage Live Database' },
-    { id: 'discovery', label: 'Intent Discovery', icon: <Zap size={22} />, description: 'Automated Knowledge Sync' },
     { id: 'dashboard', label: 'Observability', icon: <Activity size={22} />, description: 'Intelligence & Monitoring' },
-    { id: 'preview', label: 'Chatbot Preview', icon: <Bot size={22} />, description: 'Next-Gen Experience' },
+    { id: 'discovery', label: 'Topic Discovery', icon: <Zap size={22} />, description: 'Automated Knowledge Sync' },
+  ];
+
+  const moreNavItems = [
     { id: 'active-agents', label: 'Active Agents', icon: <Users2 size={22} />, description: 'Manage AI Agents' },
     { id: 'content-library', label: 'Content Library', icon: <Library size={22} />, description: 'Templates & Documents' },
-    { id: 'guardrails', label: 'Guardrails', icon: <ShieldAlert size={22} />, description: 'Policy & Provider Config' },
     { id: 'audit-trail', label: 'Audit Trail', icon: <ClipboardList size={22} />, description: 'Compliance & Change History' },
-    { id: 'change-control', label: 'Change Control', icon: <CheckSquare size={22} />, description: 'Kill Switch & Approvals' },
+    { id: 'change-control', label: 'Change Control', icon: <CheckSquare size={22} />, description: 'Maker-Checker Approvals' },
   ];
+
+  const allNavItems = [...navItems, ...moreNavItems];
 
   const handleDeploySuccess = () => {
     setActiveTab('active-intents');
@@ -570,8 +587,8 @@ export default function App() {
               </div>
             </div>
           ) : (
-            <div className="w-14 h-14 bg-[#E3000F] rounded-xl flex items-center justify-center text-white font-black text-[0.6rem] shadow-lg shadow-red-200 shrink-0 mx-auto tracking-wide">
-              OCBC
+            <div className="w-10 h-10 overflow-hidden shrink-0 mx-auto flex items-center">
+              <img src={ocbcLogo} alt="OCBC Logo" className="h-9 object-none object-left" />
             </div>
           )}
         </div>
@@ -609,6 +626,68 @@ export default function App() {
               )}
             </button>
           ))}
+
+          {/* More toggle */}
+          <button
+            onClick={() => setShowMoreNav(!showMoreNav)}
+            className="group flex items-center gap-3 p-2.5 rounded-xl transition-all text-slate-400 hover:bg-slate-100 hover:text-slate-900 mt-1"
+          >
+            <div className="shrink-0">
+              <MoreHorizontal size={22} />
+            </div>
+            {isSidebarOpen && (
+              <div className="flex flex-col items-start flex-1 overflow-hidden whitespace-nowrap">
+                <div className="flex items-center gap-2 w-full">
+                  <span className="font-bold text-lg">More</span>
+                  {showMoreNav ? <ChevronUp size={14} className="ml-auto" /> : <ChevronDown size={14} className="ml-auto" />}
+                </div>
+              </div>
+            )}
+          </button>
+
+          <AnimatePresence>
+            {showMoreNav && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="flex flex-col gap-1 pl-2"
+              >
+                {moreNavItems.map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => setActiveTab(item.id as Tab)}
+                    className={cn(
+                      "group flex items-center gap-3 p-2.5 rounded-xl transition-all relative",
+                      activeTab === item.id
+                        ? "bg-red-50 text-[#E3000F]"
+                        : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+                    )}
+                  >
+                    <div className={cn(
+                      "shrink-0 transition-transform group-hover:scale-110",
+                      activeTab === item.id ? "text-[#E3000F]" : "text-slate-400"
+                    )}>
+                      {item.icon}
+                    </div>
+                    {isSidebarOpen && (
+                      <div className="flex flex-col items-start overflow-hidden whitespace-nowrap">
+                        <span className="font-bold text-base">{item.label}</span>
+                        <span className="text-xs font-medium opacity-60">{item.description}</span>
+                      </div>
+                    )}
+                    {activeTab === item.id && (
+                      <motion.div
+                        layoutId="active-pill"
+                        className="absolute left-0 w-1.5 h-9 bg-[#E3000F] rounded-r-full"
+                      />
+                    )}
+                  </button>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </nav>
 
         {/* User Section */}
@@ -652,7 +731,7 @@ export default function App() {
               <span>Admin</span>
               <ChevronRight size={16} />
               <span className="text-slate-900 font-bold">
-                {navItems.find(n => n.id === activeTab)?.label}
+                {allNavItems.find(n => n.id === activeTab)?.label}
               </span>
             </div>
           </div>
@@ -660,7 +739,7 @@ export default function App() {
           <div className="flex items-center gap-4">
             {killSwitchActive && (
               <button
-                onClick={() => setActiveTab('change-control')}
+                onClick={() => setActiveTab('dashboard')}
                 className="flex items-center gap-2 px-3 py-2 bg-red-600 text-white rounded-lg animate-pulse hover:bg-red-700 transition-all"
               >
                 <Power size={14} />
@@ -700,19 +779,18 @@ export default function App() {
               className="h-full"
             >
               {activeTab === 'discovery' && <IntentDiscovery onDeploy={handleDeploySuccess} onAddApproval={addApproval} onAddAuditEvent={addAuditEvent} autoOpenCreate={autoOpenCreate} onClearAutoOpen={() => setAutoOpenCreate(false)} />}
-              {activeTab === 'dashboard' && <ExecutiveDashboard onNavigate={(tab, opts) => { setActiveTab(tab as Tab); if (opts?.autoOpenCreate) setAutoOpenCreate(true); }} />}
+              {activeTab === 'dashboard' && <ExecutiveDashboard onNavigate={(tab, opts) => { setActiveTab(tab as Tab); if (opts?.autoOpenCreate) setAutoOpenCreate(true); }} killSwitchActive={killSwitchActive} onUpdateKillSwitch={updateKillSwitch} onAddApproval={addApproval} onAddAuditEvent={addAuditEvent} approvals={pendingApprovals} />}
               {activeTab === 'active-intents' && <ActiveIntents onAddApproval={addApproval} onAddAuditEvent={addAuditEvent} autoOpenCreate={autoOpenCreate} onClearAutoOpen={() => setAutoOpenCreate(false)} pendingApprovals={pendingApprovals} />}
               {activeTab === 'active-agents' && <ActiveAgents onAddApproval={addApproval} onAddAuditEvent={addAuditEvent} onNavigate={(tab) => setActiveTab(tab as Tab)} pendingApprovals={pendingApprovals} />}
               {activeTab === 'audit-trail' && <AuditTrail auditEvents={auditEvents} />}
-              {activeTab === 'guardrails' && <GuardrailsConfig onAddApproval={addApproval} onAddAuditEvent={addAuditEvent} />}
-              {activeTab === 'change-control' && <AdminControlInterface approvals={pendingApprovals} killSwitchActive={killSwitchActive} onApprovalDecision={processApproval} onAddApproval={addApproval} onAddAuditEvent={addAuditEvent} />}
-              {activeTab === 'content-library' && <ContentLibrary />}
+              {activeTab === 'change-control' && <AdminControlInterface approvals={pendingApprovals} onApprovalDecision={processApproval} onAddApproval={addApproval} onAddAuditEvent={addAuditEvent} />}
+              {activeTab === 'content-library' && <ContentLibrary onAddApproval={addApproval} onAddAuditEvent={addAuditEvent} pendingApprovals={pendingApprovals} />}
               {activeTab === 'preview' && (
                 <div className="p-8 flex flex-col items-center justify-center min-h-[calc(100vh-80px)]">
                   <div className="max-w-lg w-full">
                     <div className="mb-8 text-center">
-                      <h2 className="text-3xl font-bold text-slate-900">Experience OCBC Next-Gen Banking</h2>
-                      <p className="text-slate-500 mt-3 text-base">Test the OCBC retirement planner chatbot with real-time dashboard context and life-event awareness.</p>
+                      <h2 className="text-3xl font-bold text-slate-900">Bot Tech Benchmark</h2>
+                      <p className="text-slate-500 mt-3 text-base">Test and benchmark the OCBC retirement planner chatbot with real-time routing traces and guardrail validation.</p>
                     </div>
                     <ChatbotPreview />
                   </div>

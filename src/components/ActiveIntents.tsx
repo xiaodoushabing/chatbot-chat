@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Search,
   Filter,
@@ -102,19 +102,15 @@ const MOCK_HISTORY: Record<string, HistoryEntry[]> = {
 };
 
 const INITIAL_TOPICS: Topic[] = [
+  // ── Low risk — GenAI ──────────────────────────────────────────────────────
   {
     id: '1', name: 'OCBC_360_Salary_Credit', queries: 1840, responseMode: 'genai', riskLevel: 'low', status: 'active', environment: 'production',
     utterances: ['What is the minimum salary credit for OCBC 360?', 'How does salary credit affect my 360 interest?', 'Can I use GIRO for salary credit?'],
     response: 'To earn the Salary bonus interest on your OCBC 360 Account, you need to credit a minimum salary of S$1,800 through GIRO.'
   },
   {
-    id: '2', name: 'Home_Loan_Repayment_Impact', queries: 920, responseMode: 'genai', riskLevel: 'high', status: 'active', environment: 'production',
-    utterances: ['I am getting a new house, how does it affect my savings?', 'Impact of mortgage on OCBC 360 wealth bonus'],
-    response: 'Taking up an OCBC Home Loan can help you earn the Wealth bonus on your 360 Account. However, a new mortgage will reduce your monthly disposable income.'
-  },
-  {
     id: '3', name: 'OCBC_Life_Goals_Retirement', queries: 2310, responseMode: 'genai', riskLevel: 'low', status: 'active', environment: 'production',
-    utterances: ['How do I set up a retirement goal in OCBC app?', 'OCBC Life Goals retirement calculator'],
+    utterances: ['How do I set up a retirement goal in OCBC app?', 'OCBC Life Goals retirement calculator', 'What is the OCBC Life Goals feature?'],
     response: 'You can set up a retirement goal using OCBC Life Goals in the OCBC Digital app.'
   },
   {
@@ -122,10 +118,11 @@ const INITIAL_TOPICS: Topic[] = [
     utterances: ['What is my account balance?', 'Show me my balance', 'How much money do I have?'],
     response: 'I can help you check your account balance. Please log in to your OCBC Digital app or visit any OCBC ATM.'
   },
+  // ── High risk — GenAI, Template, Exclude ─────────────────────────────────
   {
-    id: '5', name: 'Card_Replacement', queries: 850, responseMode: 'template', riskLevel: 'low', status: 'active', environment: 'production',
-    utterances: ['I lost my card', 'How to replace my debit card?', 'My card is damaged'],
-    response: 'You can request a card replacement through the OCBC Digital app under Card Services, or visit any OCBC branch.'
+    id: '2', name: 'Home_Loan_Repayment_Impact', queries: 920, responseMode: 'genai', riskLevel: 'high', status: 'active', environment: 'production',
+    utterances: ['I am getting a new house, how does it affect my savings?', 'Impact of mortgage on OCBC 360 wealth bonus', 'Will buying a house delay my retirement goals?'],
+    response: 'Taking up an OCBC Home Loan can help you earn the Wealth bonus on your 360 Account. However, a new mortgage will reduce your monthly disposable income.'
   },
   {
     id: '6', name: 'International_Transfer', queries: 2100, responseMode: 'template', riskLevel: 'high', status: 'active', environment: 'production',
@@ -136,11 +133,6 @@ const INITIAL_TOPICS: Topic[] = [
     id: '7', name: 'Investment_Product_Inquiry', queries: 430, responseMode: 'exclude', riskLevel: 'high', status: 'active', environment: 'production',
     utterances: ['What investments does OCBC offer?', 'Show me unit trusts', 'Can I buy stocks through OCBC?'],
     response: 'OCBC offers a range of investment products. Please speak with our wealth advisors for personalised guidance.'
-  },
-  {
-    id: '8', name: 'CPF_Retirement_Advisory', queries: 0, responseMode: 'genai', riskLevel: 'high', status: 'active', environment: 'staging',
-    utterances: ['How does CPF LIFE work?', 'When can I withdraw my CPF?', 'CPF retirement sum options', 'How much CPF do I need to retire?'],
-    response: 'CPF LIFE is a national longevity insurance annuity scheme that provides lifelong monthly payouts from your payout eligibility age.'
   },
 ];
 
@@ -179,7 +171,7 @@ let toastIdCounter = 0;
 export default function ActiveIntents({ onAddApproval, onAddAuditEvent, autoOpenCreate, onClearAutoOpen, pendingApprovals = [] }: ActiveIntentsProps) {
   const [topics, setTopics] = useState<Topic[]>(() => {
     try {
-      const saved = localStorage.getItem('ocbc_topics');
+      const saved = localStorage.getItem('ocbc_topics_v2');
       return saved ? JSON.parse(saved) : INITIAL_TOPICS;
     } catch { return INITIAL_TOPICS; }
   });
@@ -208,8 +200,45 @@ export default function ActiveIntents({ onAddApproval, onAddAuditEvent, autoOpen
   const [toasts, setToasts] = useState<ToastMsg[]>([]);
 
   useEffect(() => {
-    try { localStorage.setItem('ocbc_topics', JSON.stringify(topics)); } catch {}
+    try { localStorage.setItem('ocbc_topics_v2', JSON.stringify(topics)); } catch {}
   }, [topics]);
+
+  // Apply approved/rejected changes back to topics state
+  const appliedApprovalIds = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const newlyDecided = pendingApprovals.filter(a =>
+      (a.status === 'approved' || a.status === 'rejected') &&
+      a.payload &&
+      !appliedApprovalIds.current.has(a.id)
+    );
+    if (newlyDecided.length === 0) return;
+    newlyDecided.forEach(a => appliedApprovalIds.current.add(a.id));
+    setTopics(prev => {
+      let updated = [...prev];
+      for (const approval of newlyDecided) {
+        const p = approval.payload!;
+        const topicId = p.topicId as string;
+        if (approval.status === 'rejected') {
+          // Clear the pending flag on rejection
+          updated = updated.map(t => t.id === topicId ? { ...t, pendingApproval: false } : t);
+        } else {
+          // Apply the change on approval
+          if (p.action === 'delete') {
+            updated = updated.filter(t => t.id !== topicId);
+          } else if (p.action === 'promote') {
+            updated = updated.map(t => t.id === topicId ? { ...t, environment: 'production' as const, pendingApproval: false } : t);
+          } else if (p.action === 'edit') {
+            updated = updated.map(t => t.id === topicId ? { ...(p.topic as Topic), pendingApproval: false } : t);
+          } else if (p.field === 'responseMode') {
+            updated = updated.map(t => t.id === topicId ? { ...t, responseMode: p.value as ResponseMode, pendingApproval: false } : t);
+          } else if (p.field === 'status') {
+            updated = updated.map(t => t.id === topicId ? { ...t, status: p.value as 'active' | 'inactive', pendingApproval: false } : t);
+          }
+        }
+      }
+      return updated;
+    });
+  }, [pendingApprovals]);
 
   const showToast = (message: string) => {
     const id = ++toastIdCounter;
@@ -271,6 +300,7 @@ export default function ActiveIntents({ onAddApproval, onAddAuditEvent, autoOpen
           description: `Response mode change: ${topic.responseMode} → ${mode}`,
           detail: `Response mode for "${topic.name}" changed from ${topic.responseMode} to ${mode}. Submitted by System Admin.`,
           submittedBy: 'System Admin',
+          payload: { topicId: topic.id, field: 'responseMode', value: mode },
         });
         onAddAuditEvent({
           actor: 'System Admin',
@@ -284,6 +314,7 @@ export default function ActiveIntents({ onAddApproval, onAddAuditEvent, autoOpen
           before: { responseMode: topic.responseMode },
           after: { responseMode: mode },
         });
+        setTopics(prev => prev.map(t => t.id === topic.id ? { ...t, pendingApproval: true } : t));
         showToast('Response mode change submitted for approval');
       },
     });
@@ -311,6 +342,7 @@ export default function ActiveIntents({ onAddApproval, onAddAuditEvent, autoOpen
       description: `Set status: ${topic.status} → ${newStatus}`,
       detail: `Status change for intent "${topic.name}" submitted for checker approval. Current status: ${topic.status}.`,
       submittedBy: 'System Admin',
+      payload: { topicId: topic.id, field: 'status', value: newStatus },
     });
     onAddAuditEvent({
       actor: 'System Admin',
@@ -322,6 +354,7 @@ export default function ActiveIntents({ onAddApproval, onAddAuditEvent, autoOpen
       description: `Submitted status toggle for approval: ${topic.status} → ${newStatus}`,
       severity: 'info',
     });
+    setTopics(prev => prev.map(t => t.id === id ? { ...t, pendingApproval: true } : t));
     showToast(`Status change submitted for approval`);
   };
 
@@ -339,6 +372,7 @@ export default function ActiveIntents({ onAddApproval, onAddAuditEvent, autoOpen
           description: `Delete intent "${topic.name}"`,
           detail: `Deletion of intent "${topic.name}" submitted for checker approval. Submitted by System Admin.`,
           submittedBy: 'System Admin',
+          payload: { topicId: topic.id, action: 'delete' },
         });
         onAddAuditEvent({
           actor: 'System Admin',
@@ -350,6 +384,7 @@ export default function ActiveIntents({ onAddApproval, onAddAuditEvent, autoOpen
           description: `Intent deletion submitted for approval`,
           severity: 'warning',
         });
+        setTopics(prev => prev.map(t => t.id === topic.id ? { ...t, pendingApproval: true } : t));
         showToast('Delete request submitted for approval');
       },
     });
@@ -377,6 +412,7 @@ export default function ActiveIntents({ onAddApproval, onAddAuditEvent, autoOpen
         detail: `Intent in staging submitted for production promotion. Submitted by System Admin.`,
         submittedBy: 'System Admin',
         batchItems: [topic.name],
+        payload: { topicId: id, action: 'promote' },
       });
       onAddAuditEvent({
         actor: 'System Admin',
@@ -388,6 +424,7 @@ export default function ActiveIntents({ onAddApproval, onAddAuditEvent, autoOpen
         description: `Intent promotion to Production submitted for approval`,
         severity: 'info',
       });
+      setTopics(prev => prev.map(t => t.id === id ? { ...t, pendingApproval: true } : t));
       showToast('Submitted for maker-checker approval');
     }
   };
@@ -412,6 +449,7 @@ export default function ActiveIntents({ onAddApproval, onAddAuditEvent, autoOpen
       description: `Edit intent "${editingTopic.name}"`,
       detail: `Updated utterances (${editingTopic.utterances.length}) and response text. Submitted by System Admin.`,
       submittedBy: 'System Admin',
+      payload: { topicId: editingTopic.id, action: 'edit', topic: editingTopic },
     });
     onAddAuditEvent({
       actor: 'System Admin',
@@ -425,6 +463,7 @@ export default function ActiveIntents({ onAddApproval, onAddAuditEvent, autoOpen
       before: original ? { utterances: original.utterances, response: original.response } : undefined,
       after: { utterances: editingTopic.utterances, response: editingTopic.response },
     });
+    setTopics(prev => prev.map(t => t.id === editingTopic.id ? { ...t, pendingApproval: true } : t));
     setEditingTopic(null);
     showToast('Edit submitted for approval');
   };
@@ -753,7 +792,7 @@ export default function ActiveIntents({ onAddApproval, onAddAuditEvent, autoOpen
                       <button
                         onClick={() => setEditingTopic({ ...topic })}
                         title="Edit"
-                        className="p-2.5 hover:bg-red-50 text-slate-400 hover:text-[#E3000F] rounded-lg transition-all"
+                        className="p-2.5 hover:bg-blue-50 text-slate-400 hover:text-blue-600 rounded-lg transition-all"
                       >
                         <Edit3 size={18} />
                       </button>

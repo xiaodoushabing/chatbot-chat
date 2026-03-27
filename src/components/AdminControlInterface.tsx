@@ -1,20 +1,17 @@
 import React, { useState } from 'react';
 import {
-  Power,
-  Zap,
   ClipboardCheck,
   CheckCircle,
   Check,
   X,
   Clock,
-  Layers,
   ChevronDown,
   ChevronUp,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { PendingApproval, AuditEvent, AuditActionType, ApprovalActionType } from '../types';
+import { PendingApproval, AuditEvent, ApprovalActionType } from '../types';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -91,6 +88,24 @@ const ACTION_TYPE_CONFIG: Record<
     textClass: 'text-cyan-700',
     borderClass: 'border-cyan-200',
   },
+  'document.reindex': {
+    label: 'Document Re-index',
+    bgClass: 'bg-amber-50',
+    textClass: 'text-amber-700',
+    borderClass: 'border-amber-200',
+  },
+  'document.delete': {
+    label: 'Document Delete',
+    bgClass: 'bg-red-50',
+    textClass: 'text-red-700',
+    borderClass: 'border-red-200',
+  },
+  'document.full_reindex': {
+    label: 'Full Re-index',
+    bgClass: 'bg-orange-50',
+    textClass: 'text-orange-700',
+    borderClass: 'border-orange-200',
+  },
   'system.kill_switch_activate': {
     label: 'Kill Switch Activate',
     bgClass: 'bg-red-50',
@@ -107,15 +122,12 @@ const ACTION_TYPE_CONFIG: Record<
 
 interface AdminControlInterfaceProps {
   approvals: PendingApproval[];
-  killSwitchActive: boolean;
   onApprovalDecision: (id: string, decision: 'approved' | 'rejected', note?: string) => void;
   onAddApproval: (a: Omit<PendingApproval, 'id' | 'submittedAt' | 'status'>) => void;
   onAddAuditEvent: (e: Omit<AuditEvent, 'id' | 'timestamp'>) => void;
 }
 
-export default function AdminControlInterface({ approvals, killSwitchActive, onApprovalDecision, onAddApproval, onAddAuditEvent }: AdminControlInterfaceProps) {
-  const [showActivateConfirm, setShowActivateConfirm] = useState(false);
-  const [showDeactivateSubmit, setShowDeactivateSubmit] = useState(false);
+export default function AdminControlInterface({ approvals, onApprovalDecision, onAddApproval, onAddAuditEvent }: AdminControlInterfaceProps) {
   const [toasts, setToasts] = useState<ToastMsg[]>([]);
   const [showRecentDecisions, setShowRecentDecisions] = useState(false);
 
@@ -133,62 +145,6 @@ export default function AdminControlInterface({ approvals, killSwitchActive, onA
 
   const pendingApprovals = approvals.filter(a => a.status === 'pending');
   const recentDecisions = approvals.filter(a => a.status !== 'pending').slice(0, 5);
-
-  const handleActivateKillSwitch = () => {
-    setShowActivateConfirm(false);
-    const alreadyPending = approvals.some(
-      a => a.actionType === 'system.kill_switch_activate' && a.status === 'pending'
-    );
-    if (!alreadyPending) {
-      onAddApproval({
-        actionType: 'system.kill_switch_activate',
-        entityName: 'Global Kill Switch',
-        entityId: 'global-kill-switch',
-        description: 'Activate global kill switch — disable all GenAI responses',
-        detail: 'All LLM agent calls will be disabled. All queries will be served by template responses or exclusion messages. Takes effect upon checker approval.',
-        submittedBy: 'System Admin',
-      });
-      onAddAuditEvent({
-        actor: 'System Admin',
-        actorRole: 'ADMIN',
-        actionType: 'approval.submit' as AuditActionType,
-        entityType: 'approval',
-        entityId: 'kill-switch-activate-' + Date.now(),
-        entityName: 'Global Kill Switch',
-        description: 'Kill switch activation submitted for checker approval.',
-        severity: 'critical',
-      });
-    }
-    showToast('Kill switch activation submitted for checker approval');
-  };
-
-  const handleDeactivateSubmit = () => {
-    setShowDeactivateSubmit(false);
-    const alreadyPending = approvals.some(
-      a => a.actionType === 'system.kill_switch_deactivate' && a.status === 'pending'
-    );
-    if (!alreadyPending) {
-      onAddApproval({
-        actionType: 'system.kill_switch_deactivate',
-        entityName: 'Global Kill Switch',
-        entityId: 'global-kill-switch',
-        description: 'Deactivate global kill switch — re-enable GenAI responses',
-        detail: 'Re-enabling GenAI will resume all LLM agent calls. All queries will be routed normally through intent matching and agent responses.',
-        submittedBy: 'System Admin',
-      });
-      onAddAuditEvent({
-        actor: 'System Admin',
-        actorRole: 'ADMIN',
-        actionType: 'approval.submit' as AuditActionType,
-        entityType: 'approval',
-        entityId: 'kill-switch-deactivate-' + Date.now(),
-        entityName: 'Global Kill Switch',
-        description: 'Deactivation submitted for checker approval. Re-enabling GenAI will resume all LLM agent calls.',
-        severity: 'critical',
-      });
-    }
-    showToast('Deactivation submitted for checker approval');
-  };
 
   const handleApprove = (id: string) => {
     onApprovalDecision(id, 'approved', approveNote[id]);
@@ -208,78 +164,13 @@ export default function AdminControlInterface({ approvals, killSwitchActive, onA
 
   return (
     <div className="flex flex-col min-h-screen bg-slate-50">
-      {/* Kill Switch Header Bar */}
-      <AnimatePresence mode="wait">
-        {killSwitchActive ? (
-          <motion.div
-            key="active"
-            initial={{ opacity: 0, scaleY: 0.8 }}
-            animate={{ opacity: 1, scaleY: 1 }}
-            exit={{ opacity: 0, scaleY: 0.8 }}
-            className="bg-red-600 text-white px-6 py-4 flex items-center gap-4 shadow-lg shadow-red-900/30 relative overflow-hidden"
-          >
-            {/* Pulsing background effect */}
-            <motion.div
-              animate={{ opacity: [0.15, 0.3, 0.15] }}
-              transition={{ repeat: Infinity, duration: 2 }}
-              className="absolute inset-0 bg-red-500 pointer-events-none"
-            />
-            <div className="flex items-center gap-3 flex-1 relative">
-              <motion.span
-                animate={{ scale: [1, 1.2, 1] }}
-                transition={{ repeat: Infinity, duration: 1.5 }}
-                className="inline-flex"
-              >
-                <Zap size={22} className="text-white" fill="white" />
-              </motion.span>
-              <div>
-                <p className="font-black text-lg tracking-wide">
-                  KILL SWITCH ACTIVE
-                </p>
-                <p className="text-red-100 text-sm font-medium">
-                  All GenAI responses disabled — system serving templates and exclusions only
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={() => setShowDeactivateSubmit(true)}
-              className="shrink-0 px-5 py-2 border-2 border-white text-white font-bold rounded-xl text-sm hover:bg-white/10 transition-all relative"
-            >
-              Deactivate
-            </button>
-          </motion.div>
-        ) : (
-          <motion.div
-            key="inactive"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="bg-slate-900 text-white px-6 py-3 flex items-center gap-4"
-          >
-            <div className="flex items-center gap-2 flex-1">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
-              <span className="text-sm font-bold text-slate-200">Kill Switch: Inactive</span>
-              <span className="text-slate-500 text-sm">|</span>
-              <span className="text-sm font-medium text-slate-300">GenAI: Active</span>
-            </div>
-            <button
-              onClick={() => setShowActivateConfirm(true)}
-              className="shrink-0 flex items-center gap-2 px-4 py-1.5 border border-red-500 text-red-400 font-bold rounded-xl text-xs hover:bg-red-950/50 transition-all"
-            >
-              <Power size={13} />
-              Activate Kill Switch
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* Page Content */}
       <div className="flex flex-col gap-6 p-8 max-w-7xl mx-auto w-full">
         {/* Page Header */}
         <div className="flex flex-col gap-1">
           <h2 className="text-4xl font-bold tracking-tight text-slate-900">Change Control</h2>
           <p className="text-slate-500 text-lg">
-            Kill switch management and maker-checker approval queue.
+            Maker-checker approval queue for all pending changes.
           </p>
         </div>
 
@@ -564,152 +455,6 @@ export default function AdminControlInterface({ approvals, killSwitchActive, onA
           </div>
         )}
       </div>
-
-      {/* Kill Switch Activate Confirmation Modal */}
-      <AnimatePresence>
-        {showActivateConfirm && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowActivateConfirm(false)}
-              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden flex flex-col relative z-10"
-            >
-              <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center">
-                    <Power size={20} className="text-[#E3000F]" />
-                  </div>
-                  <h3 className="text-xl font-bold text-slate-900">Activate Kill Switch</h3>
-                </div>
-                <button
-                  onClick={() => setShowActivateConfirm(false)}
-                  className="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-all"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-
-              <div className="p-6 flex flex-col gap-4">
-                <div className="p-4 bg-red-50 border border-red-200 rounded-2xl flex flex-col gap-2">
-                  <p className="text-sm font-bold text-red-900">Impact Summary (upon approval)</p>
-                  <ul className="text-sm text-red-700 flex flex-col gap-1.5">
-                    <li className="flex items-start gap-2">
-                      <span className="mt-1 w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />
-                      All LLM agent calls will be disabled
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="mt-1 w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />
-                      All queries will be served by template responses or exclusion messages
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="mt-1 w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />
-                      Requires checker approval before taking effect
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="mt-1 w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />
-                      Re-enable also requires checker approval
-                    </li>
-                  </ul>
-                </div>
-
-                <p className="text-sm text-slate-600">
-                  This is an emergency action. Use only when there is an active security incident,
-                  model misbehavior, or compliance violation. A checker must approve before it takes effect.
-                </p>
-
-                <div className="flex items-center justify-end gap-3 pt-2">
-                  <button
-                    onClick={() => setShowActivateConfirm(false)}
-                    className="px-5 py-2.5 font-bold text-slate-600 hover:text-slate-900 transition-all text-sm"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleActivateKillSwitch}
-                    className="flex items-center gap-2 px-6 py-2.5 bg-[#E3000F] hover:bg-red-700 text-white font-bold rounded-xl text-sm transition-all shadow-lg shadow-red-200"
-                  >
-                    <Power size={15} />
-                    Submit for Approval
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* Kill Switch Deactivate Submit Modal */}
-      <AnimatePresence>
-        {showDeactivateSubmit && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowDeactivateSubmit(false)}
-              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden flex flex-col relative z-10"
-            >
-              <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center">
-                    <Layers size={20} className="text-amber-600" />
-                  </div>
-                  <h3 className="text-xl font-bold text-slate-900">Submit Deactivation</h3>
-                </div>
-                <button
-                  onClick={() => setShowDeactivateSubmit(false)}
-                  className="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-all"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-
-              <div className="p-6 flex flex-col gap-4">
-                <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl">
-                  <p className="text-sm font-bold text-amber-900 mb-1">
-                    Checker approval required
-                  </p>
-                  <p className="text-sm text-amber-700">
-                    Deactivating the kill switch requires a second actor to approve. Submitting will
-                    add this to the Pending Approvals queue. GenAI will remain disabled until
-                    approved.
-                  </p>
-                </div>
-
-                <div className="flex items-center justify-end gap-3 pt-2">
-                  <button
-                    onClick={() => setShowDeactivateSubmit(false)}
-                    className="px-5 py-2.5 font-bold text-slate-600 hover:text-slate-900 transition-all text-sm"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleDeactivateSubmit}
-                    className="flex items-center gap-2 px-6 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl text-sm transition-all"
-                  >
-                    <Check size={15} />
-                    Submit for Review
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
 
       {/* Toasts */}
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] flex flex-col items-center gap-2 pointer-events-none">

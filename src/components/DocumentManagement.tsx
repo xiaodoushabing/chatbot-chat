@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Search,
   RefreshCw,
@@ -14,10 +14,12 @@ import {
   AlertCircle,
   Tag,
   ChevronDown,
+  ExternalLink,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { PendingApproval, AuditEvent, AuditActionType } from '../types';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -39,6 +41,7 @@ interface KnowledgeDocument {
   isActive: boolean;
   fileSizeKb: number;
   chunkCount?: number;
+  pendingApproval?: boolean;
 }
 
 interface ActivityLogEntry {
@@ -49,6 +52,14 @@ interface ActivityLogEntry {
 }
 
 const DOMAIN_OPTIONS = ['Retirement Planning', 'Home Loans', 'Card Services', 'Compliance'];
+
+const DOCUMENT_LINKS: Record<string, string> = {
+  'OCBC_CPF_Life_Product_Guide.pdf': 'https://www.ocbc.com/personal-banking/insurance/cpf-life',
+  'OCBC_Home_Loan_Policy_2025.docx': 'https://www.ocbc.com/personal-banking/loans/home-loans',
+  'OCBC_Card_Services_FAQ.pdf': 'https://www.ocbc.com/personal-banking/cards',
+  'OCBC_360_Account_Handbook.pdf': 'https://www.ocbc.com/personal-banking/deposits/360-account',
+  'OCBC_Wealth_Advisory_Guidelines.pdf': 'https://www.ocbc.com/personal-banking/investments',
+};
 
 const INITIAL_DOCUMENTS: KnowledgeDocument[] = [
   {
@@ -245,22 +256,71 @@ function formatFileSize(kb: number): string {
   return `${kb} KB`;
 }
 
-export default function DocumentManagement() {
+interface DocumentManagementProps {
+  onAddApproval: (a: Omit<PendingApproval, 'id' | 'submittedAt' | 'status'>) => void;
+  onAddAuditEvent: (e: Omit<AuditEvent, 'id' | 'timestamp'>) => void;
+  pendingApprovals: PendingApproval[];
+}
+
+export default function DocumentManagement({ onAddApproval, onAddAuditEvent, pendingApprovals }: DocumentManagementProps) {
   const [documents, setDocuments] = useState<KnowledgeDocument[]>(INITIAL_DOCUMENTS);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterDomain, setFilterDomain] = useState('all');
   const [filterStatus, setFilterStatus] = useState<'all' | IndexedStatus>('all');
   const [showUploadModal, setShowUploadModal] = useState(false);
-  const [showReindexConfirm, setShowReindexConfirm] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [expandedDocId, setExpandedDocId] = useState<string | null>(null);
   const [toasts, setToasts] = useState<ToastMsg[]>([]);
   const [dragOver, setDragOver] = useState(false);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [showFullReindexConfirm, setShowFullReindexConfirm] = useState(false);
+
+  // Collapsible right panel sections (collapsed by default)
+  const [showIndexingHub, setShowIndexingHub] = useState(false);
+  const [showRecentActivity, setShowRecentActivity] = useState(false);
+  const [showDomainTags, setShowDomainTags] = useState(false);
+
+  // Approval persistence
+  const appliedApprovalIds = useRef<Set<string>>(new Set());
 
   // Upload form state
   const [uploadFile, setUploadFile] = useState<string>('');
   const [uploadType, setUploadType] = useState<FileType>('pdf');
   const [uploadDomains, setUploadDomains] = useState<string[]>([]);
+
+  // Apply approved/rejected changes
+  useEffect(() => {
+    pendingApprovals.forEach(ap => {
+      if (appliedApprovalIds.current.has(ap.id)) return;
+      if (ap.status === 'approved') {
+        appliedApprovalIds.current.add(ap.id);
+        const p = ap.payload;
+        if (!p) return;
+        if (ap.actionType === 'document.reindex' && p.docId) {
+          setDocuments(prev => prev.map(d =>
+            d.id === p.docId ? { ...d, indexedStatus: 'pending', pendingApproval: false } : d
+          ));
+        } else if (ap.actionType === 'document.delete' && p.docId) {
+          setDocuments(prev => prev.filter(d => d.id !== p.docId));
+        } else if (ap.actionType === 'document.full_reindex') {
+          setDocuments(prev => prev.map(d =>
+            d.indexedStatus === 'stale' || d.indexedStatus === 'failed'
+              ? { ...d, indexedStatus: 'pending', pendingApproval: false }
+              : d
+          ));
+        }
+      } else if (ap.status === 'rejected') {
+        appliedApprovalIds.current.add(ap.id);
+        const p = ap.payload;
+        if (!p) return;
+        if ((ap.actionType === 'document.reindex' || ap.actionType === 'document.delete') && p.docId) {
+          setDocuments(prev => prev.map(d =>
+            d.id === p.docId ? { ...d, pendingApproval: false } : d
+          ));
+        }
+      }
+    });
+  }, [pendingApprovals]);
 
   const showToast = (message: string) => {
     const id = ++toastIdCounter;
@@ -278,18 +338,61 @@ export default function DocumentManagement() {
 
   const handleReindex = (id: string) => {
     const doc = documents.find(d => d.id === id);
-    setDocuments(prev =>
-      prev.map(d => (d.id === id ? { ...d, indexedStatus: 'pending' } : d))
-    );
-    showToast(`Re-indexing queued: ${doc?.filename ?? 'document'}`);
+    if (!doc) return;
+    onAddApproval({
+      actionType: 'document.reindex',
+      entityName: doc.filename,
+      entityId: id,
+      description: `Re-index document: ${doc.filename}`,
+      detail: 'Document will be re-queued for chunk processing upon approval.',
+      submittedBy: 'System Admin',
+      payload: { docId: id },
+    });
+    onAddAuditEvent({
+      actor: 'System Admin',
+      actorRole: 'ADMIN',
+      actionType: 'approval.submit' as AuditActionType,
+      entityType: 'document',
+      entityId: 'doc-reindex-' + id,
+      entityName: doc.filename,
+      description: `Re-index submitted for approval: ${doc.filename}`,
+      severity: 'info',
+    });
+    setDocuments(prev => prev.map(d => d.id === id ? { ...d, pendingApproval: true } : d));
+    showToast('Re-index submitted for approval');
   };
 
   const handleRemove = (id: string) => {
+    setDeleteConfirmId(id);
+  };
+
+  const handleConfirmDelete = () => {
+    const id = deleteConfirmId;
+    if (!id) return;
     const doc = documents.find(d => d.id === id);
-    if (window.confirm(`Remove "${doc?.filename}"? The document will be deactivated and de-indexed.`)) {
-      setDocuments(prev => prev.filter(d => d.id !== id));
-      showToast('Document removed and de-index queued');
-    }
+    if (!doc) return;
+    onAddApproval({
+      actionType: 'document.delete',
+      entityName: doc.filename,
+      entityId: id,
+      description: `Delete document: ${doc.filename}`,
+      detail: 'Document will be deactivated and de-indexed upon approval.',
+      submittedBy: 'System Admin',
+      payload: { docId: id },
+    });
+    onAddAuditEvent({
+      actor: 'System Admin',
+      actorRole: 'ADMIN',
+      actionType: 'approval.submit' as AuditActionType,
+      entityType: 'document',
+      entityId: 'doc-delete-' + id,
+      entityName: doc.filename,
+      description: `Document deletion submitted for approval: ${doc.filename}`,
+      severity: 'warning',
+    });
+    setDocuments(prev => prev.map(d => d.id === id ? { ...d, pendingApproval: true } : d));
+    setDeleteConfirmId(null);
+    showToast('Deletion submitted for approval');
   };
 
   const handleUpload = () => {
@@ -319,15 +422,27 @@ export default function DocumentManagement() {
   };
 
   const handleTriggerFullReindex = () => {
-    setDocuments(prev =>
-      prev.map(d =>
-        d.indexedStatus === 'stale' || d.indexedStatus === 'failed'
-          ? { ...d, indexedStatus: 'pending' }
-          : d
-      )
-    );
-    setShowReindexConfirm(false);
-    showToast('Full re-index triggered for all stale/failed documents');
+    onAddApproval({
+      actionType: 'document.full_reindex',
+      entityName: 'Knowledge Base',
+      entityId: 'full-reindex',
+      description: 'Trigger full re-index for all stale and failed documents',
+      detail: 'All stale/failed documents will be re-queued for chunk processing upon approval.',
+      submittedBy: 'System Admin',
+      payload: { type: 'full_reindex' },
+    });
+    onAddAuditEvent({
+      actor: 'System Admin',
+      actorRole: 'ADMIN',
+      actionType: 'approval.submit' as AuditActionType,
+      entityType: 'document',
+      entityId: 'full-reindex-' + Date.now(),
+      entityName: 'Knowledge Base',
+      description: 'Full re-index submitted for approval.',
+      severity: 'warning',
+    });
+    setShowFullReindexConfirm(false);
+    showToast('Full re-index submitted for approval');
   };
 
   const pendingCount = documents.filter(d => d.indexedStatus === 'pending').length;
@@ -416,12 +531,37 @@ export default function DocumentManagement() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start gap-2 justify-between">
                           <div className="flex flex-col gap-0.5 min-w-0">
-                            <span
-                              className="font-bold text-slate-900 text-sm truncate"
-                              title={doc.filename}
-                            >
-                              {doc.filename}
-                            </span>
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              {doc.fileType === 'url' ? (
+                                <a
+                                  href={doc.filename}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="font-bold text-blue-600 hover:text-blue-800 text-sm truncate underline underline-offset-2"
+                                  title={doc.filename}
+                                >
+                                  {doc.filename}
+                                </a>
+                              ) : (
+                                <span
+                                  className="font-bold text-slate-900 text-sm truncate"
+                                  title={doc.filename}
+                                >
+                                  {doc.filename}
+                                </span>
+                              )}
+                              {DOCUMENT_LINKS[doc.filename] && (
+                                <a
+                                  href={DOCUMENT_LINKS[doc.filename]}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="shrink-0 text-slate-400 hover:text-[#E3000F] transition-colors"
+                                  title="View on OCBC website"
+                                >
+                                  <ExternalLink size={13} />
+                                </a>
+                              )}
+                            </div>
                             <div className="flex items-center gap-2 flex-wrap">
                               <span className="text-xs text-slate-400">
                                 {doc.uploader} · {doc.uploadedAt}
@@ -480,20 +620,26 @@ export default function DocumentManagement() {
 
                       {/* Actions */}
                       <div className="flex items-center gap-1 shrink-0">
-                        <button
-                          onClick={() => handleReindex(doc.id)}
-                          title="Re-index"
-                          className="p-1.5 hover:bg-amber-50 text-slate-400 hover:text-amber-600 rounded-lg transition-all"
-                        >
-                          <RefreshCw size={15} />
-                        </button>
-                        <button
-                          onClick={() => handleRemove(doc.id)}
-                          title="Remove"
-                          className="p-1.5 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-lg transition-all"
-                        >
-                          <Trash2 size={15} />
-                        </button>
+                        {doc.pendingApproval ? (
+                          <span className="text-xs text-amber-600 font-bold px-2 py-1 bg-amber-50 border border-amber-200 rounded-lg">Pending</span>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => handleReindex(doc.id)}
+                              title="Submit Re-index for Approval"
+                              className="p-1.5 hover:bg-amber-50 text-slate-400 hover:text-amber-600 rounded-lg transition-all"
+                            >
+                              <RefreshCw size={15} />
+                            </button>
+                            <button
+                              onClick={() => handleRemove(doc.id)}
+                              title="Submit Deletion for Approval"
+                              className="p-1.5 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-lg transition-all"
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </>
+                        )}
                         <button
                           onClick={() => setExpandedDocId(isExpanded ? null : doc.id)}
                           title="Details"
@@ -563,74 +709,96 @@ export default function DocumentManagement() {
         {/* Right Panel — Indexing Hub (40%) */}
         <div className="w-80 shrink-0 flex flex-col gap-4">
           {/* Hub Status Card */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-5 flex flex-col gap-4">
-            <div className="flex items-center gap-2">
-              <Database size={18} className="text-slate-600" />
-              <h4 className="font-bold text-slate-900">Indexing Hub</h4>
-            </div>
-
-            {/* Provider Badge */}
-            <div className="flex items-center gap-2 p-3 bg-slate-50 border border-slate-100 rounded-xl">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-              <span className="text-sm font-bold text-slate-700">External ES Hub</span>
-              <span className="ml-auto text-xs font-medium text-emerald-600">Online</span>
-            </div>
-
-            {/* Stats */}
-            <div className="grid grid-cols-1 gap-2">
-              <div className="flex items-center justify-between py-2 border-b border-slate-100">
-                <span className="text-xs text-slate-500 font-medium">Queue depth</span>
-                <span className="text-sm font-bold text-amber-600">{pendingCount} pending</span>
-              </div>
-              <div className="flex items-center justify-between py-2 border-b border-slate-100">
-                <span className="text-xs text-slate-500 font-medium">Last successful run</span>
-                <span className="text-sm font-bold text-slate-700">2 minutes ago</span>
-              </div>
-              <div className="flex items-center justify-between py-2">
-                <span className="text-xs text-slate-500 font-medium">Total indexed</span>
-                <span className="text-sm font-bold text-slate-700">{indexedCount + 150} documents</span>
-              </div>
-            </div>
-
-            {/* Trigger Re-index */}
+          <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
             <button
-              onClick={() => setShowReindexConfirm(true)}
-              className="flex items-center gap-2 px-4 py-2.5 w-full justify-center border border-amber-300 text-amber-700 font-bold rounded-xl text-sm hover:bg-amber-50 transition-all"
+              onClick={() => setShowIndexingHub(!showIndexingHub)}
+              className="w-full px-5 py-4 flex items-center justify-between hover:bg-slate-50 transition-all"
             >
-              <RefreshCw size={14} />
-              Trigger Full Re-index
+              <div className="flex items-center gap-2">
+                <Database size={16} className="text-slate-600" />
+                <h4 className="font-bold text-slate-900 text-sm">Indexing Hub</h4>
+              </div>
+              <ChevronDown size={15} className={cn('text-slate-400 transition-transform', showIndexingHub && 'rotate-180')} />
             </button>
-
-            {/* Reindex Confirmation */}
             <AnimatePresence>
-              {showReindexConfirm && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="overflow-hidden"
-                >
-                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex flex-col gap-2">
-                    <p className="text-xs font-bold text-amber-900">
-                      Trigger full re-index for all stale and failed documents?
-                    </p>
-                    <p className="text-xs text-amber-700">
-                      This will queue all stale/failed documents for re-processing. May take several minutes.
-                    </p>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => setShowReindexConfirm(false)}
-                        className="flex-1 py-1.5 text-xs font-bold text-slate-600 hover:text-slate-900 transition-all"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        onClick={handleTriggerFullReindex}
-                        className="flex-1 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-lg transition-all"
-                      >
-                        Confirm
-                      </button>
+              {showIndexingHub && (
+                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
+                  <div className="px-5 pb-5 flex flex-col gap-4 border-t border-slate-100">
+                    {/* Provider Badge */}
+                    <div className="flex items-center gap-2 p-3 bg-slate-50 border border-slate-100 rounded-xl mt-4">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                      <span className="text-sm font-bold text-slate-700">External ES Hub</span>
+                      <span className="ml-auto text-xs font-medium text-emerald-600">Online</span>
                     </div>
+                    {/* Stats */}
+                    <div className="grid grid-cols-1 gap-2">
+                      <div className="flex items-center justify-between py-2 border-b border-slate-100">
+                        <span className="text-xs text-slate-500 font-medium">Queue depth</span>
+                        <span className="text-sm font-bold text-amber-600">{pendingCount} pending</span>
+                      </div>
+                      <div className="flex items-center justify-between py-2 border-b border-slate-100">
+                        <span className="text-xs text-slate-500 font-medium">Last successful run</span>
+                        <span className="text-sm font-bold text-slate-700">2 minutes ago</span>
+                      </div>
+                      <div className="flex items-center justify-between py-2">
+                        <span className="text-xs text-slate-500 font-medium">Total indexed</span>
+                        <span className="text-sm font-bold text-slate-700">{indexedCount + 150} documents</span>
+                      </div>
+                    </div>
+                    {/* Trigger Re-index */}
+                    <button
+                      onClick={() => setShowFullReindexConfirm(true)}
+                      className="flex items-center gap-2 px-4 py-2.5 w-full justify-center border border-amber-300 text-amber-700 font-bold rounded-xl text-sm hover:bg-amber-50 transition-all"
+                    >
+                      <RefreshCw size={14} />
+                      Trigger Full Re-index
+                    </button>
+                    {/* Reindex Approval Confirmation */}
+                    <AnimatePresence>
+                      {showFullReindexConfirm && (
+                        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                          <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex flex-col gap-2">
+                            <p className="text-xs font-bold text-amber-900">Submit full re-index for approval?</p>
+                            <p className="text-xs text-amber-700">All stale/failed documents will be re-queued upon checker approval.</p>
+                            <div className="flex gap-2">
+                              <button onClick={() => setShowFullReindexConfirm(false)} className="flex-1 py-1.5 text-xs font-bold text-slate-600 hover:text-slate-900 transition-all">Cancel</button>
+                              <button onClick={handleTriggerFullReindex} className="flex-1 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-lg transition-all">Submit</button>
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Domain Tag Management */}
+          <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+            <button
+              onClick={() => setShowDomainTags(!showDomainTags)}
+              className="w-full px-5 py-4 flex items-center justify-between hover:bg-slate-50 transition-all"
+            >
+              <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                <Tag size={14} className="text-slate-500" />
+                Domain Tags
+              </h4>
+              <ChevronDown size={15} className={cn('text-slate-400 transition-transform', showDomainTags && 'rotate-180')} />
+            </button>
+            <AnimatePresence>
+              {showDomainTags && (
+                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
+                  <div className="px-5 pb-5 flex flex-col gap-2 border-t border-slate-100 pt-3">
+                    {DOMAIN_OPTIONS.map(domain => {
+                      const count = documents.filter(d => d.domains.includes(domain)).length;
+                      return (
+                        <div key={domain} className="flex items-center justify-between py-1.5 px-3 bg-slate-50 border border-slate-100 rounded-xl">
+                          <span className="text-xs font-medium text-slate-700">{domain}</span>
+                          <span className="text-xs font-bold text-slate-400">{count} docs</span>
+                        </div>
+                      );
+                    })}
                   </div>
                 </motion.div>
               )}
@@ -638,54 +806,74 @@ export default function DocumentManagement() {
           </div>
 
           {/* Activity Log */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-5 flex flex-col gap-3">
-            <h4 className="font-bold text-slate-900 text-sm">Recent Activity</h4>
-            <div className="flex flex-col gap-2">
-              {ACTIVITY_LOG.map((entry, i) => (
-                <div key={i} className="flex flex-col gap-0.5 py-2 border-b border-slate-100 last:border-0">
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={cn(
-                        'w-1.5 h-1.5 rounded-full shrink-0',
-                        entry.result === 'success' ? 'bg-emerald-500' : 'bg-red-500'
-                      )}
-                    />
-                    <span className="text-xs font-bold text-slate-700 truncate" title={entry.documentName}>
-                      {entry.documentName.length > 32
-                        ? entry.documentName.slice(0, 32) + '…'
-                        : entry.documentName}
-                    </span>
+          <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+            <button
+              onClick={() => setShowRecentActivity(!showRecentActivity)}
+              className="w-full px-5 py-4 flex items-center justify-between hover:bg-slate-50 transition-all"
+            >
+              <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                <Clock size={14} className="text-slate-500" />
+                Recent Activity
+              </h4>
+              <ChevronDown size={15} className={cn('text-slate-400 transition-transform', showRecentActivity && 'rotate-180')} />
+            </button>
+            <AnimatePresence>
+              {showRecentActivity && (
+                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
+                  <div className="px-5 pb-5 flex flex-col gap-2 border-t border-slate-100 pt-3">
+                    {ACTIVITY_LOG.map((entry, i) => (
+                      <div key={i} className="flex flex-col gap-0.5 py-2 border-b border-slate-100 last:border-0">
+                        <div className="flex items-center gap-2">
+                          <span className={cn('w-1.5 h-1.5 rounded-full shrink-0', entry.result === 'success' ? 'bg-emerald-500' : 'bg-red-500')} />
+                          <span className="text-xs font-bold text-slate-700 truncate" title={entry.documentName}>
+                            {entry.documentName.length > 32 ? entry.documentName.slice(0, 32) + '…' : entry.documentName}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-400 pl-3.5">{entry.detail}</p>
+                        <span className="text-xs text-slate-300 pl-3.5">{entry.timestamp}</span>
+                      </div>
+                    ))}
                   </div>
-                  <p className="text-xs text-slate-400 pl-3.5">{entry.detail}</p>
-                  <span className="text-xs text-slate-300 pl-3.5">{entry.timestamp}</span>
-                </div>
-              ))}
-            </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
-          {/* Domain Tag Management */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-5 flex flex-col gap-3">
-            <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
-              <Tag size={14} className="text-slate-500" />
-              Domain Tags
-            </h4>
-            <div className="flex flex-col gap-2">
-              {DOMAIN_OPTIONS.map(domain => {
-                const count = documents.filter(d => d.domains.includes(domain)).length;
-                return (
-                  <div
-                    key={domain}
-                    className="flex items-center justify-between py-1.5 px-3 bg-slate-50 border border-slate-100 rounded-xl"
-                  >
-                    <span className="text-xs font-medium text-slate-700">{domain}</span>
-                    <span className="text-xs font-bold text-slate-400">{count} docs</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
         </div>
       </div>
+
+      {/* Delete Confirm Modal */}
+      <AnimatePresence>
+        {deleteConfirmId && (() => {
+          const doc = documents.find(d => d.id === deleteConfirmId);
+          return (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setDeleteConfirmId(null)} className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" />
+              <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden flex flex-col relative z-10">
+                <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center">
+                      <Trash2 size={20} className="text-red-600" />
+                    </div>
+                    <h3 className="text-xl font-bold text-slate-900">Remove Document</h3>
+                  </div>
+                  <button onClick={() => setDeleteConfirmId(null)} className="p-2 hover:bg-slate-100 rounded-full text-slate-400"><X size={20} /></button>
+                </div>
+                <div className="p-6 flex flex-col gap-4">
+                  <p className="text-sm text-slate-600">Submit removal of <span className="font-bold text-slate-900">"{doc?.filename}"</span> for checker approval? The document will be deactivated and de-indexed upon approval.</p>
+                  <div className="flex items-center justify-end gap-3 pt-2">
+                    <button onClick={() => setDeleteConfirmId(null)} className="px-5 py-2.5 font-bold text-slate-600 hover:text-slate-900 text-sm">Cancel</button>
+                    <button onClick={handleConfirmDelete} className="flex items-center gap-2 px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl text-sm shadow-lg shadow-red-200">
+                      <Trash2 size={15} />
+                      Submit for Approval
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          );
+        })()}
+      </AnimatePresence>
 
       {/* Upload Modal */}
       <AnimatePresence>

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   Search,
   Filter,
@@ -242,7 +242,7 @@ function RoutingEditor({
 export default function ActiveAgents({ onAddApproval, onAddAuditEvent, onNavigate, pendingApprovals = [] }: ActiveAgentsProps) {
   const [agents, setAgents] = useState<Agent[]>(() => {
     try {
-      const saved = localStorage.getItem('ocbc_agents');
+      const saved = localStorage.getItem('ocbc_agents_v2');
       return saved ? JSON.parse(saved) : INITIAL_AGENTS;
     } catch { return INITIAL_AGENTS; }
   });
@@ -255,8 +255,33 @@ export default function ActiveAgents({ onAddApproval, onAddAuditEvent, onNavigat
   const [confirmDialog, setConfirmDialog] = useState<{ title: string; message: string; onConfirm: () => void } | null>(null);
 
   useEffect(() => {
-    try { localStorage.setItem('ocbc_agents', JSON.stringify(agents)); } catch {}
+    try { localStorage.setItem('ocbc_agents_v2', JSON.stringify(agents)); } catch {}
   }, [agents]);
+
+  // Apply approved/rejected changes back to agents state
+  const appliedApprovalIds = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const newlyDecided = pendingApprovals.filter(a =>
+      (a.status === 'approved' || a.status === 'rejected') &&
+      a.payload &&
+      !appliedApprovalIds.current.has(a.id)
+    );
+    if (newlyDecided.length === 0) return;
+    newlyDecided.forEach(a => appliedApprovalIds.current.add(a.id));
+    setAgents(prev => {
+      let updated = [...prev];
+      for (const approval of newlyDecided) {
+        const p = approval.payload!;
+        const agentId = p.agentId as string;
+        if (approval.status === 'rejected') {
+          updated = updated.map(a => a.id === agentId ? { ...a, pendingApproval: false } : a);
+        } else if (p.field === 'status') {
+          updated = updated.map(a => a.id === agentId ? { ...a, status: p.value as AgentStatus, pendingApproval: false } : a);
+        }
+      }
+      return updated;
+    });
+  }, [pendingApprovals]);
 
   const showToast = useCallback((message: string) => {
     const id = Date.now();
@@ -288,6 +313,7 @@ export default function ActiveAgents({ onAddApproval, onAddAuditEvent, onNavigat
       description: `Set agent status: ${agent.status} → ${newStatus}`,
       detail: `Agent "${agent.name}" status change submitted for checker approval.`,
       submittedBy: 'System Admin',
+      payload: { agentId: agent.id, field: 'status', value: newStatus },
     });
     onAddAuditEvent({
       actor: 'System Admin',
@@ -296,11 +322,12 @@ export default function ActiveAgents({ onAddApproval, onAddAuditEvent, onNavigat
       entityType: 'agent',
       entityId: agent.id,
       entityName: agent.name,
-      description: `Agent status change submitted for approval`,
+      description: `Agent status change submitted for approval: ${agent.status} → ${newStatus}`,
       severity: 'info',
       before: { status: agent.status },
       after: { status: newStatus },
     });
+    setAgents(prev => prev.map(a => a.id === agent.id ? { ...a, pendingApproval: true } : a));
     showToast('Status change submitted for approval');
   };
 
@@ -451,9 +478,9 @@ export default function ActiveAgents({ onAddApproval, onAddAuditEvent, onNavigat
   const routedIntents = editingAgent ? (MOCK_INTENT_ROUTING[editingAgent.id] ?? []) : [];
 
   return (
-    <div className="flex flex-col gap-4 p-5">
+    <div className="flex flex-col gap-4 p-5 h-[calc(100vh-5rem)]">
       {/* Header */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 shrink-0">
         <div className="flex flex-col gap-0.5">
           <h2 className="text-2xl font-bold tracking-tight text-slate-900">Active Agents</h2>
           <p className="text-slate-500 text-sm">Manage AI agents available for this chatbot instance.</p>
@@ -476,7 +503,7 @@ export default function ActiveAgents({ onAddApproval, onAddAuditEvent, onNavigat
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-auto flex-1 min-h-0">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-200">
@@ -484,7 +511,6 @@ export default function ActiveAgents({ onAddApproval, onAddAuditEvent, onNavigat
               <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-widest">Category</th>
               <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-widest">Status</th>
               <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-widest text-center">Sessions</th>
-              <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-widest">Live Metrics</th>
               <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-widest text-right">Actions</th>
             </tr>
           </thead>
@@ -505,7 +531,7 @@ export default function ActiveAgents({ onAddApproval, onAddAuditEvent, onNavigat
                       </div>
                       <div className="flex flex-col">
                         <div className="flex items-center gap-2">
-                          <span className="font-bold text-slate-900 text-sm">{agent.name}</span>
+                          <span className="font-bold text-slate-900 text-lg">{agent.name}</span>
                           {pendingApprovals.some(a => a.entityId === agent.id && a.status === 'pending') && (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 border border-amber-200 text-amber-700 text-xs font-semibold rounded-full">
                               <Clock size={11} />
@@ -540,25 +566,20 @@ export default function ActiveAgents({ onAddApproval, onAddAuditEvent, onNavigat
                     <span className="text-sm font-mono text-slate-600">{agent.sessionsHandled.toLocaleString()}</span>
                   </td>
 
-                  {/* Live Metrics */}
-                  <td className="px-4 py-3">
-                    {formatMetrics(agent)}
-                  </td>
-
                   {/* Actions */}
                   <td className="px-4 py-3 text-right">
-                    <div className="flex items-center justify-end gap-2">
+                    <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all">
                       <button
                         onClick={() => handleToggleStatus(agent)}
                         title={agent.status === 'active' ? 'Deactivate' : 'Activate'}
                         className={cn(
-                          "px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border",
+                          "p-2.5 rounded-lg transition-all",
                           agent.status === 'active'
-                            ? "border-amber-200 text-amber-700 bg-amber-50 hover:bg-amber-100"
-                            : "border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100"
+                            ? "hover:bg-amber-50 text-slate-400 hover:text-amber-600"
+                            : "hover:bg-emerald-50 text-slate-400 hover:text-emerald-600"
                         )}
                       >
-                        {agent.status === 'active' ? 'Deactivate' : 'Activate'}
+                        {agent.status === 'active' ? <PowerOff size={18} /> : <Power size={18} />}
                       </button>
                     </div>
                   </td>
@@ -574,7 +595,7 @@ export default function ActiveAgents({ onAddApproval, onAddAuditEvent, onNavigat
                       exit={{ opacity: 0, height: 0 }}
                       transition={{ duration: 0.2 }}
                     >
-                      <td colSpan={6} className="px-6 pb-4">
+                      <td colSpan={5} className="px-6 pb-4">
                         <RoutingEditor
                           agentId={agent.id}
                           agentName={agent.name}
@@ -589,7 +610,7 @@ export default function ActiveAgents({ onAddApproval, onAddAuditEvent, onNavigat
             ))}
             {filteredAgents.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-6 py-12 text-center text-slate-500 text-base">
+                <td colSpan={5} className="px-6 py-12 text-center text-slate-500 text-base">
                   No agents configured.
                 </td>
               </tr>

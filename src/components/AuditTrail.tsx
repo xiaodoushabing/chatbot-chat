@@ -316,7 +316,6 @@ export default function AuditTrail({ auditEvents }: AuditTrailProps) {
       {/* Filter Bar */}
       <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm flex flex-col gap-4">
         <div className="flex items-center justify-between">
-          <span className="text-sm font-bold text-slate-500 uppercase tracking-widest">Filter by:</span>
           {isFilterActive && (
             <button
               onClick={handleClearFilters}

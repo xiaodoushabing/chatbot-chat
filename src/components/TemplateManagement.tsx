@@ -16,6 +16,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { PendingApproval, AuditEvent } from '../types';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -217,13 +218,12 @@ function substituteVariables(content: string): string {
   });
 }
 
-interface MakerCheckerCallback {
-  onPublish: (templateName: string, content: string) => void;
+interface TemplateManagementProps {
+  onAddApproval: (a: Omit<PendingApproval, 'id' | 'submittedAt' | 'status'>) => void;
+  onAddAuditEvent: (e: Omit<AuditEvent, 'id' | 'timestamp'>) => void;
 }
 
-interface TemplateManagementProps extends MakerCheckerCallback {}
-
-export default function TemplateManagement({ onPublish }: TemplateManagementProps) {
+export default function TemplateManagement({ onAddApproval, onAddAuditEvent }: TemplateManagementProps) {
   const [templates, setTemplates] = useState<Template[]>(INITIAL_TEMPLATES);
   const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
   const [previewTemplate, setPreviewTemplate] = useState<Template | null>(null);
@@ -296,35 +296,67 @@ export default function TemplateManagement({ onPublish }: TemplateManagementProp
       pendingApproval: true,
     };
     setTemplates(prev => prev.map(t => (t.id === updated.id ? updated : t)));
-    onPublish(editingTemplate.name, editingTemplate.contentMarkdown);
+    onAddApproval({
+      actionType: 'template.publish',
+      entityName: editingTemplate.name,
+      entityId: editingTemplate.id,
+      description: `Publish template: ${editingTemplate.name}`,
+      detail: `Template content updated and submitted for publication approval. Submitted by System Admin.`,
+      submittedBy: 'System Admin',
+    });
+    onAddAuditEvent({
+      actor: 'System Admin',
+      actorRole: 'BA',
+      actionType: 'template.publish',
+      entityType: 'template',
+      entityId: editingTemplate.id,
+      entityName: editingTemplate.name,
+      description: `Template publish submitted for approval`,
+      severity: 'info',
+    });
     setShowPublishConfirm(false);
     setEditingTemplate(null);
     showToast('Template submitted for approval');
   };
 
+  const [restoreConfirm, setRestoreConfirm] = useState<{ version: TemplateVersion } | null>(null);
+
   const handleRestoreVersion = (version: TemplateVersion) => {
     if (!historyTemplate) return;
-    if (
-      window.confirm(
-        `Restore to v${version.versionNumber} from ${version.changedAt}? Current content will be overwritten.`
+    setRestoreConfirm({ version });
+  };
+
+  const handleConfirmRestore = () => {
+    if (!historyTemplate || !restoreConfirm) return;
+    const { version } = restoreConfirm;
+    setTemplates(prev =>
+      prev.map(t =>
+        t.id === historyTemplate.id
+          ? { ...t, contentMarkdown: version.contentMarkdown, variables: extractVariables(version.contentMarkdown), updatedAt: '2026-03-26 ' + new Date().toTimeString().slice(0, 5), updatedBy: 'System Admin', pendingApproval: true }
+          : t
       )
-    ) {
-      setTemplates(prev =>
-        prev.map(t =>
-          t.id === historyTemplate.id
-            ? {
-                ...t,
-                contentMarkdown: version.contentMarkdown,
-                variables: extractVariables(version.contentMarkdown),
-                updatedAt: '2026-03-26 ' + new Date().toTimeString().slice(0, 5),
-                updatedBy: 'System Admin',
-              }
-            : t
-        )
-      );
-      setHistoryTemplate(null);
-      showToast(`Restored to v${version.versionNumber}`);
-    }
+    );
+    onAddApproval({
+      actionType: 'template.restore',
+      entityName: historyTemplate.name,
+      entityId: historyTemplate.id,
+      description: `Restore template to v${version.versionNumber}`,
+      detail: `Restoring "${historyTemplate.name}" to v${version.versionNumber} from ${version.changedAt}. Submitted by System Admin.`,
+      submittedBy: 'System Admin',
+    });
+    onAddAuditEvent({
+      actor: 'System Admin',
+      actorRole: 'BA',
+      actionType: 'template.restore',
+      entityType: 'template',
+      entityId: historyTemplate.id,
+      entityName: historyTemplate.name,
+      description: `Template rollback to v${version.versionNumber} submitted for approval`,
+      severity: 'warning',
+    });
+    setRestoreConfirm(null);
+    setHistoryTemplate(null);
+    showToast(`Restore to v${version.versionNumber} submitted for approval`);
   };
 
   const liveVariables = editingTemplate
@@ -690,76 +722,49 @@ export default function TemplateManagement({ onPublish }: TemplateManagementProp
                   </div>
                 </div>
 
-                {/* Publish Confirmation inline */}
-                <AnimatePresence>
-                  {showPublishConfirm && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl flex flex-col gap-3">
-                        <div className="flex items-start gap-3">
-                          <Clock size={18} className="text-amber-600 shrink-0 mt-0.5" />
-                          <div>
-                            <p className="text-sm font-bold text-amber-900">
-                              Submit for Checker Approval
-                            </p>
-                            <p className="text-xs text-amber-700 mt-1">
-                              Publishing requires a second actor to approve. The template will be
-                              marked as pending until approved. It will not go live until approved.
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex gap-3 justify-end">
-                          <button
-                            type="button"
-                            onClick={() => setShowPublishConfirm(false)}
-                            className="px-4 py-2 text-sm font-bold text-slate-600 hover:text-slate-900 transition-all"
-                          >
-                            Cancel
-                          </button>
-                          <button
-                            type="button"
-                            onClick={handleConfirmPublish}
-                            className="flex items-center gap-2 px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-sm transition-all"
-                          >
-                            <Check size={14} />
-                            Submit for Approval
-                          </button>
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
               </div>
 
               {/* Modal Footer */}
-              <div className="p-6 border-t border-slate-100 flex items-center justify-end gap-3 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => { setEditingTemplate(null); setShowPublishConfirm(false); }}
-                  className="px-5 py-2.5 font-bold text-slate-600 hover:text-slate-900 transition-all text-sm"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSaveEdit}
-                  className="px-6 py-2.5 bg-slate-700 hover:bg-slate-900 text-white font-bold rounded-xl text-sm transition-all"
-                >
-                  Save Draft
-                </button>
-                <button
-                  type="button"
-                  onClick={handlePublish}
-                  disabled={showPublishConfirm}
-                  className="flex items-center gap-2 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-sm transition-all shadow-sm shadow-emerald-200 disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                  <Check size={14} />
-                  Publish
-                </button>
+              <div className="px-6 pb-6 border-t border-slate-100 shrink-0">
+                <AnimatePresence mode="wait">
+                  {showPublishConfirm ? (
+                    <motion.div
+                      key="confirm"
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -8 }}
+                      transition={{ duration: 0.15 }}
+                      className="pt-4 flex flex-col gap-3"
+                    >
+                      <div className="flex items-start gap-3 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                        <Clock size={16} className="text-amber-600 shrink-0 mt-0.5" />
+                        <p className="text-xs text-amber-700">Publishing requires checker approval. Template will not go live until approved.</p>
+                      </div>
+                      <div className="flex items-center justify-end gap-3">
+                        <button type="button" onClick={() => setShowPublishConfirm(false)} className="px-5 py-2.5 font-bold text-slate-600 hover:text-slate-900 text-sm">Cancel</button>
+                        <button type="button" onClick={handleConfirmPublish} className="flex items-center gap-2 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-sm transition-all shadow-sm shadow-emerald-200">
+                          <Check size={14} />
+                          Submit for Approval
+                        </button>
+                      </div>
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="actions"
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -8 }}
+                      transition={{ duration: 0.15 }}
+                      className="pt-4 flex items-center justify-end gap-3"
+                    >
+                      <button type="button" onClick={() => { setEditingTemplate(null); setShowPublishConfirm(false); }} className="px-5 py-2.5 font-bold text-slate-600 hover:text-slate-900 transition-all text-sm">Cancel</button>
+                      <button type="button" onClick={handlePublish} className="flex items-center gap-2 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-sm transition-all shadow-sm shadow-emerald-200">
+                        <Check size={14} />
+                        Publish
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </motion.div>
           </div>
@@ -914,6 +919,36 @@ export default function TemplateManagement({ onPublish }: TemplateManagementProp
                     )}
                   </motion.div>
                 ))}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Restore Confirmation Modal */}
+      <AnimatePresence>
+        {restoreConfirm && (
+          <>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[200]" onClick={() => setRestoreConfirm(null)} />
+            <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="fixed inset-0 flex items-center justify-center z-[210] pointer-events-none p-6">
+              <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md pointer-events-auto p-6 flex flex-col gap-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
+                    <RotateCcw size={18} className="text-amber-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-slate-900 text-lg">Submit Restore Request</h3>
+                    <p className="text-sm text-slate-500 mt-1">
+                      Restore <span className="font-semibold text-slate-700">{historyTemplate?.name}</span> to v{restoreConfirm.version.versionNumber} from {restoreConfirm.version.changedAt}? This will be submitted for checker approval before taking effect.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center justify-end gap-3 pt-2">
+                  <button onClick={() => setRestoreConfirm(null)} className="px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-900 transition-all">Cancel</button>
+                  <button onClick={handleConfirmRestore} className="flex items-center gap-2 px-5 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl text-sm transition-all">
+                    <RotateCcw size={14} /> Submit for Approval
+                  </button>
+                </div>
               </div>
             </motion.div>
           </>

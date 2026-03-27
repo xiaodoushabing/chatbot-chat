@@ -3,6 +3,7 @@ export type ApprovalActionType =
   | 'agent.config_change' | 'agent.status_change' | 'agent.kill_switch'
   | 'guardrail.policy_change'
   | 'template.publish' | 'template.restore'
+  | 'document.reindex' | 'document.delete' | 'document.full_reindex'
   | 'system.kill_switch_activate' | 'system.kill_switch_deactivate';
 
 export interface PendingApproval {
@@ -17,6 +18,7 @@ export interface PendingApproval {
   status: 'pending' | 'approved' | 'rejected';
   actionReviewNote?: string;
   batchItems?: string[];
+  payload?: Record<string, unknown>;
 }
 
 export type AuditActionType =
@@ -25,6 +27,7 @@ export type AuditActionType =
   | 'agent.config_change' | 'agent.status_change' | 'agent.kill_switch'
   | 'template.publish' | 'template.restore'
   | 'guardrail.policy_change'
+  | 'document.reindex' | 'document.delete' | 'document.full_reindex'
   | 'system.kill_switch_activate' | 'system.kill_switch_deactivate'
   | 'approval.submit' | 'approval.approve' | 'approval.reject';
 
@@ -34,7 +37,7 @@ export interface AuditEvent {
   actor: string;
   actorRole: 'BA' | 'DEV' | 'ADMIN';
   actionType: AuditActionType;
-  entityType: 'intent' | 'agent' | 'template' | 'guardrail' | 'system' | 'approval';
+  entityType: 'intent' | 'agent' | 'template' | 'guardrail' | 'document' | 'system' | 'approval';
   entityId: string;
   entityName: string;
   description: string;

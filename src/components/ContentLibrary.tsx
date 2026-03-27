@@ -5,6 +5,7 @@ import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import TemplateManagement from './TemplateManagement';
 import DocumentManagement from './DocumentManagement';
+import { PendingApproval, AuditEvent } from '../types';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -12,7 +13,13 @@ function cn(...inputs: ClassValue[]) {
 
 type SubView = 'templates' | 'documents';
 
-export default function ContentLibrary() {
+interface ContentLibraryProps {
+  onAddApproval: (a: Omit<PendingApproval, 'id' | 'submittedAt' | 'status'>) => void;
+  onAddAuditEvent: (e: Omit<AuditEvent, 'id' | 'timestamp'>) => void;
+  pendingApprovals: PendingApproval[];
+}
+
+export default function ContentLibrary({ onAddApproval, onAddAuditEvent, pendingApprovals }: ContentLibraryProps) {
   const [activeView, setActiveView] = useState<SubView>('templates');
 
   return (
@@ -61,7 +68,7 @@ export default function ContentLibrary() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.15 }}
       >
-        {activeView === 'templates' ? <TemplateManagement /> : <DocumentManagement />}
+        {activeView === 'templates' ? <TemplateManagement onAddApproval={onAddApproval} onAddAuditEvent={onAddAuditEvent} /> : <DocumentManagement onAddApproval={onAddApproval} onAddAuditEvent={onAddAuditEvent} pendingApprovals={pendingApprovals} />}
       </motion.div>
     </div>
   );
