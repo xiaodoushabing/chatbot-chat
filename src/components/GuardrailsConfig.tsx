@@ -15,6 +15,7 @@ import {
   Loader2,
   ChevronUp,
   ChevronDown,
+  Search,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
@@ -102,6 +103,9 @@ export default function GuardrailsConfig({ onAddApproval, onAddAuditEvent, embed
   // Denied words
   const [deniedWords, setDeniedWords] = useState<string[]>(INITIAL_DENIED_WORDS);
   const [wordInput, setWordInput] = useState('');
+
+  // Content policy filter
+  const [policyFilter, setPolicyFilter] = useState('');
 
   // Exclusion template
   const [exclusionTemplate, setExclusionTemplate] = useState(EXCLUSION_TEMPLATE_DEFAULT);
@@ -529,6 +533,23 @@ export default function GuardrailsConfig({ onAddApproval, onAddAuditEvent, embed
             <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25 }} className="overflow-hidden">
               <div className="border-t border-slate-100 p-6 flex flex-col gap-6">
 
+                {/* Filter bar */}
+                <div className="relative">
+                  <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={policyFilter}
+                    onChange={e => setPolicyFilter(e.target.value)}
+                    placeholder="Filter topics and phrases..."
+                    className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-[#E3000F] outline-none transition-all bg-slate-50"
+                  />
+                  {policyFilter && (
+                    <button onClick={() => setPolicyFilter('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
+
                 {/* Blocked Topics */}
                 <div className="flex flex-col gap-3">
                   <div className="flex items-center gap-2">
@@ -538,13 +559,13 @@ export default function GuardrailsConfig({ onAddApproval, onAddAuditEvent, embed
                   </div>
                   <div className="rounded-xl border border-slate-200 overflow-hidden">
                     <AnimatePresence>
-                      {blockedTopics.map((topic, i) => (
+                      {blockedTopics.filter(t => t.toLowerCase().includes(policyFilter.toLowerCase())).map((topic, i, arr) => (
                         <motion.div
                           key={topic}
                           initial={{ opacity: 0, height: 0 }}
                           animate={{ opacity: 1, height: 'auto' }}
                           exit={{ opacity: 0, height: 0 }}
-                          className={cn("flex items-center justify-between px-4 py-2.5 text-base", i !== blockedTopics.length - 1 && "border-b border-slate-100")}
+                          className={cn("flex items-center justify-between px-4 py-2.5 text-base", i !== arr.length - 1 && "border-b border-slate-100")}
                         >
                           <span className="text-slate-700 font-medium">{topic}</span>
                           <button onClick={() => handleRemoveTopic(topic)} className="p-1 rounded-lg hover:bg-red-50 text-slate-300 hover:text-red-500 transition-all">
@@ -553,8 +574,8 @@ export default function GuardrailsConfig({ onAddApproval, onAddAuditEvent, embed
                         </motion.div>
                       ))}
                     </AnimatePresence>
-                    {blockedTopics.length === 0 && (
-                      <p className="px-4 py-3 text-base text-slate-400 italic">No blocked topics configured</p>
+                    {blockedTopics.filter(t => t.toLowerCase().includes(policyFilter.toLowerCase())).length === 0 && (
+                      <p className="px-4 py-3 text-base text-slate-400 italic">{policyFilter ? `No topics matching "${policyFilter}"` : 'No blocked topics configured'}</p>
                     )}
                   </div>
                   <div className="flex gap-2">
@@ -576,13 +597,13 @@ export default function GuardrailsConfig({ onAddApproval, onAddAuditEvent, embed
                   </div>
                   <div className="rounded-xl border border-slate-200 overflow-hidden">
                     <AnimatePresence>
-                      {deniedWords.map((word, i) => (
+                      {deniedWords.filter(w => w.toLowerCase().includes(policyFilter.toLowerCase())).map((word, i, arr) => (
                         <motion.div
                           key={word}
                           initial={{ opacity: 0, height: 0 }}
                           animate={{ opacity: 1, height: 'auto' }}
                           exit={{ opacity: 0, height: 0 }}
-                          className={cn("flex items-center justify-between px-4 py-2.5 text-base", i !== deniedWords.length - 1 && "border-b border-slate-100")}
+                          className={cn("flex items-center justify-between px-4 py-2.5 text-base", i !== arr.length - 1 && "border-b border-slate-100")}
                         >
                           <span className="text-slate-700 font-medium">{word}</span>
                           <button onClick={() => handleRemoveWord(word)} className="p-1 rounded-lg hover:bg-red-50 text-slate-300 hover:text-red-500 transition-all">
@@ -591,8 +612,8 @@ export default function GuardrailsConfig({ onAddApproval, onAddAuditEvent, embed
                         </motion.div>
                       ))}
                     </AnimatePresence>
-                    {deniedWords.length === 0 && (
-                      <p className="px-4 py-3 text-base text-slate-400 italic">No denied phrases configured</p>
+                    {deniedWords.filter(w => w.toLowerCase().includes(policyFilter.toLowerCase())).length === 0 && (
+                      <p className="px-4 py-3 text-base text-slate-400 italic">{policyFilter ? `No phrases matching "${policyFilter}"` : 'No denied phrases configured'}</p>
                     )}
                   </div>
                   <div className="flex gap-2">

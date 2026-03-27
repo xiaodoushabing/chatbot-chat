@@ -32,9 +32,11 @@ import AuditTrail from './components/AuditTrail';
 import GuardrailsConfig from './components/GuardrailsConfig';
 import AdminControlInterface from './components/AdminControlInterface';
 import ContentLibrary from './components/ContentLibrary';
+import Login from './components/Login';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import ocbcLogo from './assets/Logo-ocbc.png';
+import ocbcLogo2 from './assets/Logo-ocbc_2.png';
 import { PendingApproval, AuditEvent, AuditActionType } from './types';
 
 function cn(...inputs: ClassValue[]) {
@@ -455,6 +457,9 @@ const SEED_AUDIT_EVENTS: AuditEvent[] = [
 ];
 
 export default function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(() => localStorage.getItem('ocbc_auth') === 'true');
+  const handleLogin = () => { setIsAuthenticated(true); localStorage.setItem('ocbc_auth', 'true'); };
+  const handleLogout = () => { setIsAuthenticated(false); localStorage.removeItem('ocbc_auth'); };
   const [activeTab, setActiveTab] = useState<Tab>('preview');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [showMoreNav, setShowMoreNav] = useState(false);
@@ -563,6 +568,8 @@ export default function App() {
     setActiveTab('active-intents');
   };
 
+  if (!isAuthenticated) return <Login onLogin={handleLogin} />;
+
   return (
     <div className="min-h-screen bg-slate-50 flex text-slate-900 font-sans selection:bg-red-100 selection:text-red-900">
       {/* Sidebar */}
@@ -587,8 +594,8 @@ export default function App() {
               </div>
             </div>
           ) : (
-            <div className="w-10 h-10 overflow-hidden shrink-0 mx-auto flex items-center">
-              <img src={ocbcLogo} alt="OCBC Logo" className="h-9 object-none object-left" />
+            <div className="w-10 h-10 shrink-0 mx-auto flex items-center justify-center">
+              <img src={ocbcLogo2} alt="OCBC Logo" className="h-9 object-contain" />
             </div>
           )}
         </div>
@@ -705,7 +712,7 @@ export default function App() {
                 <span className="text-xs text-slate-500 truncate">Chatbot Administrator</span>
               </div>
             )}
-            {isSidebarOpen && <LogOut size={16} className="ml-auto text-slate-400 hover:text-rose-500 cursor-pointer" />}
+            {isSidebarOpen && <LogOut size={16} className="ml-auto text-slate-400 hover:text-rose-500 cursor-pointer" onClick={handleLogout} />}
           </div>
         </div>
       </aside>
@@ -786,14 +793,8 @@ export default function App() {
               {activeTab === 'change-control' && <AdminControlInterface approvals={pendingApprovals} onApprovalDecision={processApproval} onAddApproval={addApproval} onAddAuditEvent={addAuditEvent} />}
               {activeTab === 'content-library' && <ContentLibrary onAddApproval={addApproval} onAddAuditEvent={addAuditEvent} pendingApprovals={pendingApprovals} />}
               {activeTab === 'preview' && (
-                <div className="p-8 flex flex-col items-center justify-center min-h-[calc(100vh-80px)]">
-                  <div className="max-w-lg w-full">
-                    <div className="mb-8 text-center">
-                      <h2 className="text-3xl font-bold text-slate-900">Bot Tech Benchmark</h2>
-                      <p className="text-slate-500 mt-3 text-base">Test and benchmark the OCBC retirement planner chatbot with real-time routing traces and guardrail validation.</p>
-                    </div>
-                    <ChatbotPreview />
-                  </div>
+                <div className="p-6">
+                  <ChatbotPreview sidebarOpen={isSidebarOpen} />
                 </div>
               )}
             </motion.div>
