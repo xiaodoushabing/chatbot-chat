@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   Send, Bot, TrendingUp, Home, Wallet, ChevronDown, ChevronUp,
-  ArrowRight, GitBranch, Shield, ShieldAlert, RotateCcw,
+  ArrowRight, GitBranch, RotateCcw,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
@@ -14,28 +14,19 @@ function cn(...inputs: ClassValue[]) {
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type Engine = 'nlu' | 'hybrid' | 'rag';
-type GuardrailOutcome =
-  | 'passed'
-  | 'input-flagged'
-  | 'output-flagged'
-  | 'input-blocked'
-  | 'injection-detected';
-
 interface RoutingTrace {
   intent: string;
   confidence: number | null;
   riskLevel: 'Low' | 'High' | null;
   responseMode: 'GenAI' | 'Template' | 'Exclude' | null;
   agent: string | null;
-  guardrail: GuardrailOutcome;
-  killSwitch: boolean;
 }
 
 interface Message {
   id: string;
   role: 'user' | 'bot';
   content: string;
-  type?: 'text' | 'what-if' | 'contextual' | 'life-event' | 'excluded' | 'injection-block' | 'nlu-template' | 'low-confidence';
+  type?: 'text' | 'what-if' | 'contextual' | 'life-event' | 'nlu-template' | 'low-confidence';
   data?: any;
   trace?: RoutingTrace;
   buttons?: string[];
@@ -101,7 +92,7 @@ const INITIAL_MESSAGES: Record<Engine, Message[]> = {
   hybrid: [{
     id: 'init-hybrid', role: 'bot', type: 'text',
     content: "Hello! I'm your AI-powered retirement advisor with comprehensive knowledge of OCBC products. I have access to your dashboard data. How can I help you plan for the future today?",
-    trace: { intent: 'No match (greeting)', confidence: null, riskLevel: null, responseMode: 'GenAI', agent: 'Retirement_Planner_Agent', guardrail: 'passed', killSwitch: false },
+    trace: { intent: 'No match (greeting)', confidence: null, riskLevel: null, responseMode: 'GenAI', agent: 'Retirement_Planner_Agent' },
   }],
   rag: [{
     id: 'init-rag', role: 'bot', type: 'text',
@@ -123,12 +114,6 @@ const COMPLEX_QUERIES = [
 const EDGE_1 = ['What bonus interest rate does OCBC give on CPF savings for Premier Banking customers?'];
 const EDGE_2 = ["How did OCBC's retirement unit trusts perform versus CPF Life returns over the past 3 years?"];
 
-// ─── Guardrail policy (mirrors GuardrailsConfig initial data) ────────────────
-
-const GUARDRAIL_INJECTION_PATTERNS = ['ignore all previous', 'jailbreak', 'pretend you are', 'previous instructions'];
-const GUARDRAIL_BLOCKED_KEYWORDS = ['investment advice', 'tax avoidance', 'competitor product', 'loan guarantee', 'cryptocurrency', 'crypto', 'bitcoin', 'ethereum'];
-const GUARDRAIL_DENIED_PHRASES = ['guaranteed returns', 'risk-free', 'risk free', 'insider tip', 'off the record'];
-const EXCLUSION_RESPONSE = "I'm sorry, but I'm unable to provide information on this topic. For personalised advice, please speak with a licensed OCBC financial advisor or visit your nearest branch.";
 
 // ─── Intent definitions (ported from chatbot_demo/src/lib/intents.ts) ──────────
 
@@ -291,16 +276,7 @@ interface NLUResult {
   confidence: number | null;
 }
 
-function simulateNLU(input: string, guardrailMode: boolean): NLUResult {
-  const lower = input.toLowerCase();
-
-  if (guardrailMode) {
-    if (GUARDRAIL_INJECTION_PATTERNS.some(p => lower.includes(p)))
-      return { content: "I'm unable to process this request.", type: 'injection-block', outOfScope: false, latency: 42, intent: null, confidence: null };
-    if (GUARDRAIL_BLOCKED_KEYWORDS.some(k => lower.includes(k)) || GUARDRAIL_DENIED_PHRASES.some(p => lower.includes(p)))
-      return { content: EXCLUSION_RESPONSE, type: 'excluded', outOfScope: true, latency: 44, intent: 'excluded_topic', confidence: 99 };
-  }
-
+function simulateNLU(input: string): NLUResult {
   const result = classifyMessage(input);
   const confidence = Math.round(result.score * 100);
 
@@ -319,22 +295,15 @@ function simulateNLU(input: string, guardrailMode: boolean): NLUResult {
 
 // ─── Hybrid simulator ─────────────────────────────────────────────────────────
 
-function buildTrace(input: string, classResult: ClassifyResult, guardrailMode: boolean): RoutingTrace {
-  const lower = input.toLowerCase();
-  const isInjection = guardrailMode && GUARDRAIL_INJECTION_PATTERNS.some(p => lower.includes(p));
-  const isExcluded = guardrailMode && (GUARDRAIL_BLOCKED_KEYWORDS.some(k => lower.includes(k)) || GUARDRAIL_DENIED_PHRASES.some(p => lower.includes(p)));
-
-  if (isInjection) return { intent: '(injection detected)', confidence: null, riskLevel: 'High', responseMode: null, agent: null, guardrail: 'injection-detected', killSwitch: false };
-  if (isExcluded) return { intent: '(excluded topic)', confidence: 99, riskLevel: 'High', responseMode: 'Exclude', agent: null, guardrail: 'input-blocked', killSwitch: false };
-
+function buildTrace(classResult: ClassifyResult): RoutingTrace {
   const confidence = classResult.score > 0 ? Math.round(classResult.score * 100) : null;
   const intentId = classResult.intent.id;
   const intentName = classResult.intent.name;
   const isSimple = !classResult.outOfScope && SIMPLE_INTENTS.has(intentId);
-  const responseMode: 'GenAI' | 'Template' = isSimple || classResult.outOfScope ? 'Template' : 'GenAI';
+  const responseMode: 'GenAI' | 'Template' | 'Exclude' = classResult.outOfScope ? 'Exclude' : isSimple ? 'Template' : 'GenAI';
   const agent = responseMode === 'GenAI' ? 'Retirement_Planner_Agent' : null;
 
-  return { intent: intentName, confidence, riskLevel: 'Low', responseMode, agent, guardrail: 'passed', killSwitch: false };
+  return { intent: intentName, confidence, riskLevel: 'Low', responseMode, agent };
 }
 
 interface HybridResult {
@@ -342,41 +311,29 @@ interface HybridResult {
   delay: number;
 }
 
-function simulateHybrid(input: string, guardrailMode: boolean): HybridResult {
+function simulateHybrid(input: string): HybridResult {
   const lower = input.toLowerCase();
 
-  // 1. Guardrail checks — only when guardrail is enabled; off = direct LLM call
-  if (guardrailMode) {
-    if (GUARDRAIL_INJECTION_PATTERNS.some(p => lower.includes(p))) {
-      const trace: RoutingTrace = { intent: '(injection detected)', confidence: null, riskLevel: 'High', responseMode: null, agent: null, guardrail: 'injection-detected', killSwitch: false };
-      return { message: { role: 'bot', content: "I'm unable to process this request.", type: 'injection-block', trace }, delay: 200 };
-    }
-    if (GUARDRAIL_BLOCKED_KEYWORDS.some(k => lower.includes(k)) || GUARDRAIL_DENIED_PHRASES.some(p => lower.includes(p))) {
-      const trace: RoutingTrace = { intent: '(excluded topic)', confidence: 99, riskLevel: 'High', responseMode: 'Exclude', agent: null, guardrail: 'input-blocked', killSwitch: false };
-      return { message: { role: 'bot', content: EXCLUSION_RESPONSE, type: 'excluded', trace }, delay: 300 };
-    }
-  }
-
-  // 2. Hallucination cache check (exact original-case key, same as chatbot_demo)
+  // 1. Hallucination cache check (exact original-case key, same as chatbot_demo)
   if (HYBRID_HALLUCINATION_CACHE[input]) {
     const result = classifyMessage(input);
-    const trace = buildTrace(input, result, guardrailMode);
+    const trace = buildTrace(result);
     return { message: { role: 'bot', content: HYBRID_HALLUCINATION_CACHE[input], type: 'text', trace }, delay: 1200 };
   }
 
-  // 3. TF-IDF classification
+  // 2. TF-IDF classification
   const result = classifyMessage(input);
-  const trace = buildTrace(input, result, guardrailMode);
+  const trace = buildTrace(result);
 
-  // 4. Out-of-scope — only block when guardrail is on; off = LLM tries to handle anyway
-  if (guardrailMode && result.outOfScope) {
-    return { message: { role: 'bot', content: OUT_OF_SCOPE_INTENT_DATA.templateResponse.text, type: 'text', outOfScope: true, trace }, delay: 350 };
+  // 3. Out-of-scope → same template as NLU (deterministic, no LLM fallback)
+  if (result.outOfScope) {
+    return { message: { role: 'bot', content: OUT_OF_SCOPE_INTENT_DATA.templateResponse.text, type: 'text', buttons: OUT_OF_SCOPE_INTENT_DATA.templateResponse.buttons, outOfScope: true, trace }, delay: 350 };
   }
 
   const intent = result.intent as Intent;
 
-  // 5. Simple intent → template (same response as NLU); skip if outOfScope so guardrail-off queries fall through to LLM responses
-  if (!result.outOfScope && SIMPLE_INTENTS.has(intent.id)) {
+  // 4. Simple intent → template (same response as NLU)
+  if (SIMPLE_INTENTS.has(intent.id)) {
     return { message: { role: 'bot', content: intent.templateResponse.text, type: 'nlu-template', buttons: intent.templateResponse.buttons, trace }, delay: 350 };
   }
 
@@ -406,68 +363,6 @@ function simulateHybrid(input: string, guardrailMode: boolean): HybridResult {
     return { message: { role: 'bot', content: "Your total assets currently stand at $842,500. This includes your CPF Ordinary Account ($120k), Special Account ($280k), and private investments ($442.5k). Your current allocation is 65% low-risk, which is optimal for your age bracket.", type: 'contextual', data: { total: 842500, allocation: '65% Low-Risk' }, trace }, delay: 1000 };
 
   return { message: { role: 'bot', content: "I can help with that! Would you like to see a 'What-If' scenario for your retirement age, or should we analyse the impact of a major life event like a house purchase?", type: 'text', trace }, delay: 1100 };
-}
-
-// ─── RAG simulator ────────────────────────────────────────────────────────────
-
-interface RAGResult { content: string; outOfScope?: boolean; startDelay: number; trace: RoutingTrace }
-
-function simulateRAGContent(input: string, guardrailMode: boolean): RAGResult {
-  const lower = input.toLowerCase();
-
-  // 1. Guardrail checks — only when guardrail is enabled; off = direct LLM call
-  if (guardrailMode) {
-    if (GUARDRAIL_INJECTION_PATTERNS.some(p => lower.includes(p))) {
-      const trace: RoutingTrace = { intent: '(injection detected)', confidence: null, riskLevel: 'High', responseMode: null, agent: null, guardrail: 'injection-detected', killSwitch: false };
-      return { content: "I'm unable to process this request.", outOfScope: true, startDelay: 400, trace };
-    }
-    if (GUARDRAIL_BLOCKED_KEYWORDS.some(k => lower.includes(k)) || GUARDRAIL_DENIED_PHRASES.some(p => lower.includes(p))) {
-      const trace: RoutingTrace = { intent: '(excluded topic)', confidence: 99, riskLevel: 'High', responseMode: 'Exclude', agent: null, guardrail: 'input-blocked', killSwitch: false };
-      return { content: EXCLUSION_RESPONSE, outOfScope: true, startDelay: 600, trace };
-    }
-  }
-
-  // 2. Classification for trace
-  const classResult = classifyMessage(input);
-  const baseTrace = buildTrace(input, classResult, guardrailMode);
-  const trace: RoutingTrace = { ...baseTrace, agent: baseTrace.agent ? 'RAG_Retrieval_Agent' : null };
-
-  // 3. Hallucination cache check (exact original-case key, same as chatbot_demo)
-  if (RAG_HALLUCINATION_CACHE[input]) return { content: RAG_HALLUCINATION_CACHE[input], startDelay: 1200, trace };
-
-  // 4. Out-of-scope — only block when guardrail is on; off = LLM tries to handle anyway
-  if (guardrailMode && classResult.outOfScope) {
-    return { content: OUT_OF_SCOPE_INTENT_DATA.templateResponse.text, outOfScope: true, startDelay: 800, trace };
-  }
-
-  if (lower.includes('cpf life') || (lower.includes('cpf') && (lower.includes('payout') || lower.includes('get') || lower.includes('how much'))))
-    return { content: "CPF LIFE (Lifelong Income For the Elderly) provides lifelong monthly payouts starting from your payout eligibility age of 65, or you can defer up to 70 for higher payouts.\n\nThere are three plans:\n- **Basic Plan**: Lower monthly payouts but larger bequest for beneficiaries\n- **Standard Plan**: Higher monthly payouts, moderate bequest (most popular)\n- **Escalating Plan**: Payouts increase by 2% annually to hedge against inflation\n\nWith the Full Retirement Sum ($205,800 in 2025), the Standard Plan pays approximately $1,400–$1,700/month. Would you like me to estimate your personal CPF LIFE payout based on your current balance?", startDelay: 1200, trace };
-
-  if (lower.includes('on track') || (lower.includes('track') && lower.includes('retirement')))
-    return { content: "To assess your retirement readiness, I'd need more context. As a benchmark: aim for 20–25x your annual expenses by retirement. CPF LIFE provides a floor (~$1,400–$1,800/month on the Standard Plan), so your private savings only need to bridge the gap.\n\nA typical Singaporean at 45 with $300k in CPF and $200k private savings is broadly on track for a comfortable retirement at 65. Could you share your approximate age, CPF balance, and monthly savings rate for a personalised assessment?", startDelay: 1300, trace };
-
-  if ((lower.includes('when') && lower.includes('retire')) || lower.includes('retirement age'))
-    return { content: "In Singapore, the minimum retirement age is 63, the re-employment age is 68, and CPF LIFE payouts begin at 65. For financial independence — retiring when you want — that depends on your savings rate. A 40% savings rate typically achieves FI in ~22 years regardless of income.\n\nWhat's your current age and target retirement lifestyle? I can calculate a personalised retirement date.", startDelay: 1200, trace };
-
-  if (lower.includes('should i') && (lower.includes('srs') || lower.includes('open srs')))
-    return { content: "Opening an SRS account makes strong sense if you're in the 22%+ tax bracket — contributions of $15,300/year save $3,366 in annual taxes. The break-even is typically 8–10 years before withdrawal. OCBC SRS offers no maintenance fees and full access to investment products.", startDelay: 1250, trace };
-
-  if (lower.includes('srs') && (lower.includes('age') || lower.includes('retirement age') || lower.includes('withdraw')))
-    return { content: "For SRS, the penalty-free withdrawal age is tied to the **statutory retirement age prevailing when you made your first contribution**.\n\nFor most Singaporeans who contributed before July 2022, this is age **62**. For those who started after July 2022, it's age **63** (aligned with the re-employment age).\n\nYou can withdraw any amount penalty-free after this age. Early withdrawals incur a **5% penalty** plus full income tax on the amount. Given this, SRS is best suited for those within 10–15 years of retirement. Would you like help modelling your SRS tax savings?", startDelay: 1150, trace };
-
-  if (lower.includes('srs') || lower.includes('supplementary retirement'))
-    return { content: "The SRS (Supplementary Retirement Scheme) is a voluntary tax-advantaged savings scheme. Here's what you need to know:\n\n- **Annual limit**: $15,300 (Singapore Citizens/PRs), $35,700 (Foreigners)\n- **Tax relief**: Contributions reduce your taxable income dollar-for-dollar\n- **Investment options**: Fixed deposits, unit trusts, stocks, ETFs, endowment plans\n- **Withdrawal age**: 62–63 (penalty-free)\n- **Tax at withdrawal**: Only 50% of withdrawals are taxable over 10 years\n\nAt the 22% tax bracket, you'd save $3,366/year from maximum contributions. Shall I calculate your exact tax savings and break-even timeline?", startDelay: 1200, trace };
-
-  if (lower.includes('retire at 65') || lower.includes('retire at 55') || lower.includes('retirement at'))
-    return { content: "Retiring at 65 aligns well with Singapore's CPF LIFE payout start age. Here's a projection:\n\n- **CPF LIFE Standard Plan** (Full Retirement Sum $205,800): ~$1,600/month for life\n- **SRS drawdown** (10-year tax-efficient spread): Additional $500–800/month\n- **Private savings** (4% withdrawal rate from $400k): ~$1,333/month\n\nCombined: approximately $3,400–4,700/month — comfortably above the median Singapore retiree monthly expenditure of $2,800.\n\nWould you like to compare retiring at 60 vs 65 vs 70 to see how CPF LIFE payouts and savings requirements change?", startDelay: 1200, trace };
-
-  if (lower.includes('house') || lower.includes('home') || lower.includes('property'))
-    return { content: "Purchasing property significantly impacts your retirement timeline. Key considerations:\n\n**CPF Withdrawal Impact**: Every $100k withdrawn from CPF OA at age 35 costs approximately $1,200/month in CPF LIFE payouts at 65 due to lost compounding.\n\n**For a $1.2M property**:\n- Minimum down payment: $240k (20%)\n- Monthly instalment (30yr, 3.5%): ~$4,300\n- Impact on retirement: Delays full retirement by approximately 3–5 years\n\nA common strategy is to right-size your property to preserve CPF savings for retirement. Would you like a personalised analysis for your situation?", startDelay: 1200, trace };
-
-  if (lower.includes('balance') || lower.includes('assets') || lower.includes('portfolio'))
-    return { content: "Your total assets currently stand at **$842,500** across multiple accounts:\n\n- **CPF Ordinary Account**: $120,000 (earning 2.5% p.a.)\n- **CPF Special Account**: $280,000 (earning 4.0% p.a.)\n- **Private Investments**: $442,500 (65% low-risk allocation)\n\nYour 65% low-risk allocation is well-suited for your age bracket. By 65, your CPF alone is projected to grow to ~$580k, supporting a CPF LIFE payout of approximately $1,850/month.\n\nWould you like to explore rebalancing options or a withdrawal strategy for your private investments?", startDelay: 1100, trace };
-
-  return { content: "I'd be happy to help with your retirement planning! Based on Singapore's retirement ecosystem, I can assist with CPF LIFE planning, SRS optimisation, retirement gap analysis, and investment strategies.\n\nCould you share more about your specific question? Your age, current savings, and target retirement lifestyle would help me give you personalised advice.", startDelay: 1100, trace };
 }
 
 // ─── Markdown renderer ────────────────────────────────────────────────────────
@@ -507,16 +402,6 @@ function TypingIndicator() {
   );
 }
 
-function guardrailLabel(outcome: GuardrailOutcome): { text: string; color: string } {
-  switch (outcome) {
-    case 'passed': return { text: '✓ Input passed · ✓ Output passed', color: 'text-emerald-600' };
-    case 'input-flagged': return { text: '⚠ Input flagged', color: 'text-amber-600' };
-    case 'output-flagged': return { text: '⚠ Output flagged', color: 'text-amber-600' };
-    case 'input-blocked': return { text: '⛔ Input blocked — excluded topic', color: 'text-red-600' };
-    case 'injection-detected': return { text: '⛔ Prompt injection detected', color: 'text-red-600' };
-  }
-}
-
 function modeColor(mode: 'GenAI' | 'Template' | 'Exclude' | null): string {
   if (mode === 'GenAI') return 'bg-blue-100 text-blue-700';
   if (mode === 'Template') return 'bg-amber-100 text-amber-700';
@@ -526,7 +411,6 @@ function modeColor(mode: 'GenAI' | 'Template' | 'Exclude' | null): string {
 
 function RoutingTraceCard({ trace }: { trace: RoutingTrace }) {
   const [open, setOpen] = useState(false);
-  const gLabel = guardrailLabel(trace.guardrail);
   return (
     <div className="w-full border border-slate-200 rounded-xl bg-slate-50 overflow-hidden text-[0.65rem]">
       <button onClick={() => setOpen(v => !v)} className="w-full flex items-center gap-1.5 px-2.5 py-1.5 hover:bg-slate-100 transition-colors">
@@ -543,7 +427,6 @@ function RoutingTraceCard({ trace }: { trace: RoutingTrace }) {
               <div className="flex flex-col gap-0.5"><span className="text-slate-400 uppercase tracking-wider font-bold">Risk</span>{trace.riskLevel === null ? <span className="text-slate-400">—</span> : <span className={cn('inline-flex items-center px-1.5 py-0.5 rounded font-bold w-fit', trace.riskLevel === 'Low' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700')}>{trace.riskLevel}</span>}</div>
               <div className="flex flex-col gap-0.5"><span className="text-slate-400 uppercase tracking-wider font-bold">Mode</span>{trace.responseMode === null ? <span className="text-slate-400">—</span> : <span className={cn('inline-flex items-center px-1.5 py-0.5 rounded font-bold w-fit', modeColor(trace.responseMode))}>{trace.responseMode}</span>}</div>
               <div className="flex flex-col gap-0.5"><span className="text-slate-400 uppercase tracking-wider font-bold">Agent</span><span className="text-slate-700 font-medium">{trace.agent ?? '—'}</span></div>
-              <div className="flex flex-col gap-0.5 col-span-2"><span className="text-slate-400 uppercase tracking-wider font-bold">Guardrail</span><span className={cn('font-medium', gLabel.color)}>{gLabel.text}</span></div>
             </div>
           </motion.div>
         )}
@@ -553,17 +436,6 @@ function RoutingTraceCard({ trace }: { trace: RoutingTrace }) {
 }
 
 function BotBubble({ msg, onButtonClick }: { msg: Message; onButtonClick: (t: string) => void }) {
-  if (msg.type === 'excluded') return (
-    <div className="w-full border border-red-200 bg-red-50 rounded-2xl rounded-tl-sm p-2.5 flex flex-col gap-1.5">
-      <div className="flex items-center gap-1.5"><ShieldAlert size={11} className="text-red-600 shrink-0" /><span className="text-[0.6rem] font-bold text-red-700 uppercase tracking-widest">Excluded Topic</span></div>
-      <p className="text-xs text-red-800 leading-relaxed">{msg.content}</p>
-    </div>
-  );
-
-  if (msg.type === 'injection-block') return (
-    <div className="bg-white border border-slate-100 rounded-2xl rounded-tl-sm px-3 py-2 shadow-sm text-xs text-slate-700 leading-relaxed">{msg.content}</div>
-  );
-
   const bubbleCn = cn(
     'rounded-2xl rounded-tl-sm px-3 py-2 text-sm leading-relaxed space-y-0.5 shadow-sm',
     msg.outOfScope ? 'bg-gray-100 text-gray-500 border border-gray-200' : 'bg-white border border-gray-200 text-gray-800'
@@ -590,10 +462,9 @@ function BotBubble({ msg, onButtonClick }: { msg: Message; onButtonClick: (t: st
   );
 }
 
-function PhoneColumn({ engine, state, guardrailMode, showTraces, onButtonClick }: {
+function PhoneColumn({ engine, state, showTraces, onButtonClick }: {
   engine: Engine;
   state: ChatState;
-  guardrailMode: boolean;
   showTraces: boolean;
   onButtonClick: (t: string) => void;
 }) {
@@ -706,7 +577,6 @@ function PhoneColumn({ engine, state, guardrailMode, showTraces, onButtonClick }
 
 export default function ChatbotPreview({ sidebarOpen = true }: { sidebarOpen?: boolean }) {
   const [input, setInput] = useState('');
-  const [guardrailMode, setGuardrailMode] = useState(false);
   const [showTraces, setShowTraces] = useState(false);
 
   const initState = (engine: Engine): ChatState => ({
@@ -719,13 +589,17 @@ export default function ChatbotPreview({ sidebarOpen = true }: { sidebarOpen?: b
   const [ragState, setRagState] = useState<ChatState>(() => initState('rag'));
 
   const ragStreamRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const ragAbortRef = useRef<AbortController | null>(null);
   const ragStartRef = useRef<number>(0);
   const hybridStreamRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const hybridAbortRef = useRef<AbortController | null>(null);
   const hybridStartRef = useRef<number>(0);
 
   const handleReset = () => {
     if (ragStreamRef.current) { clearInterval(ragStreamRef.current); ragStreamRef.current = null; }
+    if (ragAbortRef.current) { ragAbortRef.current.abort(); ragAbortRef.current = null; }
     if (hybridStreamRef.current) { clearInterval(hybridStreamRef.current); hybridStreamRef.current = null; }
+    if (hybridAbortRef.current) { hybridAbortRef.current.abort(); hybridAbortRef.current = null; }
     setNluState(initState('nlu'));
     setHybridState(initState('hybrid'));
     setRagState(initState('rag'));
@@ -745,84 +619,214 @@ export default function ChatbotPreview({ sidebarOpen = true }: { sidebarOpen?: b
     setRagState(s => ({ ...s, messages: [...s.messages, userMsg], isLoading: true }));
 
     // ── NLU (fast, ~50ms) ────────────────────────────────────────────────────
-    const nluResult = simulateNLU(trimmed, guardrailMode);
+    const nluResult = simulateNLU(trimmed);
     setTimeout(() => {
       const botMsg: Message = { id: String(ts + 10), role: 'bot', type: nluResult.type, content: nluResult.content, buttons: nluResult.buttons, outOfScope: nluResult.outOfScope };
       setNluState(s => ({ ...s, messages: [...s.messages, botMsg], isLoading: false, latency: nluResult.latency }));
     }, nluResult.latency);
 
-    // ── Hybrid (medium, 300-1400ms, streams text responses) ─────────────────
-    const hybridResult = simulateHybrid(trimmed, guardrailMode);
+    // ── Hybrid (templates for simple/out-of-scope; real LLM for complex) ──────
+    if (hybridAbortRef.current) hybridAbortRef.current.abort();
+    const hybridAbort = new AbortController();
+    hybridAbortRef.current = hybridAbort;
+    if (hybridStreamRef.current) { clearInterval(hybridStreamRef.current); hybridStreamRef.current = null; }
+
+    const hybridClassResult = classifyMessage(trimmed);
+    const hybridTrace = buildTrace(hybridClassResult);
     const hybridStreamId = String(ts + 20);
     hybridStartRef.current = ts;
-    if (hybridStreamRef.current) clearInterval(hybridStreamRef.current);
 
-    const isHybridText = hybridResult.message.type === 'text' && !hybridResult.message.outOfScope && hybridResult.message.content.length > 60;
-    setTimeout(() => {
-      if (!isHybridText) {
-        // Instant for templates, excluded, injection-block, rich cards, out-of-scope
-        const botMsg: Message = { id: hybridStreamId, ...hybridResult.message };
-        setHybridState(s => ({ ...s, messages: [...s.messages, botMsg], isLoading: false, latency: hybridResult.delay }));
-      } else {
-        // Stream word by word
+    if (HYBRID_HALLUCINATION_CACHE[trimmed]) {
+      // Cached hallucination: simulate streaming word-by-word (no real LLM needed)
+      const cachedContent = HYBRID_HALLUCINATION_CACHE[trimmed];
+      setTimeout(() => {
+        if (hybridAbort.signal.aborted) return;
         setHybridState(s => ({
-          ...s,
-          isLoading: false,
-          messages: [...s.messages, { id: hybridStreamId, ...hybridResult.message, content: '', isStreaming: true }],
+          ...s, isLoading: false,
+          messages: [...s.messages, { id: hybridStreamId, role: 'bot', content: '', type: 'text', trace: hybridTrace, isStreaming: true }],
         }));
-        const words = hybridResult.message.content.split(' ');
+        const words = cachedContent.split(' ');
         let idx = 0;
         hybridStreamRef.current = setInterval(() => {
+          if (hybridAbort.signal.aborted) { clearInterval(hybridStreamRef.current!); hybridStreamRef.current = null; return; }
           idx += 3;
           const done = idx >= words.length;
           setHybridState(s => ({
             ...s,
-            messages: s.messages.map(m =>
-              m.id === hybridStreamId ? { ...m, content: done ? hybridResult.message.content : words.slice(0, Math.min(idx, words.length)).join(' '), isStreaming: !done } : m
-            ),
+            messages: s.messages.map(m => m.id === hybridStreamId
+              ? { ...m, content: done ? cachedContent : words.slice(0, Math.min(idx, words.length)).join(' '), isStreaming: !done } : m),
             ...(done ? { latency: Date.now() - hybridStartRef.current } : {}),
           }));
           if (done && hybridStreamRef.current) { clearInterval(hybridStreamRef.current); hybridStreamRef.current = null; }
         }, 25);
-      }
-    }, hybridResult.delay);
+      }, 1200);
+    } else if (hybridClassResult.outOfScope || SIMPLE_INTENTS.has(hybridClassResult.intent.id)) {
+      // Simple or out-of-scope: instant template response
+      const hybridResult = simulateHybrid(trimmed);
+      setTimeout(() => {
+        if (hybridAbort.signal.aborted) return;
+        setHybridState(s => ({ ...s, messages: [...s.messages, { id: hybridStreamId, ...hybridResult.message }], isLoading: false, latency: hybridResult.delay }));
+      }, hybridResult.delay);
+    } else {
+      // Complex intent: real LLM call via /api/hybrid (guarded system prompt)
+      (async () => {
+        await new Promise(r => setTimeout(r, 350));
+        if (hybridAbort.signal.aborted) return;
 
-    // ── RAG (slow, streaming) ────────────────────────────────────────────────
-    const ragResult = simulateRAGContent(trimmed, guardrailMode);
-    const streamId = String(ts + 30);
-    ragStartRef.current = ts;
-
-    if (ragStreamRef.current) clearInterval(ragStreamRef.current);
-
-    setTimeout(() => {
-      // Add empty streaming message
-      setRagState(s => ({
-        ...s,
-        isLoading: false,
-        messages: [...s.messages, { id: streamId, role: 'bot', content: '', type: 'text', outOfScope: ragResult.outOfScope, trace: ragResult.trace, isStreaming: true }],
-      }));
-
-      const words = ragResult.content.split(' ');
-      let idx = 0;
-      ragStreamRef.current = setInterval(() => {
-        idx += 2;
-        const done = idx >= words.length;
-        const partial = words.slice(0, Math.min(idx, words.length)).join(' ');
-
-        setRagState(s => ({
-          ...s,
-          messages: s.messages.map(m =>
-            m.id === streamId ? { ...m, content: done ? ragResult.content : partial, isStreaming: !done } : m
-          ),
-          ...(done ? { latency: Date.now() - ragStartRef.current } : {}),
+        setHybridState(s => ({
+          ...s, isLoading: false,
+          messages: [...s.messages, { id: hybridStreamId, role: 'bot', content: '', type: 'text', trace: hybridTrace, isStreaming: true }],
         }));
 
-        if (done && ragStreamRef.current) {
-          clearInterval(ragStreamRef.current);
-          ragStreamRef.current = null;
+        let fullContent = '';
+        try {
+          const res = await fetch('/api/hybrid', {
+            method: 'POST',
+            signal: hybridAbort.signal,
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ message: trimmed }),
+          });
+          if (!res.ok || !res.body) throw new Error(`Hybrid error ${res.status}`);
+          const reader = res.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = '';
+          outer2: while (true) {
+            const { done, value } = await reader.read();
+            if (done || hybridAbort.signal.aborted) break;
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() ?? '';
+            for (const line of lines) {
+              if (!line.startsWith('data: ')) continue;
+              try {
+                const ev = JSON.parse(line.slice(6));
+                if (ev.type === 'delta') {
+                  fullContent += ev.text;
+                  setHybridState(s => ({
+                    ...s,
+                    messages: s.messages.map(m => m.id === hybridStreamId ? { ...m, content: fullContent } : m),
+                  }));
+                }
+                if (ev.type === 'end') break outer2;
+                if (ev.type === 'error') { fullContent = "I'm sorry, I encountered an error. Please try again."; break outer2; }
+              } catch {}
+            }
+          }
+        } catch (err: unknown) {
+          if ((err as { name?: string })?.name !== 'AbortError') {
+            fullContent = fullContent || "I'm sorry, I encountered an error. Please try again.";
+          }
         }
-      }, 35);
-    }, ragResult.startDelay);
+
+        if (!hybridAbort.signal.aborted) {
+          setHybridState(s => ({
+            ...s,
+            messages: s.messages.map(m => m.id === hybridStreamId
+              ? { ...m, content: fullContent || "I'm sorry, I encountered an error. Please try again.", isStreaming: false } : m),
+            latency: Date.now() - hybridStartRef.current,
+          }));
+        }
+      })();
+    }
+
+    // ── RAG (real LLM streaming via Anthropic API) ───────────────────────────
+    if (ragAbortRef.current) ragAbortRef.current.abort();
+    const ragAbort = new AbortController();
+    ragAbortRef.current = ragAbort;
+    if (ragStreamRef.current) { clearInterval(ragStreamRef.current); ragStreamRef.current = null; }
+
+    const ragClassResult = classifyMessage(trimmed);
+    const ragBaseTrace = buildTrace(ragClassResult);
+    const ragTrace: RoutingTrace = { ...ragBaseTrace, agent: 'RAG_Retrieval_Agent' };
+    const ragStreamId = String(ts + 30);
+    ragStartRef.current = ts;
+
+    if (RAG_HALLUCINATION_CACHE[trimmed]) {
+      // Cached hallucination: simulate streaming word-by-word (no real LLM needed)
+      setTimeout(() => {
+        if (ragAbort.signal.aborted) return;
+        setRagState(s => ({
+          ...s, isLoading: false,
+          messages: [...s.messages, { id: ragStreamId, role: 'bot', content: '', type: 'text', trace: ragTrace, isStreaming: true }],
+        }));
+        const words = RAG_HALLUCINATION_CACHE[trimmed].split(' ');
+        let idx = 0;
+        ragStreamRef.current = setInterval(() => {
+          if (ragAbort.signal.aborted) { clearInterval(ragStreamRef.current!); return; }
+          idx += 2;
+          const done = idx >= words.length;
+          setRagState(s => ({
+            ...s,
+            messages: s.messages.map(m => m.id === ragStreamId
+              ? { ...m, content: done ? RAG_HALLUCINATION_CACHE[trimmed] : words.slice(0, Math.min(idx, words.length)).join(' '), isStreaming: !done } : m),
+            ...(done ? { latency: Date.now() - ragStartRef.current } : {}),
+          }));
+          if (done && ragStreamRef.current) { clearInterval(ragStreamRef.current); ragStreamRef.current = null; }
+        }, 35);
+      }, 1200);
+    } else {
+      // Real LLM call
+      (async () => {
+        await new Promise(r => setTimeout(r, 400));
+        if (ragAbort.signal.aborted) return;
+
+        setRagState(s => ({
+          ...s, isLoading: false,
+          messages: [...s.messages, { id: ragStreamId, role: 'bot', content: '', type: 'text', trace: ragTrace, isStreaming: true }],
+        }));
+
+        let fullContent = '';
+        try {
+          const res = await fetch('/api/rag', {
+            method: 'POST',
+            signal: ragAbort.signal,
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ message: trimmed }),
+          });
+
+          if (!res.ok || !res.body) throw new Error(`RAG error ${res.status}`);
+
+          const reader = res.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = '';
+          outer: while (true) {
+            const { done, value } = await reader.read();
+            if (done || ragAbort.signal.aborted) break;
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() ?? '';
+            for (const line of lines) {
+              if (!line.startsWith('data: ')) continue;
+              try {
+                const ev = JSON.parse(line.slice(6));
+                if (ev.type === 'delta') {
+                  fullContent += ev.text;
+                  setRagState(s => ({
+                    ...s,
+                    messages: s.messages.map(m => m.id === ragStreamId ? { ...m, content: fullContent } : m),
+                  }));
+                }
+                if (ev.type === 'end') break outer;
+                if (ev.type === 'error') { fullContent = "I'm sorry, I encountered an error. Please try again."; break outer; }
+              } catch {}
+            }
+          }
+        } catch (err: unknown) {
+          if ((err as { name?: string })?.name !== 'AbortError') {
+            fullContent = fullContent || "I'm sorry, I encountered an error. Please try again.";
+          }
+        }
+
+        if (!ragAbort.signal.aborted) {
+          setRagState(s => ({
+            ...s,
+            messages: s.messages.map(m => m.id === ragStreamId
+              ? { ...m, content: fullContent || "I'm sorry, I encountered an error. Please try again.", isStreaming: false } : m),
+            latency: Date.now() - ragStartRef.current,
+          }));
+        }
+      })();
+    }
   };
 
   const handleSend = (e?: React.FormEvent) => {
@@ -856,18 +860,6 @@ export default function ChatbotPreview({ sidebarOpen = true }: { sidebarOpen?: b
             <span className="hidden sm:inline">{showTraces ? 'Hide Traces' : 'Show Traces'}</span>
           </button>
 
-          {/* Guardrail toggle */}
-          <button
-            onClick={() => setGuardrailMode(v => !v)}
-            className={cn(
-              'flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all border',
-              guardrailMode ? 'bg-[#E3000F] text-white border-[#E3000F]' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
-            )}
-          >
-            <Shield size={15} />
-            <span className="hidden sm:inline">Guardrail Test</span>
-          </button>
-
           {/* Reset chat */}
           <button
             onClick={handleReset}
@@ -878,18 +870,6 @@ export default function ChatbotPreview({ sidebarOpen = true }: { sidebarOpen?: b
           </button>
         </div>
       </div>
-
-      {/* ── Guardrail banner (full-width when sidebar open) ── */}
-      <AnimatePresence>
-        {guardrailMode && sidebarOpen && (
-          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.18 }} className="overflow-hidden">
-            <div className="bg-red-50 border border-red-200 rounded-xl px-3 py-2 flex items-start gap-2">
-              <ShieldAlert size={13} className="text-red-600 shrink-0 mt-0.5" />
-              <span className="text-[0.65rem] font-bold text-red-700 uppercase tracking-wider leading-snug">Guardrail Test Mode — excluded and injected queries show guardrail responses</span>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* ── Main area ── */}
       {sidebarOpen ? (
@@ -902,7 +882,6 @@ export default function ChatbotPreview({ sidebarOpen = true }: { sidebarOpen?: b
                 key={engine}
                 engine={engine}
                 state={{ nlu: nluState, hybrid: hybridState, rag: ragState }[engine]}
-                guardrailMode={guardrailMode}
                 showTraces={showTraces}
                 onButtonClick={sendMessage}
               />
@@ -979,18 +958,6 @@ export default function ChatbotPreview({ sidebarOpen = true }: { sidebarOpen?: b
         <div className="flex gap-5 items-start">
           {/* Left sidebar (sticky) */}
           <div className="w-96 shrink-0 sticky top-6 flex flex-col gap-3">
-            {/* Guardrail banner */}
-            <AnimatePresence>
-              {guardrailMode && (
-                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.18 }} className="overflow-hidden">
-                  <div className="bg-red-50 border border-red-200 rounded-xl px-3 py-2 flex items-start gap-2">
-                    <ShieldAlert size={13} className="text-red-600 shrink-0 mt-0.5" />
-                    <span className="text-[0.65rem] font-bold text-red-700 uppercase tracking-wider leading-snug">Guardrail Test Mode — excluded and injected queries show guardrail responses</span>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
             {/* Quick chips */}
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 flex flex-col gap-3">
               <div className="flex flex-col gap-1.5">
@@ -1059,7 +1026,6 @@ export default function ChatbotPreview({ sidebarOpen = true }: { sidebarOpen?: b
                 key={engine}
                 engine={engine}
                 state={{ nlu: nluState, hybrid: hybridState, rag: ragState }[engine]}
-                guardrailMode={guardrailMode}
                 showTraces={showTraces}
                 onButtonClick={sendMessage}
               />
