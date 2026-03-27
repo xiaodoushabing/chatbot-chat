@@ -569,8 +569,7 @@ The central approval hub. All maker-checker items across the entire platform flo
 - Review change details: what changed, who submitted, when, and why
 - Approve pending actions with optional review note
 - Reject pending actions with mandatory rejection reason
-- Submit kill switch activation (requires maker-checker approval before taking effect)
-- Submit kill switch deactivation (requires its own maker-checker approval)
+- Submit kill switch activation / deactivation (requires maker-checker approval before taking effect)
 - View recent decisions (last 5 approved/rejected items)
 - Monitor kill switch status bar (red alert when active)
 

@@ -1,6 +1,6 @@
 # Vendor-Agnostic Strategy: Chatbot Backoffice Platform
 
-> Architecture review + banking-reality roadmap for OCBC retirement planning chatbot admin suite.
+> Architecture review + banking-reality roadmap for a retirement planning chatbot admin suite.
 > Replaces the "everything is Phase 1" approach with genuine incremental delivery.
 > **This version describes architecture in terms of capabilities with vendor options — no single-vendor commitment.**
 >
@@ -18,7 +18,7 @@
 
 **Core thesis:** *"Unified platform first, AI second."* The governance, audit, and control features are the foundation that unlocks AI safely. This is not an AI project that happens to have governance — it is a governance platform that enables AI.
 
-**Why now:** MAS November 2025 consultation paper on AI governance creates a compliance tailwind. Banks that build AI inventory and lifecycle controls early will have regulatory advantage. OCBC was one of 7 Veritas pilot banks for FEAT principles — this platform operationalizes that work.
+**Why now:** MAS November 2025 consultation paper on AI governance creates a compliance tailwind. Banks that build AI inventory and lifecycle controls early will have regulatory advantage. Our bank was one of 7 Veritas pilot banks for FEAT principles — this platform operationalizes that work.
 
 **Investment:** ~$300-700/month (Phase 1, no AI) growing to ~$800-2,500/month (Phase 3+, full platform). Infrastructure cost is dwarfed by personnel. Team: 2 people growing to 4 at peak.
 
@@ -283,7 +283,7 @@ block-beta
     style admin_u fill:#c8e6c9
 ```
 
-**Default posture: SAML/OIDC federation.** The identity broker handles token issuance only — not authentication. The bank's existing IdP handles authentication and MFA. If bank confirms no existing IdP (unlikely for OCBC), fall back to managed-auth-native mode.
+**Default posture: SAML/OIDC federation.** The identity broker handles token issuance only — not authentication. The bank's existing IdP handles authentication and MFA. If bank confirms no existing IdP (unlikely for our bank), fall back to managed-auth-native mode.
 
 ### 2.3 Compute Architecture (Progressive Decomposition)
 
@@ -436,7 +436,7 @@ sequenceDiagram
         Route->>GW: Response + routing trace
     else Kill Switch INACTIVE
         Route->>VEC: Embed query (Embedding Model)<br/>→ cosine similarity
-        VEC->>Route: Top match: OCBC_Life_Goals_Retirement<br/>confidence: 0.94, mode: GenAI
+        VEC->>Route: Top match: Life_Goals_Retirement<br/>confidence: 0.94, mode: GenAI
 
         alt GenAI Path
             Route->>Guard: Pre-LLM screening
@@ -703,7 +703,7 @@ graph LR
 | AI vendor risk assessment | Risk / Compliance | 3-6 months | Gates Phase 2, not Phase 1 |
 | Data classification sign-off | Data Governance | 4-6 weeks | Use table in Section 2.5 |
 | Architecture review board submission | Architecture team | 6-8 weeks | This document is the input |
-| MAS FEAT self-assessment | Compliance | Ongoing | Leverage OCBC's Veritas pilot |
+| MAS FEAT self-assessment | Compliance | Ongoing | Leverage Veritas pilot |
 | AI Model Governance framework | Risk / ML team | 4-8 weeks | MAS Nov 2025 requirement |
 | IdP federation agreement | IAM / Security | 2-4 weeks | SAML/OIDC metadata exchange |
 
@@ -887,7 +887,7 @@ quadrantChart
 | R3 | **IdP federation complications** | Medium | Medium — delays auth | Start IdP discovery in Phase 0 (NOW). Design SAML/OIDC broker as default. |
 | R4 | **Single developer bottleneck** | High | High — delivery risk | Genuine re-tiering (6 tasks in Phase 1, not 15). Monolith function reduces scope. Each phase is independently shippable. |
 | R5 | **Chatbot liability (Air Canada scenario)** | Low | Critical — legal + regulatory | Guardrails in Phase 2. Kill switch from Phase 1. Template responses for high-risk intents. Maker-checker on all AI changes. Exclusion for sensitive topics. |
-| R6 | **MAS AI governance gap** | Medium | High — supervisory | AI Model Registry in Phase 1 schema. FEAT self-assessment in Phase 0.5. OCBC's Veritas pilot is an advantage. |
+| R6 | **MAS AI governance gap** | Medium | High — supervisory | AI Model Registry in Phase 1 schema. FEAT self-assessment in Phase 0.5. Veritas pilot is an advantage. |
 | R7 | **Scope creep to multi-use-case** | Medium | Medium — delays delivery | Ship retirement planning end-to-end first. Architecture supports multi-use-case (namespacing) but implementation stays single-use-case until Phase 3+. |
 | R8 | **Vector search performance ceiling** | Low | Medium — routing latency | Monitor p95. Migration path to dedicated vector service documented. Decision point at Phase 3 end. |
 | R9 | **No DR at go-live** | Low (if planned) | Critical | Define RTO/RPO in Phase 1 design. Multi-AZ DB. Cross-region object storage replication. Runbook in Phase 4. |
@@ -929,7 +929,7 @@ quadrantChart
 |-----------|--------------|-------|
 | **Fairness** | Guardrails screen for discriminatory outputs. Templates ensure consistent treatment. | 2 |
 | **Ethics** | Maker-checker on all AI changes. Human escalation. Kill switch. AI drafts require human approval. | 1 (governance), 2 (AI) |
-| **Accountability** | Full audit trail. Every AI change attributed to a human. AI Model Registry. OCBC remains responsible (Principle 8). | 1 (audit), 2 (registry) |
+| **Accountability** | Full audit trail. Every AI change attributed to a human. AI Model Registry. The bank remains responsible (Principle 8). | 1 (audit), 2 (registry) |
 | **Transparency** | Routing trace shows how queries are handled. Dashboard shows AI usage + cost. Bot discloses it is AI. | 2 (trace), 3 (dashboard) |
 
 ---

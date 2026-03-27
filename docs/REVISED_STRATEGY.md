@@ -1,6 +1,6 @@
 # Revised Strategy: Chatbot Backoffice Platform
 
-> Architecture review + banking-reality roadmap for OCBC retirement planning chatbot admin suite.
+> Architecture review + banking-reality roadmap for a retirement planning chatbot admin suite.
 > Replaces the "everything is Phase 1" approach with genuine incremental delivery.
 >
 > **Date:** 2026-03-26
@@ -17,7 +17,7 @@
 
 **Core thesis:** *"Unified platform first, AI second."* The governance, audit, and control features are the foundation that unlocks AI safely. This is not an AI project that happens to have governance — it is a governance platform that enables AI.
 
-**Why now:** MAS November 2025 consultation paper on AI governance creates a compliance tailwind. Banks that build AI inventory and lifecycle controls early will have regulatory advantage. OCBC was one of 7 Veritas pilot banks for FEAT principles — this platform operationalizes that work.
+**Why now:** MAS November 2025 consultation paper on AI governance creates a compliance tailwind. Banks that build AI inventory and lifecycle controls early will have regulatory advantage. Our bank was one of 7 Veritas pilot banks for FEAT principles — this platform operationalizes that work.
 
 **Investment:** ~$300-700/month (Phase 1, no AI) growing to ~$800-2,500/month (Phase 3+, full platform). Infrastructure cost is dwarfed by personnel. Team: 2 people growing to 4 at peak.
 
@@ -57,7 +57,7 @@
 
 | # | Current Decision | Problem | Recommendation | Impact if Unchanged |
 |---|-----------------|---------|---------------|-------------------|
-| 1 | **Cognito as standalone identity source** | OCBC almost certainly runs ADFS or Azure AD. The F3 PRD itself flags this as "Risk 1 (HIGH IMPACT)" but designs Cognito-native auth as default. Retrofitting SAML later requires user migration. | **Make SAML federation the default.** Cognito handles token issuance; bank's IdP handles auth + MFA. | Auth rework mid-project. User migration. MFA duplication. |
+| 1 | **Cognito as standalone identity source** | Our bank almost certainly runs ADFS or Azure AD. The F3 PRD itself flags this as "Risk 1 (HIGH IMPACT)" but designs Cognito-native auth as default. Retrofitting SAML later requires user migration. | **Make SAML federation the default.** Cognito handles token issuance; bank's IdP handles auth + MFA. | Auth rework mid-project. User migration. MFA duplication. |
 | 2 | **GitHub Actions for CI/CD** | Banks typically prohibit source code transiting external infrastructure. GitHub Actions runs on Microsoft/GitHub servers. | **Design for CodePipeline/CodeBuild** as production CI/CD. GitHub Actions only for pre-merge checks (lint, tests) — no secrets, no AWS access. | Blocked by bank security at deployment time. |
 | 3 | **DynamoDB for intent DB** | AGENT_TASKS.md requires filtering by 5 columns (name, risk, mode, status, env). DynamoDB GSIs cover only 2 per GSI. The ActiveIntents UI already demonstrates multi-column filtering. This is a relational query pattern. | **Move intents to Aurora.** Keep DynamoDB only for: sessions (TTL), cache, kill switch state, denormalized routing lookup (refreshed on promote). | GSI proliferation. Scan-based filters. Complex cross-DB joins between DynamoDB intents and Aurora templates. |
 | 4 | **15+ separate Lambda functions** | 12+ Lambda handlers before a single API call works. Each adds cold-start latency, deployment complexity, IAM role management. | **Phase 1: single monolith Lambda** with route dispatch. Shared middleware (auth, audit, errors), shared connection pool. Decompose in Phase 2. | 15 cold-start variants. 15 CloudWatch log groups. Debugging nightmare. |
@@ -282,7 +282,7 @@ block-beta
     style admin_u fill:#c8e6c9
 ```
 
-**Default posture: SAML federation.** Cognito is the token broker, not the identity source. The bank's existing IdP handles authentication and MFA. If bank confirms no existing IdP (unlikely for OCBC), fall back to Cognito-native auth.
+**Default posture: SAML federation.** Cognito is the token broker, not the identity source. The bank's existing IdP handles authentication and MFA. If bank confirms no existing IdP (unlikely for our bank), fall back to Cognito-native auth.
 
 ### 2.3 Lambda Architecture (Progressive Decomposition)
 
@@ -435,7 +435,7 @@ sequenceDiagram
         Route->>GW: Response + routing trace
     else Kill Switch INACTIVE
         Route->>PGV: Embed query (Titan)<br/>→ cosine similarity
-        PGV->>Route: Top match: OCBC_Life_Goals_Retirement<br/>confidence: 0.94, mode: GenAI
+        PGV->>Route: Top match: Life_Goals_Retirement<br/>confidence: 0.94, mode: GenAI
 
         alt GenAI Path
             Route->>Guard: Pre-LLM screening
@@ -641,7 +641,7 @@ graph LR
 | Bedrock AI risk assessment | Risk / Compliance | 3-6 months | Gates Phase 2, not Phase 1 |
 | Data classification sign-off | Data Governance | 4-6 weeks | Use table in Section 2.5 |
 | SARB submission | Architecture team | 6-8 weeks | This document is the input |
-| MAS FEAT self-assessment | Compliance | Ongoing | Leverage OCBC's Veritas pilot |
+| MAS FEAT self-assessment | Compliance | Ongoing | Leverage Veritas pilot |
 | AI Model Governance framework | Risk / ML team | 4-8 weeks | MAS Nov 2025 requirement |
 | IdP federation agreement | IAM / Security | 2-4 weeks | SAML metadata exchange |
 
@@ -824,7 +824,7 @@ quadrantChart
 | R3 | **SAML IdP integration complications** | Medium | Medium — delays auth | Start IdP discovery in Phase 0 (NOW). Design SAML broker as default. |
 | R4 | **Single developer bottleneck** | High | High — delivery risk | Genuine re-tiering (6 tasks in Phase 1, not 15). Monolith Lambda reduces scope. Each phase is independently shippable. |
 | R5 | **Chatbot liability (Air Canada scenario)** | Low | Critical — legal + regulatory | Guardrails in Phase 2. Kill switch from Phase 1. Template responses for high-risk intents. Maker-checker on all AI changes. Exclusion for sensitive topics. |
-| R6 | **MAS AI governance gap** | Medium | High — supervisory | AI Model Registry in Phase 1 schema. FEAT self-assessment in Phase 0.5. OCBC's Veritas pilot is an advantage. |
+| R6 | **MAS AI governance gap** | Medium | High — supervisory | AI Model Registry in Phase 1 schema. FEAT self-assessment in Phase 0.5. Veritas pilot is an advantage. |
 | R7 | **Scope creep to multi-use-case** | Medium | Medium — delays delivery | Ship retirement planning end-to-end first. Architecture supports multi-use-case (namespacing) but implementation stays single-use-case until Phase 3+. |
 | R8 | **pgvector performance ceiling** | Low | Medium — routing latency | Monitor p95. Migration path to OpenSearch documented. Decision point at Phase 3 end. |
 | R9 | **No DR at go-live** | Low (if planned) | Critical | Define RTO/RPO in Phase 1 design. Aurora Multi-AZ. S3 cross-region replication. Runbook in Phase 4. |
@@ -865,7 +865,7 @@ quadrantChart
 |-----------|--------------|-------|
 | **Fairness** | Guardrails screen for discriminatory outputs. Templates ensure consistent treatment. | 2 |
 | **Ethics** | Maker-checker on all AI changes. Human escalation. Kill switch. AI drafts require human approval. | 1 (governance), 2 (AI) |
-| **Accountability** | Full audit trail. Every AI change attributed to a human. AI Model Registry. OCBC remains responsible (Principle 8). | 1 (audit), 2 (registry) |
+| **Accountability** | Full audit trail. Every AI change attributed to a human. AI Model Registry. The bank remains responsible (Principle 8). | 1 (audit), 2 (registry) |
 | **Transparency** | Routing trace shows how queries are handled. Dashboard shows AI usage + cost. Bot discloses it is AI. | 2 (trace), 3 (dashboard) |
 
 ---
