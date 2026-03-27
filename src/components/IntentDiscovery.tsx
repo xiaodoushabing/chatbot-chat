@@ -928,7 +928,7 @@ export default function IntentDiscovery({ onDeploy, onAddApproval, onAddAuditEve
               disabled={isDeploying || selectedIntents.size === 0}
               className="px-6 py-3 bg-white/10 hover:bg-white/20 rounded-xl font-semibold flex items-center gap-2 transition-all disabled:opacity-50 whitespace-nowrap text-base"
             >
-              {isDeploying ? "Moving to Staging..." : `Approve Selected to Staging (${selectedIntents.size})`}
+              {isDeploying ? "Moving to Staging..." : `Approve selected to staging (${selectedIntents.size})`}
             </button>
             <button
               onClick={() => handleApproveToStaging(true)}
@@ -1250,7 +1250,7 @@ export default function IntentDiscovery({ onDeploy, onAddApproval, onAddAuditEve
                   disabled={selectedIntents.size === 0}
                   className="px-8 py-3 bg-[#E3000F] hover:bg-[#E3000F]/90 text-white font-bold rounded-xl shadow-lg shadow-[#E3000F]/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-base"
                 >
-                  Approve Selected \u2192 Staging ({selectedIntents.size})
+                  Approve selected to staging ({selectedIntents.size})
                 </button>
               </div>
             </motion.div>
@@ -1314,8 +1314,8 @@ export default function IntentDiscovery({ onDeploy, onAddApproval, onAddAuditEve
                   const responseChanged = diff.status === 'changed' && prod && prod.response !== diff.response;
 
                   return (
-                    <div key={diff.id} className="border border-slate-200 rounded-2xl overflow-hidden">
-                      <div className="px-5 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                    <div key={diff.id} className="border border-slate-200 rounded-2xl">
+                      <div className="px-5 py-3 bg-slate-50 border-b border-slate-200 rounded-t-2xl flex items-center justify-between">
                         <span className="text-sm font-bold font-mono text-slate-800">{diff.intent}</span>
                         <span className={cn(
                           "text-xs px-2.5 py-0.5 rounded-full font-bold uppercase",

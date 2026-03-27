@@ -44,40 +44,40 @@ interface ChatState {
 
 const ENGINE_INFO = {
   nlu: {
-    label: 'Traditional NLU',
+    label: 'Traditional Chatbot',
     color: 'text-slate-700',
     headerBg: 'bg-slate-800',
     tags: [
       { text: 'Deterministic', style: 'bg-gray-100 text-gray-600 border border-gray-300' },
       { text: '< 50ms', style: 'bg-green-50 text-green-700 border border-green-300' },
     ],
-    pros: ['Predictable & low risk', 'Instant response'],
-    cons: ['Limited to scripted intents', 'Poor CX on complex queries'],
-    desc: 'Similarity search identifies closest intent → deterministic template response.',
+    pros: ['Predictable & low risk', 'Fast response'],
+    cons: ['Least flexible', 'Worst customer experience'],
+    desc: 'Similarity search identifies the closest intent, then maps it to a deterministic message template.',
   },
   hybrid: {
-    label: 'Hybrid (Traditional + GenAI)',
+    label: 'Hybrid (Traditional + GenAI) Chatbot',
     color: 'text-blue-700',
     headerBg: 'bg-blue-700',
     tags: [
       { text: 'Multi-intent', style: 'bg-purple-50 text-purple-700 border border-purple-300' },
       { text: 'Routing traces', style: 'bg-blue-50 text-blue-700 border border-blue-300' },
     ],
-    pros: ['Flexible while retaining control', 'Explainable routing'],
-    cons: ['Intent maintenance overhead'],
-    desc: 'Intent classification → simple intents use templates; complex intents trigger LLM.',
+    pros: ['More flexible while retaining control in critical conversations'],
+    cons: ['Requires maintenance on critical conversations and rules'],
+    desc: 'Similarity search identifies the intent. Simple intents map to a message template; complex intents trigger a RAG response.',
   },
   rag: {
-    label: 'Full GenAI (RAG)',
+    label: 'Full GenAI Chatbot',
     color: 'text-[#E3000F]',
     headerBg: 'bg-[#E3000F]',
     tags: [
       { text: 'Knowledge-grounded', style: 'bg-red-50 text-[#E3000F] border border-red-300' },
       { text: 'LLM-powered', style: 'bg-orange-50 text-orange-700 border border-orange-300' },
     ],
-    pros: ['Most flexible', 'Best customer experience'],
-    cons: ['Hallucination risk ⚠', 'Higher cost & latency'],
-    desc: 'Always triggers LLM response grounded in retirement knowledge base.',
+    pros: ['Most flexible', 'Least maintenance effort'],
+    cons: ['Significant investment to control risk', 'Residual risk is higher'],
+    desc: 'Similarity search identifies the intent, then always triggers a RAG response from the retirement knowledge base.',
   },
 };
 
