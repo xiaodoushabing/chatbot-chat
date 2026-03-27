@@ -3,7 +3,7 @@ export type ApprovalActionType =
   | 'agent.config_change' | 'agent.status_change' | 'agent.kill_switch'
   | 'guardrail.policy_change'
   | 'template.publish' | 'template.restore'
-  | 'system.kill_switch_deactivate';
+  | 'system.kill_switch_activate' | 'system.kill_switch_deactivate';
 
 export interface PendingApproval {
   id: string;

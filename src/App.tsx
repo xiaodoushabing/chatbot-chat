@@ -454,10 +454,17 @@ const SEED_AUDIT_EVENTS: AuditEvent[] = [
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('active-intents');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [killSwitchActive, setKillSwitchActive] = useState(false);
+  const [killSwitchActive, setKillSwitchActive] = useState(() => {
+    return localStorage.getItem('killSwitchActive') === 'true';
+  });
   const [autoOpenCreate, setAutoOpenCreate] = useState(false);
   const [pendingApprovals, setPendingApprovals] = useState<PendingApproval[]>(SEED_APPROVALS);
   const [auditEvents, setAuditEvents] = useState<AuditEvent[]>(SEED_AUDIT_EVENTS);
+
+  const updateKillSwitch = (active: boolean) => {
+    setKillSwitchActive(active);
+    localStorage.setItem('killSwitchActive', String(active));
+  };
 
   const addApproval = (a: Omit<PendingApproval, 'id' | 'submittedAt' | 'status'>) => {
     setPendingApprovals(prev => [{
@@ -492,6 +499,13 @@ export default function App() {
         severity: 'info',
         batchItems: approval.batchItems
       });
+
+      if (decision === 'approved' && approval.actionType === 'system.kill_switch_activate') {
+        updateKillSwitch(true);
+      }
+      if (decision === 'approved' && approval.actionType === 'system.kill_switch_deactivate') {
+        updateKillSwitch(false);
+      }
 
       if (decision === 'approved' && approval.batchItems?.length) {
         approval.batchItems.forEach((itemName, i) => {
@@ -691,7 +705,7 @@ export default function App() {
               {activeTab === 'active-agents' && <ActiveAgents onAddApproval={addApproval} onAddAuditEvent={addAuditEvent} onNavigate={(tab) => setActiveTab(tab as Tab)} pendingApprovals={pendingApprovals} />}
               {activeTab === 'audit-trail' && <AuditTrail auditEvents={auditEvents} />}
               {activeTab === 'guardrails' && <GuardrailsConfig onAddApproval={addApproval} onAddAuditEvent={addAuditEvent} />}
-              {activeTab === 'change-control' && <AdminControlInterface approvals={pendingApprovals} onApprovalDecision={processApproval} onAddAuditEvent={addAuditEvent} onKillSwitchChange={setKillSwitchActive} />}
+              {activeTab === 'change-control' && <AdminControlInterface approvals={pendingApprovals} killSwitchActive={killSwitchActive} onApprovalDecision={processApproval} onAddApproval={addApproval} onAddAuditEvent={addAuditEvent} />}
               {activeTab === 'content-library' && <ContentLibrary />}
               {activeTab === 'preview' && (
                 <div className="p-8 flex flex-col items-center justify-center min-h-[calc(100vh-80px)]">

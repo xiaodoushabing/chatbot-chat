@@ -91,6 +91,12 @@ const ACTION_TYPE_CONFIG: Record<
     textClass: 'text-cyan-700',
     borderClass: 'border-cyan-200',
   },
+  'system.kill_switch_activate': {
+    label: 'Kill Switch Activate',
+    bgClass: 'bg-red-50',
+    textClass: 'text-red-700',
+    borderClass: 'border-red-200',
+  },
   'system.kill_switch_deactivate': {
     label: 'Kill Switch Deactivate',
     bgClass: 'bg-red-50',
@@ -101,13 +107,13 @@ const ACTION_TYPE_CONFIG: Record<
 
 interface AdminControlInterfaceProps {
   approvals: PendingApproval[];
+  killSwitchActive: boolean;
   onApprovalDecision: (id: string, decision: 'approved' | 'rejected', note?: string) => void;
+  onAddApproval: (a: Omit<PendingApproval, 'id' | 'submittedAt' | 'status'>) => void;
   onAddAuditEvent: (e: Omit<AuditEvent, 'id' | 'timestamp'>) => void;
-  onKillSwitchChange?: (active: boolean) => void;
 }
 
-export default function AdminControlInterface({ approvals, onApprovalDecision, onAddAuditEvent, onKillSwitchChange }: AdminControlInterfaceProps) {
-  const [killSwitchActive, setKillSwitchActive] = useState(false);
+export default function AdminControlInterface({ approvals, killSwitchActive, onApprovalDecision, onAddApproval, onAddAuditEvent }: AdminControlInterfaceProps) {
   const [showActivateConfirm, setShowActivateConfirm] = useState(false);
   const [showDeactivateSubmit, setShowDeactivateSubmit] = useState(false);
   const [toasts, setToasts] = useState<ToastMsg[]>([]);
@@ -129,19 +135,47 @@ export default function AdminControlInterface({ approvals, onApprovalDecision, o
   const recentDecisions = approvals.filter(a => a.status !== 'pending').slice(0, 5);
 
   const handleActivateKillSwitch = () => {
-    setKillSwitchActive(true);
-    onKillSwitchChange?.(true);
     setShowActivateConfirm(false);
-    showToast('Kill switch activated — all GenAI responses disabled');
+    const alreadyPending = approvals.some(
+      a => a.actionType === 'system.kill_switch_activate' && a.status === 'pending'
+    );
+    if (!alreadyPending) {
+      onAddApproval({
+        actionType: 'system.kill_switch_activate',
+        entityName: 'Global Kill Switch',
+        entityId: 'global-kill-switch',
+        description: 'Activate global kill switch — disable all GenAI responses',
+        detail: 'All LLM agent calls will be disabled. All queries will be served by template responses or exclusion messages. Takes effect upon checker approval.',
+        submittedBy: 'System Admin',
+      });
+      onAddAuditEvent({
+        actor: 'System Admin',
+        actorRole: 'ADMIN',
+        actionType: 'approval.submit' as AuditActionType,
+        entityType: 'approval',
+        entityId: 'kill-switch-activate-' + Date.now(),
+        entityName: 'Global Kill Switch',
+        description: 'Kill switch activation submitted for checker approval.',
+        severity: 'critical',
+      });
+    }
+    showToast('Kill switch activation submitted for checker approval');
   };
 
   const handleDeactivateSubmit = () => {
     setShowDeactivateSubmit(false);
-    // Add kill switch deactivate to approvals if not already pending
     const alreadyPending = approvals.some(
       a => a.actionType === 'system.kill_switch_deactivate' && a.status === 'pending'
     );
     if (!alreadyPending) {
+      onAddApproval({
+        actionType: 'system.kill_switch_deactivate',
+        entityName: 'Global Kill Switch',
+        entityId: 'global-kill-switch',
+        description: 'Deactivate global kill switch — re-enable GenAI responses',
+        detail: 'Re-enabling GenAI will resume all LLM agent calls. All queries will be routed normally through intent matching and agent responses.',
+        submittedBy: 'System Admin',
+      });
       onAddAuditEvent({
         actor: 'System Admin',
         actorRole: 'ADMIN',
@@ -157,12 +191,6 @@ export default function AdminControlInterface({ approvals, onApprovalDecision, o
   };
 
   const handleApprove = (id: string) => {
-    const approval = approvals.find(a => a.id === id);
-    // If kill switch deactivate, actually deactivate it
-    if (approval?.actionType === 'system.kill_switch_deactivate') {
-      setKillSwitchActive(false);
-      onKillSwitchChange?.(false);
-    }
     onApprovalDecision(id, 'approved', approveNote[id]);
     setActiveApproveId(null);
     setApproveNote(prev => { const next = { ...prev }; delete next[id]; return next; });
@@ -571,11 +599,11 @@ export default function AdminControlInterface({ approvals, onApprovalDecision, o
 
               <div className="p-6 flex flex-col gap-4">
                 <div className="p-4 bg-red-50 border border-red-200 rounded-2xl flex flex-col gap-2">
-                  <p className="text-sm font-bold text-red-900">Impact Summary</p>
+                  <p className="text-sm font-bold text-red-900">Impact Summary (upon approval)</p>
                   <ul className="text-sm text-red-700 flex flex-col gap-1.5">
                     <li className="flex items-start gap-2">
                       <span className="mt-1 w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />
-                      All LLM agent calls will be immediately disabled
+                      All LLM agent calls will be disabled
                     </li>
                     <li className="flex items-start gap-2">
                       <span className="mt-1 w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />
@@ -583,18 +611,18 @@ export default function AdminControlInterface({ approvals, onApprovalDecision, o
                     </li>
                     <li className="flex items-start gap-2">
                       <span className="mt-1 w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />
-                      Takes effect immediately — no delay
+                      Requires checker approval before taking effect
                     </li>
                     <li className="flex items-start gap-2">
                       <span className="mt-1 w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />
-                      Re-enable requires checker approval
+                      Re-enable also requires checker approval
                     </li>
                   </ul>
                 </div>
 
                 <p className="text-sm text-slate-600">
-                  This is an emergency override. Use only when there is an active security incident,
-                  model misbehavior, or compliance violation.
+                  This is an emergency action. Use only when there is an active security incident,
+                  model misbehavior, or compliance violation. A checker must approve before it takes effect.
                 </p>
 
                 <div className="flex items-center justify-end gap-3 pt-2">
@@ -609,7 +637,7 @@ export default function AdminControlInterface({ approvals, onApprovalDecision, o
                     className="flex items-center gap-2 px-6 py-2.5 bg-[#E3000F] hover:bg-red-700 text-white font-bold rounded-xl text-sm transition-all shadow-lg shadow-red-200"
                   >
                     <Power size={15} />
-                    Activate Emergency Override
+                    Submit for Approval
                   </button>
                 </div>
               </div>
