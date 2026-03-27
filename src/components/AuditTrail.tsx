@@ -315,8 +315,8 @@ export default function AuditTrail({ auditEvents }: AuditTrailProps) {
 
       {/* Filter Bar */}
       <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm flex flex-col gap-4">
-        <div className="flex items-center justify-between">
-          {isFilterActive && (
+        {isFilterActive && (
+          <div className="flex items-center justify-between">
             <button
               onClick={handleClearFilters}
               className="flex items-center gap-1.5 text-sm font-bold text-[#E3000F] hover:text-red-700 transition-all"
@@ -324,8 +324,8 @@ export default function AuditTrail({ auditEvents }: AuditTrailProps) {
               <X size={14} />
               Clear filters
             </button>
-          )}
-        </div>
+          </div>
+        )}
 
         <div className="flex flex-wrap items-end gap-4">
           {/* Date From */}
