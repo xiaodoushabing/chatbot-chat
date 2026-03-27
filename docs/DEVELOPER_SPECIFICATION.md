@@ -1,11 +1,11 @@
-# Chatbot Backoffice Platform — Developer Technical Specification
+# Chatbot Platform — System Architecture & Developer Specification
 
-> Module architecture, API specification, data model, and build-vs-vendor analysis for engineering teams.
+> System-level architecture with team ownership, DS module details, API specification, data model, cross-team dependencies, and delivery timeline.
 >
 > **Date:** 2026-03-27
-> **Version:** 1.0
+> **Version:** 2.0
 > **Status:** Draft — pending team lead review and signoff
-> **Audience:** Engineering team leads, individual developers
+> **Audience:** DS team leads and developers (primary) | IT and AI Platform leads (dependency coordination)
 > **Related:**
 > - [User Functionality Guide](USER_FUNCTIONALITY_GUIDE.md) — what each module does from the user's perspective
 > - [Vendor-Agnostic Strategy](STRATEGY_VENDOR_AGNOSTIC.md) — architecture decisions, capability-to-vendor matrix, phased roadmap, MAS compliance mapping
@@ -14,61 +14,189 @@
 
 ## How to Use This Document
 
-1. **Module Overview** (Section 1) — understand the 6 main modules and their dependencies
-2. **Module Details** (Section 2) — per-module feature list, build-vs-vendor options, sprint estimates
-3. **API Specification** (Section 3) — endpoint listing + detailed schemas for critical flows
-4. **Data Model** (Section 4) — entity relationships and key schemas
-5. **Integration Points** (Section 5) — external systems and internal module boundaries
-6. **Cross-Cutting Concerns** (Section 6) — auth, audit, maker-checker, error handling
-
-> **Sprint estimates** throughout this document are rough ballpark figures for planning purposes (2-week sprints). Actual effort depends on team composition, vendor selection, and integration complexity. These are NOT commitments — they are starting points for team lead estimation.
+1. **System Architecture Overview** (Section 1) — high-level system flow, team ownership, memory architecture
+2. **DS Scope Definition** (Section 2) — what DS builds, what DS does NOT own, frontend and model service considerations
+3. **DS Module Details** (Section 3) — per-module feature list, build-vs-vendor options, submodule breakdown
+4. **API Specification** (Section 4) — endpoint listing + detailed schemas for critical flows
+5. **Data Model** (Section 5) — entity relationships and key schemas
+6. **Cross-Team Dependencies** (Section 6) — IT and AI Platform dependencies, unresolved ownership items
+7. **Timeline & Gantt Chart** (Section 7) — 12-month delivery timeline with capability blocks, Gantt chart, and risks
+8. **Cross-Cutting Concerns** (Section 8) — auth, audit, maker-checker, error handling
 
 ---
 
-## 1. Module Overview
+## 1. System Architecture Overview
 
-The platform is decomposed into 6 main modules. Each module has clear boundaries, defined interfaces, and explicit dependencies.
-
-| Module | Submodules | Phase | Description |
-|--------|-----------|-------|-------------|
-| **M1: Intent Management** | M1.1 CRUD, M1.2 Versioning, M1.3 Promotion, M1.4 Discovery | 1-3 | Full intent lifecycle: create, version, stage, promote, discover |
-| **M2: Agent & Routing** | M2.1 Agent Config, M2.2 Routing Engine, M2.3 Preview | 1-2 | AI agent configuration, embedding-based query routing, dual-mode preview (production + personal diff overlay) |
-| **M3: Content & Knowledge** | M3.1 Templates, M3.2 Documents, M3.3 Indexing Pipeline | 1-2 | Response templates, knowledge document management, vector indexing |
-| **M4: Safety & Guardrails** | M4.1 Policy Config, M4.2 Runtime Engine, M4.3 Kill Switch | 1-2 | Content safety policies, pre/post-LLM screening, emergency controls |
-| **M5: Governance & Audit** | M5.1 Maker-Checker, M5.2 Audit Trail, M5.3 RBAC | 1 | Approval workflows, immutable logging, role-based access |
-| **M6: Observability** | M6.1 Metrics, M6.2 Cost Intelligence, M6.3 Dashboard API | 2-3 | Query metrics, per-agent cost tracking, aggregated KPIs |
-
-### Module Dependency Graph
+### 1.1 High-Level System Flow
 
 ```mermaid
 graph TD
-    M5["M5: Governance & Audit\n(Maker-Checker · Audit · RBAC)"]
-    M1["M1: Intent Management\n(CRUD · Versioning · Promotion · Discovery)"]
-    M3["M3: Content & Knowledge\n(Templates · Documents · Indexing)"]
-    M2["M2: Agent & Routing\n(Config · Routing Engine · Preview)"]
-    M4["M4: Safety & Guardrails\n(Policy · Runtime · Kill Switch)"]
-    M6["M6: Observability\n(Metrics · Cost · Dashboard)"]
+    MobileApp["Mobile App"]
 
-    M5 --> M1 & M2 & M3 & M4
-    M1 --> M2
-    M3 --> M1 & M2
-    M4 --> M2
-    M2 --> M6
-    M4 --> M6
+    subgraph IT["IT (Blue)"]
+        Gateway["Gateway / API Management"]
+        ES["Elasticsearch / Vector Store"]
+        ExternalData["External Data / CMS"]
+    end
 
-    style M5 fill:#e3f2fd,stroke:#1565c0
-    style M1 fill:#e8f5e9,stroke:#2e7d32
-    style M2 fill:#fff3e0,stroke:#ef6c00
-    style M3 fill:#e8f5e9,stroke:#2e7d32
-    style M4 fill:#fce4ec,stroke:#c62828
-    style M6 fill:#f5f5f5,stroke:#616161
+    subgraph DS["DS (Green)"]
+        Backoffice["Backoffice\n(Frontend + Backend)"]
+        CoreApp["Core Application\n(Routing · Matching · Orchestration)"]
+        IndexingHub["Indexing Hub\n(Chunking · Embeddings · Pipeline)"]
+        SmartSearch["Smart Search Service\n(Vector Retrieval from ES)"]
+        ContentLibrary["Content Library / KB"]
+        HotMemory["Memory (Hot Layer)\nAgent Reasoning Cache\n+ Hot Customer Data"]
+    end
+
+    subgraph AIPlatform["AI Platform (Orange)"]
+        ModelServices["Model Services\n(LLM Chat + Embeddings)"]
+        LLMGuardrails["LLM Guardrails\n(Hallucination · Injection · PII)"]
+        ColdMemory["Memory (Cold Layer)\nTraces — HDFS"]
+        ConvoDB["DB — Postgres\n(Conversation History)"]
+    end
+
+    MobileApp <-->|"HTTPS"| Gateway
+    Gateway <-->|"Safety screening"| LLMGuardrails
+    LLMGuardrails <-->|"Routed query"| CoreApp
+    CoreApp <-->|"External data fetch"| Gateway
+    Gateway <-->|"Vendor CMS"| ExternalData
+
+    Backoffice -->|"Admin operations"| CoreApp
+
+    CoreApp -->|"Index requests"| IndexingHub
+    IndexingHub -->|"Index (write)"| ES
+    CoreApp -->|"Search requests"| SmartSearch
+    SmartSearch -->|"Search (read)"| ES
+
+    ContentLibrary -->|"Templates + KB docs"| CoreApp
+
+    CoreApp -->|"LLM inference"| ModelServices
+    CoreApp <-->|"Agent reasoning\n+ hot client data"| HotMemory
+    CoreApp <-->|"Conversation history"| ConvoDB
+    CoreApp -->|"Trace emission"| ColdMemory
+
+    style Gateway fill:#bbdefb,stroke:#1565c0
+    style ES fill:#bbdefb,stroke:#1565c0
+    style ExternalData fill:#bbdefb,stroke:#1565c0
+
+    style Backoffice fill:#c8e6c9,stroke:#2e7d32
+    style CoreApp fill:#c8e6c9,stroke:#2e7d32
+    style IndexingHub fill:#c8e6c9,stroke:#2e7d32
+    style SmartSearch fill:#c8e6c9,stroke:#2e7d32
+    style ContentLibrary fill:#c8e6c9,stroke:#2e7d32
+    style HotMemory fill:#c8e6c9,stroke:#2e7d32
+
+    style ModelServices fill:#ffe0b2,stroke:#ef6c00
+    style LLMGuardrails fill:#ffe0b2,stroke:#ef6c00
+    style ColdMemory fill:#ffe0b2,stroke:#ef6c00
+    style ConvoDB fill:#ffe0b2,stroke:#ef6c00
 ```
 
-**Read as:** M5 (Governance) is a dependency of M1, M2, M3, M4 — every module uses maker-checker and audit. M1 (Intents) feeds M2 (Routing). M3 (Content) feeds M1 (template-linked intents) and M2 (knowledge documents for agents). M4 (Guardrails) feeds M2 (runtime screening).
+### 1.2 Team Ownership
+
+#### IT (Blue)
+
+| Component | Description | Interface to DS |
+|-----------|-------------|-----------------|
+| Gateway / API Management | API gateway, auth passthrough, rate limiting | DS registers routes on gateway |
+| Elasticsearch / Vector Store | Hosted cluster for vector storage + retrieval | DS writes via Indexing Hub, reads via Smart Search Service |
+| External Data / CMS | Vendor CMS solution | DS queries via gateway |
+| Infrastructure Hosting | Compute, networking, CI/CD pipeline | Standard deployment |
+| Mobile App Microservices | IT-side microservices that Core Application serves | HTTPS, service-to-service auth |
+| Postgres Microservice Layer | MS layer providing access to Postgres | DS reads/writes Postgres via this MS layer (not direct DB access) |
+
+#### DS (Green)
+
+| Component | Description | Interface to Other Teams |
+|-----------|-------------|--------------------------|
+| Backoffice (FE + BE) | React SPA (9 tabs) + monolith API backend | — |
+| Core Application | Routing engine, intent matching, agent orchestration | Calls AI Platform Model Services + LLM Guardrails; reads/writes Postgres via MS layer |
+| Indexing Hub Extension * | Document chunking, embedding orchestration, pipeline state machine (write path) | Pushes embeddings to IT Elasticsearch |
+| Smart Search Service Extension * | Vector similarity retrieval from Elasticsearch (read path) | Queries IT Elasticsearch |
+| Content Library / KB | Response templates + knowledge documents | Feeds Core Application |
+| Hot Memory Layer | (1) Agent reasoning cache. (2) Hot customer/client data | Managed by Core Application (key-value store) |
+| Logging Implementation | Structured log events and audit records | Writes to Postgres via MS layer |
+| Content Safety Policies | Blocked topics, denied words — TBA-configurable | Enforced in routing pipeline before LLM call |
+| Kill Switch | Global emergency GenAI disable. Both activate/deactivate require maker-checker | Persisted in system state table + cache |
+| KB Maintenance Flow for BU | Upload, approve, index, re-index knowledge documents | BU-facing workflow through backoffice UI |
+
+\* *Indexing Hub and Smart Search Service are existing DS central services that may need enhancement to handle chatbot-scale request volumes.*
+
+#### AI Platform (Orange)
+
+| Component | Description | Interface to DS |
+|-----------|-------------|-----------------|
+| Model Services (LLM Chat + Embeddings) | LLM inference for agent responses and query embedding | HTTPS API |
+| LLM Guardrails (Hallucination, Injection, PII) | Screening API for pre-LLM and post-LLM safety checks | HTTPS API |
+| DB — Postgres (Conversation History) | Conversation history storage | Managed by AI Platform; DS reads/writes via MS layer |
+| Cold Layer (HDFS Traces) | Routing traces, guardrail outcomes, latency measurements | DS emits traces; AI Platform manages storage and retention |
+
+### 1.3 Memory Architecture
+
+The platform uses a three-tier memory model:
+
+| Tier | What It Stores | Owner | Interface |
+|------|---------------|-------|-----------|
+| **Hot** | (1) Intermediate agent reasoning results — scratchpad state during multi-step agent execution. (2) Hot customer/client data — frequently accessed client profile or session data cached for low-latency retrieval during conversations. | DS | In-process or fast cache (key-value store), managed by Core Application |
+| **Warm** | Conversation history — full user sessions stored in Postgres | AI Platform manages DB; DS reads/writes via MS layer | Microservice layer API (REST/gRPC) |
+| **Cold** | Traces — routing traces, guardrail outcomes, latency measurements stored in HDFS | AI Platform manages storage; DS puts traces | HDFS API / SDK — DS emits, AI Platform stores and manages retention |
 
 ---
 
-## 2. Module Details
+## 2. DS Scope Definition
+
+### 2.1 DS Deliverables
+
+| Deliverable | Description | Phase |
+|-------------|-------------|-------|
+| **Backoffice Frontend** | React SPA with 9 tabs: Intent Discovery, Active Intents, Active Agents, Templates, Documents, Guardrails, Approvals, Audit Trail, Executive Dashboard | 1-3 |
+| **Backoffice Backend** | Monolith API (Phase 1) decomposing into focused services as complexity grows | 1-3 |
+| **Core Application** | Routing engine (embed query, match intent, dispatch to GenAI/Template/Exclude), agent orchestration, streaming responses | 2 |
+| **Indexing Hub Extension** | Document chunking, embedding orchestration, pipeline state machine (pending/indexed/failed/stale). Existing DS central service — may need enhancement for chatbot-scale volumes. | 2 |
+| **Smart Search Service Extension** | Vector similarity retrieval from Elasticsearch for query routing and RAG. Existing DS central service — may need enhancement for chatbot-scale request volumes. | 2 |
+| **Content Library / Knowledge Base** | Response templates, knowledge documents, KB maintenance flow for BU (upload, approve, index, re-index) | 1-2 |
+| **Content Safety Policies** | Blocked topics, denied words — TBA-configurable via backoffice, enforced in routing pipeline before LLM call | 1-2 |
+| **Kill Switch** | Global emergency control — all GenAI routing falls back to template responses. Both activation and deactivation require maker-checker approval | 1 |
+| **Hot Memory Layer** | (1) Agent reasoning cache — intermediate results during multi-step agent execution. (2) Hot customer/client data — cached client profiles and session data for low-latency access during conversations. | 2 |
+| **Logging Implementation** | DS writes structured log events and audit records; stored in Postgres via MS layer | 1 |
+| **Observability** | Metrics emission (query volume, guardrail hits, intent distribution), query-to-response time measurement, token response rate tracking | 2-3 |
+
+### 2.2 What DS Does NOT Own
+
+| Capability | Owning Team | Interface to DS |
+|------------|-------------|-----------------|
+| LLM model hosting / serving | AI Platform | HTTPS API — DS calls for chat completions and embeddings |
+| LLM Guardrails (hallucination, injection, PII screening) | AI Platform | HTTPS API — DS calls from routing pipeline (pre-LLM and post-LLM) |
+| Gateway / API management | IT | DS registers routes; IT manages auth passthrough, rate limiting |
+| Elasticsearch / Vector Store | IT | DS sends index requests (via Indexing Hub) and search/query requests (via Smart Search Service) |
+| External data / CMS | IT | Vendor solution; DS queries via gateway |
+| Cold storage (HDFS) | AI Platform | DS puts traces; AI Platform manages retention and access |
+| DB — Postgres (Conversation History) | AI Platform | DS reads/writes via MS layer, not direct DB access |
+| RBAC | TBD | May be DS-built authorizer or IT gateway-level enforcement — resolve before Phase 1 |
+
+### 2.3 Frontend Considerations
+
+- An **OpenWebUI-like solution** has been evaluated but is likely insufficient for this platform's needs. Key gaps:
+  - No native support for linking backoffice template management to chatbot template-mode responses
+  - Limited streaming response integration with custom routing pipelines
+  - No built-in backoffice admin suite (approval queues, audit trails, intent management)
+- **Recommendation:** Custom build with streaming support. The React SPA provides full control over:
+  - Streaming response rendering for GenAI-path chatbot preview
+  - Template-mode intent linking (backoffice templates directly power chatbot responses)
+  - Dual-mode preview (production + personal diff overlay)
+  - Integrated admin workflows (maker-checker, audit, kill switch) alongside chatbot interaction
+
+### 2.4 Model Service Considerations
+
+- **Routing AI agent — open vs closed source models:** Decision is TBD.
+  - **Pro open-source:** Cost control at scale, no vendor lock-in, on-premise deployment option, full model weight access for fine-tuning if needed later
+  - **Pro closed-source:** Higher baseline quality, managed infrastructure (less operational burden), faster iteration on new capabilities, stronger reasoning for complex routing
+- **Streaming response support** is required from the model service — both for real-time chatbot preview and production routing
+- **No custom model training** — the platform will use pre-trained models only (chat + embeddings). Prompt engineering and retrieval-augmented generation (RAG) are the primary customization mechanisms.
+
+---
+
+## 3. DS Module Details
 
 ### M1: Intent Management
 
@@ -109,17 +237,15 @@ graph TD
 
 #### Build vs Vendor
 
-| Capability | Build (Custom) | Vendor Option(s) | Recommendation | Est. Sprints* |
-|-----------|---------------|-----------------|----------------|---------------|
-| Intent CRUD API | Node/TS + Relational DB (standard REST) | — | Build | ~2 sprints |
-| Multi-column filtering & search | SQL WHERE + full-text search | — | Build | ~0.5 sprint |
-| Version history + snapshots | DB versioning table + object storage | — | Build | ~1.5 sprints |
-| Promotion pipeline (staging → prod) | Custom state machine + maker-checker integration | — | Build | ~1.5 sprints |
-| AI utterance generation | LLM API call + prompt engineering | Managed LLM service (see [Vendor Matrix](STRATEGY_VENDOR_AGNOSTIC.md#part-3-capability-to-vendor-matrix)) | Vendor (LLM) + custom prompt | ~1 sprint |
-| AI intent discovery | LLM + document parsing + diff algorithm | Custom build on managed LLM | Build (on vendor LLM) | ~3 sprints |
-| Immutable snapshot storage | Object storage with compliance lock | See vendor matrix: Object Storage | Vendor service | ~0.5 sprint |
-
-**Total M1 estimate: ~10 sprints** (M1.1-M1.3 in Phase 1: ~5.5 sprints; M1.4 in Phase 3: ~4 sprints)
+| Capability | Build (Custom) | Vendor Option(s) | Recommendation |
+|-----------|---------------|-----------------|----------------|
+| Intent CRUD API | Node/TS + Relational DB (standard REST) | — | Build |
+| Multi-column filtering & search | SQL WHERE + full-text search | — | Build |
+| Version history + snapshots | DB versioning table + object storage | — | Build |
+| Promotion pipeline (staging → prod) | Custom state machine + maker-checker integration | — | Build |
+| AI utterance generation | LLM API call + prompt engineering | Managed LLM service (see [Vendor Matrix](STRATEGY_VENDOR_AGNOSTIC.md#part-3-capability-to-vendor-matrix)) | Vendor (LLM) + custom prompt |
+| AI intent discovery | LLM + document parsing + diff algorithm | Custom build on managed LLM | Build (on vendor LLM) |
+| Immutable snapshot storage | Object storage with compliance lock | See vendor matrix: Object Storage | Vendor service |
 
 **Dependencies:** M5 (maker-checker, audit), M3.1 (template linking)
 
@@ -133,8 +259,8 @@ graph TD
 
 | ID | Submodule | Description | Phase |
 |----|-----------|-------------|-------|
-| M2.1 | Agent Configuration | Edit existing agents: system prompt, model selection, temperature, max tokens, intent routing assignments. Status toggle (active/inactive). Disable agent. No create-agent UI in POC. | 1 (config), 2 (live routing) |
-| M2.2 | Query Routing Engine | Embed query → vector similarity search → intent match → dispatch to GenAI / Template / Exclude path. Kill switch integration. Routing trace generation. | 2 |
+| M2.1 | Agent Configuration | View agents with metrics. Status toggle (active/inactive). Disable agent. Agent configuration (system prompt, model, temperature, max tokens, intent routing) is **TBD** — two possible routes: Route A (view-only with activation toggle, config managed by dev team via deployment) or Route B (fully configurable by Technical BAs through the platform). No create-agent UI. | 1 (config), 2 (live routing) |
+| M2.2 | Query Routing Engine | Embed query → vector similarity search (via Smart Search Service → Elasticsearch) → intent match → dispatch to GenAI / Template / Exclude path. Kill switch integration. Routing trace generation. | 2 |
 | M2.3 | Chatbot Preview | Dual-mode preview: **Production** (default) queries against live intent DB; **Personal Diff Overlay** overlays the current user's pending changes on top of production snapshot, computed on-the-fly from `PendingApproval` records (`submittedBy === currentUser`). No shared staging state — each maker sees only their own diffs. Mode override (Auto/Template/GenAI). Guardrail test mode. Routing trace display. | 2 |
 
 #### Feature List
@@ -144,10 +270,12 @@ graph TD
 - Agent status toggle (active/inactive) with maker-checker
 - Disable agent with maker-checker approval
 - Per-agent metrics: sessions handled, error rate, average response time
-- Query embedding (embedding model) → cosine similarity (vector extension) → intent match
+- **Note:** Agent configuration depth is TBD. Route A: view + activation toggle only (config via deployment). Route B: full configuration through platform UI. Both routes support status toggle with maker-checker.
+- Query embedding (embedding model) → cosine similarity via Smart Search Service (Elasticsearch) → intent match
 - Three-way dispatch: GenAI (invoke agent) / Template (fetch template) / Exclude (block response)
 - Kill switch check on every route (5-second cache for performance)
 - Routing trace: intent matched, confidence %, risk level, mode, agent, guardrail outcome
+- Streaming response support for GenAI path and chatbot preview
 - Dual-mode preview sandbox:
   - **Production mode** (default): chat interface queries against live production intent DB
   - **Personal Diff Overlay mode**: toggle "Preview My Pending Changes" overlays only the current user's unapproved `PendingApproval` records on top of production snapshot. Computed on-the-fly, never persisted. Each maker sees only their own pending diffs — no shared staging state.
@@ -155,20 +283,20 @@ graph TD
 - Preset quick-action test queries
 - v2 considerations: team staging view (checker previews all pending changes), named change sets, conflict detection across makers
 
+> **AI Platform dependency:** Query embedding calls AI Platform's Model Services for vector generation. Model selection (open-source vs closed-source) is TBD — see Section 2.4.
+
 #### Build vs Vendor
 
-| Capability | Build (Custom) | Vendor Option(s) | Recommendation | Est. Sprints* |
-|-----------|---------------|-----------------|----------------|---------------|
-| Agent CRUD API | Node/TS + Relational DB | — | Build | ~1.5 sprints |
-| Intent routing table | Junction table + API | — | Build | ~1 sprint |
-| Query embedding | LLM embedding API call | Managed LLM Embeddings (see [Vendor Matrix](STRATEGY_VENDOR_AGNOSTIC.md#part-3-capability-to-vendor-matrix)) | Vendor service | ~0.5 sprint |
-| Vector similarity search | DB-native vector extension (e.g., pgvector) | Dedicated vector service (Pinecone, Weaviate, etc.) | DB-native first (zero cost) | ~1 sprint |
-| Routing engine (dispatch logic) | Custom: embed → match → route → trace | — | Build | ~2 sprints |
-| Agent orchestration (GenAI path) | Custom agent invocation | Managed AI Agents (see vendor matrix) | Vendor + custom wrapper | ~2 sprints |
-| Chatbot preview sandbox | Custom React component + dual-mode preview API (production default + personal diff overlay via `PendingApproval` records) | — | Build | ~2 sprints |
-| Routing trace generation | Custom middleware | — | Build | ~0.5 sprint |
-
-**Total M2 estimate: ~10.5 sprints** (M2.1 config in Phase 1: ~2.5 sprints; M2.2-M2.3 in Phase 2: ~8 sprints)
+| Capability | Build (Custom) | Vendor Option(s) | Recommendation |
+|-----------|---------------|-----------------|----------------|
+| Agent CRUD API | Node/TS + Relational DB | — | Build |
+| Intent routing table | Junction table + API | — | Build |
+| Query embedding | LLM embedding API call | Managed LLM Embeddings (see [Vendor Matrix](STRATEGY_VENDOR_AGNOSTIC.md#part-3-capability-to-vendor-matrix)) | Vendor service |
+| Vector similarity search | Smart Search Service (existing DS central service) queries IT's Elasticsearch | Dedicated vector service (Pinecone, Weaviate, etc.) | Smart Search Service + Elasticsearch (existing infra) |
+| Routing engine (dispatch logic) | Custom: embed → match → route → trace | — | Build |
+| Agent orchestration (GenAI path) | Custom agent invocation | Managed AI Agents (see vendor matrix) | Vendor + custom wrapper |
+| Chatbot preview sandbox | Custom React component + dual-mode preview API (production default + personal diff overlay via `PendingApproval` records) | — | Build |
+| Routing trace generation | Custom middleware | — | Build |
 
 **Dependencies:** M1 (intents for routing), M3 (templates + documents for responses), M4 (guardrails for screening), M5 (maker-checker, audit)
 
@@ -201,20 +329,29 @@ graph TD
 - Document metadata: uploader, date, file size, chunk count
 - Activity log for indexing operations
 
+#### Knowledge Base Maintenance Flow for BU
+
+- BU uploads knowledge documents through Content Library (backoffice UI)
+- Documents go through maker-checker approval before indexing
+- DS Indexing Hub chunks documents and generates embeddings
+- Embeddings pushed to IT's Elasticsearch for vector retrieval
+- BU can request re-indexing for stale/failed documents
+- DS provides ops dashboard: indexing status, failure alerts, stale detection
+- Design goal: BU can maintain knowledge base independently with minimal DS support
+
 #### Build vs Vendor
 
-| Capability | Build (Custom) | Vendor Option(s) | Recommendation | Est. Sprints* |
-|-----------|---------------|-----------------|----------------|---------------|
-| Template CRUD + versioning API | Node/TS + Relational DB | — | Build | ~2 sprints |
-| Markdown editor (frontend) | Existing textarea (already in POC) | Rich markdown editor (MDXEditor, Tiptap) | Build (basic) or vendor (rich) | ~0.5 sprint |
-| Variable extraction + preview | Custom regex parser | — | Build | ~0.5 sprint |
-| Document upload + metadata API | Node/TS + object storage SDK | — | Build | ~1.5 sprints |
-| Document chunking | Custom (split by section/page) | LangChain text splitters, Unstructured.io | Vendor library | ~1 sprint |
-| Embedding generation | LLM embedding API call | Managed Embeddings (see vendor matrix) | Vendor service | ~0.5 sprint |
-| Vector storage + retrieval | DB-native vector extension | Dedicated vector service | DB-native first | ~1 sprint |
-| Indexing pipeline orchestration | Custom state machine (pending → indexed) | Step Functions / Durable Functions | Build (simple state machine) | ~1.5 sprints |
-
-**Total M3 estimate: ~8.5 sprints** (M3.1-M3.2 metadata in Phase 1: ~4.5 sprints; M3.3 indexing in Phase 2: ~4 sprints)
+| Capability | Build (Custom) | Vendor Option(s) | Recommendation |
+|-----------|---------------|-----------------|----------------|
+| Template CRUD + versioning API | Node/TS + Relational DB | — | Build |
+| Markdown editor (frontend) | Existing textarea (already in POC) | Rich markdown editor (MDXEditor, Tiptap) | Build (basic) or vendor (rich) |
+| Variable extraction + preview | Custom regex parser | — | Build |
+| Document upload + metadata API | Node/TS + object storage SDK | — | Build |
+| Document chunking | Custom (split by section/page) | LangChain text splitters, Unstructured.io | Vendor library |
+| Embedding generation | LLM embedding API call | Managed Embeddings (see vendor matrix) | Vendor service |
+| Vector storage (write) | Indexing Hub (existing DS central service) pushes to Elasticsearch | — | IT dependency (Elasticsearch hosting) |
+| Vector retrieval (read) | Smart Search Service (existing DS central service) queries Elasticsearch | — | IT dependency (Elasticsearch hosting) |
+| Indexing pipeline orchestration | Custom state machine (pending → indexed) | Step Functions / Durable Functions | Build (simple state machine) |
 
 **Dependencies:** M5 (maker-checker for template publish), M1 (intent linking)
 
@@ -229,8 +366,8 @@ graph TD
 | ID | Submodule | Description | Phase |
 |----|-----------|-------------|-------|
 | M4.1 | Policy Configuration | CRUD for guardrail policies: blocked topics, denied words/phrases, exclusion template, sensitivity levels, PII masking toggle. | 1 (config), 2 (live enforcement) |
-| M4.2 | Runtime Guardrail Engine | Pre-LLM screening (input) + post-LLM screening (output). Topic blocking, word filtering, hallucination detection, injection detection, PII masking. | 2 |
-| M4.3 | Kill Switch | Global kill switch (all GenAI → template fallback). Per-agent kill switch. Activation is immediate; deactivation requires maker-checker. | 1 |
+| M4.2 | Runtime Guardrail Engine | Orchestration layer: DS handles content safety locally (blocked topics, denied words) then calls AI Platform guardrails service for injection/hallucination/PII screening. Pre-LLM: DS local content safety check + AI Platform injection detection. Post-LLM: DS output word filter + AI Platform hallucination detection + PII masking. | 2 |
+| M4.3 | Kill Switch | Global kill switch (all GenAI → template fallback). Both activation and deactivation require maker-checker approval. | 1 |
 
 #### Feature List
 
@@ -244,26 +381,23 @@ graph TD
 - Pre-LLM screening: topic check, injection detection, denied word filter
 - Post-LLM screening: hallucination detection, PII masking, output word filter
 - Policy synced to key-value store for fast reads during routing
-- Global kill switch: immediate activation, maker-checker deactivation
-- Per-agent kill switch
+- Global kill switch: both activation and deactivation require maker-checker approval. State persists across sessions.
 - Kill switch state cached with 5-second TTL for routing performance
 
 #### Build vs Vendor
 
-| Capability | Build (Custom) | Vendor Option(s) | Recommendation | Est. Sprints* |
-|-----------|---------------|-----------------|----------------|---------------|
-| Policy config API | Node/TS + Relational DB | — | Build | ~1 sprint |
-| Blocked topics + denied words engine | Custom keyword matching | — | Build | ~0.5 sprint |
-| Exclusion template rendering | Custom (simple template substitution) | — | Build | ~0.25 sprint |
-| Pre-LLM input screening | Custom rules + vendor guardrails | Managed Guardrails (see [Vendor Matrix](STRATEGY_VENDOR_AGNOSTIC.md#part-3-capability-to-vendor-matrix)) | Vendor + custom fallback | ~1.5 sprints |
-| Post-LLM output screening | Custom rules + vendor guardrails | Managed Guardrails, Guardrails AI, NeMo Guardrails | Vendor + custom rules | ~1.5 sprints |
-| Hallucination detection | Vendor guardrail feature | Managed Guardrails, Vectara HHEM | Vendor | ~0.5 sprint (integration) |
-| Prompt injection detection | Vendor guardrail feature | Managed Guardrails, Rebuff | Vendor | ~0.5 sprint (integration) |
-| PII masking | Regex + vendor NER | Managed Guardrails, Presidio, custom regex | Vendor + custom regex | ~1 sprint |
-| Kill switch (global + per-agent) | Custom (key-value store flag + cache) | — | Build | ~1 sprint |
-| Guardrail test panel API | Custom (route test query through pipeline) | — | Build | ~0.5 sprint |
-
-**Total M4 estimate: ~8.25 sprints** (M4.1 config + M4.3 kill switch in Phase 1: ~2.75 sprints; M4.2 runtime in Phase 2: ~5.5 sprints)
+| Capability | Build (Custom) | Vendor Option(s) | Recommendation |
+|-----------|---------------|-----------------|----------------|
+| Policy config API | Node/TS + Relational DB | — | Build |
+| Content safety screening (blocked topics, denied words) | Custom keyword matching | — | Build (DS) |
+| Exclusion template rendering | Custom (simple template substitution) | — | Build |
+| Pre-LLM input screening orchestration | Custom rules + AI Platform guardrails call | — | Build (DS orchestration) |
+| Post-LLM output screening orchestration | Custom rules + AI Platform guardrails call | — | Build (DS orchestration) |
+| Injection detection | AI Platform guardrail service | Managed Guardrails (see [Vendor Matrix](STRATEGY_VENDOR_AGNOSTIC.md#part-3-capability-to-vendor-matrix)) | AI Platform dependency |
+| Output word filtering | Custom denied word matching on LLM output | — | Build (DS) |
+| Hallucination detection + PII masking | AI Platform guardrail service | Managed Guardrails, Guardrails AI, NeMo Guardrails | AI Platform dependency |
+| Kill switch (global only) | Custom (key-value store flag + cache) | — | Build |
+| Guardrail test panel API | Custom (route test query through pipeline) | — | Build |
 
 **Dependencies:** M5 (maker-checker for policy changes), M2 (routing engine integration)
 
@@ -279,7 +413,9 @@ graph TD
 |----|-----------|-------------|-------|
 | M5.1 | Maker-Checker Engine | Approval queue: submit, list pending, approve/reject. Self-approval prevention (maker ≠ checker). Batch approval support. State machine: pending → approved/rejected. | 1 |
 | M5.2 | Audit Trail | Append-only event log. DELETE/UPDATE revoked at DB level. Filter by action type, entity type, actor role, severity, date range. CSV export. Before/after state diffs. | 1 |
-| M5.3 | RBAC Enforcement | API gateway authorizer function. JWT validation + group-to-role mapping. Per-route permission matrix. 4 roles: BA, DEV, MGMT, ADMIN. | 1 |
+| M5.3 | RBAC Enforcement | API gateway authorizer function. JWT validation + group-to-role mapping. Per-route permission matrix. 5 roles: TBA, MGMT, ADMIN, BA, DEV. | 1 |
+
+> **Note:** RBAC ownership is TBD — may be DS-built authorizer or IT gateway-level enforcement. Resolve before Phase 1 development begins.
 
 #### Feature List
 
@@ -300,20 +436,20 @@ graph TD
 - Per-route permission check: method + path + role → allow/deny
 - Standardized 403 response for unauthorized access
 
+> **Note:** DS implements logging logic; stored in Postgres via MS layer.
+
 #### Build vs Vendor
 
-| Capability | Build (Custom) | Vendor Option(s) | Recommendation | Est. Sprints* |
-|-----------|---------------|-----------------|----------------|---------------|
-| Maker-checker engine | Custom state machine + API | — | Build | ~2 sprints |
-| Approval queue API | Node/TS + Relational DB | — | Build | ~1 sprint |
-| Self-approval prevention | Custom validation middleware | — | Build | ~0.25 sprint |
-| Audit trail API (append-only) | Node/TS + Relational DB + DB-level REVOKE | — | Build | ~1.5 sprints |
-| Audit CSV export | Custom (streaming CSV) | — | Build | ~0.5 sprint |
-| Before/after diff capture | Custom middleware (snapshot before write) | — | Build | ~0.5 sprint |
-| RBAC authorizer function | Custom JWT validation + role matrix | OPA (Open Policy Agent), Casbin | Build (simple matrix) or vendor (complex policies) | ~1.5 sprints |
-| IdP federation (SAML/OIDC) | Identity broker configuration | See vendor matrix: Identity Broker | Vendor service + config | ~1 sprint |
-
-**Total M5 estimate: ~8.25 sprints** (all Phase 1)
+| Capability | Build (Custom) | Vendor Option(s) | Recommendation |
+|-----------|---------------|-----------------|----------------|
+| Maker-checker engine | Custom state machine + API | — | Build |
+| Approval queue API | Node/TS + Relational DB | — | Build |
+| Self-approval prevention | Custom validation middleware | — | Build |
+| Audit trail API (append-only) | Node/TS + Relational DB + DB-level REVOKE | — | Build |
+| Audit CSV export | Custom (streaming CSV) | — | Build |
+| Before/after diff capture | Custom middleware (snapshot before write) | — | Build |
+| RBAC authorizer function | Custom JWT validation + role matrix | OPA (Open Policy Agent), Casbin | Build (simple matrix) or vendor (complex policies) |
+| IdP federation (SAML/OIDC) | Identity broker configuration | See vendor matrix: Identity Broker | Vendor service + config |
 
 **Dependencies:** None — M5 is a foundation module that other modules depend on.
 
@@ -346,43 +482,58 @@ graph TD
 - Guardrail hit rate breakdown by category
 - Kill switch status exposure
 - Dashboard data API: `/dashboard/kpis`, `/dashboard/agents`, `/dashboard/costs`
+- Query-to-response time measurement
+- Token response rate tracking
+- Trace emission to AI Platform cold layer (HDFS)
 
 #### Build vs Vendor
 
-| Capability | Build (Custom) | Vendor Option(s) | Recommendation | Est. Sprints* |
-|-----------|---------------|-----------------|----------------|---------------|
-| Metric emission middleware | Custom (emit on every route) | — | Build | ~1 sprint |
-| Metrics aggregation | Custom (scheduled aggregation job) | Observability platform native (see [Vendor Matrix](STRATEGY_VENDOR_AGNOSTIC.md#part-3-capability-to-vendor-matrix)) | Vendor platform + custom queries | ~1.5 sprints |
-| Cost tracking | Custom (LLM API usage → per-agent attribution) | Cloud cost management APIs | Build + vendor cost API | ~1.5 sprints |
-| Trending topic detection | Custom (volume spike algorithm) | — | Build | ~1 sprint |
-| Dashboard data API | Node/TS + cache layer | — | Build | ~1.5 sprints |
-| Alerting (threshold-based) | Custom | Observability platform alerts | Vendor | ~0.5 sprint |
-
-**Total M6 estimate: ~7 sprints** (M6.1 in Phase 2: ~1 sprint; M6.2-M6.3 in Phase 3: ~6 sprints)
+| Capability | Build (Custom) | Vendor Option(s) | Recommendation |
+|-----------|---------------|-----------------|----------------|
+| Metric emission middleware | Custom (emit on every route) | — | Build |
+| Metrics aggregation | Custom (scheduled aggregation job) | Observability platform native (see [Vendor Matrix](STRATEGY_VENDOR_AGNOSTIC.md#part-3-capability-to-vendor-matrix)) | Vendor platform + custom queries |
+| Cost tracking | Custom (LLM API usage → per-agent attribution) | Cloud cost management APIs | Build + vendor cost API |
+| Trending topic detection | Custom (volume spike algorithm) | — | Build |
+| Dashboard data API | Node/TS + cache layer | — | Build |
+| Alerting (threshold-based) | Custom | Observability platform alerts | Vendor |
 
 **Dependencies:** M2 (routing engine emits metrics), M4 (guardrail outcomes), M5 (RBAC for dashboard access)
 
 ---
 
-### Sprint Estimate Summary
+### Module Dependency Graph
 
-| Module | Phase 1 | Phase 2 | Phase 3 | Total |
-|--------|---------|---------|---------|-------|
-| M1: Intent Management | 5.5 | — | 4.0 | 9.5 |
-| M2: Agent & Routing | 2.5 | 8.0 | — | 10.5 |
-| M3: Content & Knowledge | 4.5 | 4.0 | — | 8.5 |
-| M4: Safety & Guardrails | 2.75 | 5.5 | — | 8.25 |
-| M5: Governance & Audit | 8.25 | — | — | 8.25 |
-| M6: Observability | — | 1.0 | 6.0 | 7.0 |
-| **Phase Total** | **23.5** | **18.5** | **10.0** | **52.0** |
+```mermaid
+graph TD
+    M5["M5: Governance & Audit\n(Maker-Checker · Audit · RBAC)"]
+    M1["M1: Intent Management\n(CRUD · Versioning · Promotion · Discovery)"]
+    M3["M3: Content & Knowledge\n(Templates · Documents · Indexing)"]
+    M2["M2: Agent & Routing\n(Config · Routing Engine · Preview)"]
+    M4["M4: Safety & Guardrails\n(Policy · Runtime · Kill Switch)"]
+    M6["M6: Observability\n(Metrics · Cost · Dashboard)"]
 
-> *Estimates assume 2-week sprints with 1 full-stack developer. With 2 developers working in parallel on independent modules, Phase 1 could complete in ~12 sprints (~6 months). These are rough planning figures — refine after team lead review.*
+    M5 --> M1 & M2 & M3 & M4
+    M1 --> M2
+    M3 --> M1 & M2
+    M4 --> M2
+    M2 --> M6
+    M4 --> M6
+
+    style M5 fill:#e3f2fd,stroke:#1565c0
+    style M1 fill:#e8f5e9,stroke:#2e7d32
+    style M2 fill:#fff3e0,stroke:#ef6c00
+    style M3 fill:#e8f5e9,stroke:#2e7d32
+    style M4 fill:#fce4ec,stroke:#c62828
+    style M6 fill:#f5f5f5,stroke:#616161
+```
+
+**Read as:** M5 (Governance) is a dependency of M1, M2, M3, M4 — every module uses maker-checker and audit. M1 (Intents) feeds M2 (Routing). M3 (Content) feeds M1 (template-linked intents) and M2 (knowledge documents for agents). M4 (Guardrails) feeds M2 (runtime screening).
 
 ---
 
-## 3. API Specification
+## 4. API Specification
 
-### 3.1 Route Overview
+### 4.1 Route Overview
 
 All routes are prefixed with `/api/v1`. Authentication via Bearer JWT in the `Authorization` header. Authorizer function validates JWT and checks RBAC before request reaches the handler.
 
@@ -390,94 +541,94 @@ All routes are prefixed with `/api/v1`. Authentication via Bearer JWT in the `Au
 
 | Method | Path | Purpose | Auth Roles | Module | Phase |
 |--------|------|---------|-----------|--------|-------|
-| GET | `/intents` | List intents (filterable by name, risk, mode, status, env) | BA, DEV, ADMIN | M1.1 | 1 |
-| GET | `/intents/{id}` | Get intent detail | BA, DEV, ADMIN | M1.1 | 1 |
-| PUT | `/intents/{id}` | Update intent (triggers approval) | BA, DEV, ADMIN | M1.1 | 1 |
-| DELETE | `/intents/{id}` | Delete intent (triggers approval, prod only) | BA, DEV, ADMIN | M1.1 | 1 |
-| PUT | `/intents/{id}/status` | Toggle active/inactive (triggers approval) | BA, DEV, ADMIN | M1.1 | 1 |
-| PUT | `/intents/{id}/response-mode` | Change response mode (triggers approval) | BA, DEV, ADMIN | M1.1 | 1 |
-| GET | `/intents/{id}/versions` | List per-intent version history | BA, DEV, ADMIN | M1.2 | 1 |
-| POST | `/intents/{id}/rollback` | Restore to prior version (triggers approval) | BA, DEV, ADMIN | M1.2 | 1 |
+| GET | `/intents` | List intents (filterable by name, risk, mode, status, env) | TBA, MGMT, ADMIN, BA, DEV | M1.1 | 1 |
+| GET | `/intents/{id}` | Get intent detail | TBA, MGMT, ADMIN, BA, DEV | M1.1 | 1 |
+| PUT | `/intents/{id}` | Update intent (triggers approval) | TBA, ADMIN | M1.1 | 1 |
+| DELETE | `/intents/{id}` | Delete intent (triggers approval, prod only) | TBA, ADMIN | M1.1 | 1 |
+| PUT | `/intents/{id}/status` | Toggle active/inactive (triggers approval) | TBA, ADMIN | M1.1 | 1 |
+| PUT | `/intents/{id}/response-mode` | Change response mode (triggers approval) | TBA, ADMIN | M1.1 | 1 |
+| GET | `/intents/{id}/versions` | List per-intent version history | TBA, MGMT, ADMIN, BA, DEV | M1.2 | 1 |
+| POST | `/intents/{id}/rollback` | Restore to prior version (triggers approval) | TBA, ADMIN | M1.2 | 1 |
 
 #### Discovery Routes (Intent Discovery — M1.3/M1.4)
 
 | Method | Path | Purpose | Auth Roles | Module | Phase |
 |--------|------|---------|-----------|--------|-------|
-| POST | `/discovery/intents` | Manually create new intent (staging) | BA, DEV, ADMIN | M1.3 | 1 |
-| POST | `/discovery/sources` | Upload knowledge source | BA, DEV, ADMIN | M1.4 | 3 |
-| POST | `/discovery/sessions` | Trigger AI diff generation | BA, DEV, ADMIN | M1.4 | 3 |
-| GET | `/discovery/sessions/{id}` | Get session with diffs | BA, DEV, ADMIN | M1.4 | 3 |
-| PUT | `/discovery/sessions/{id}/diffs/{diffId}` | Edit a diff inline | BA, DEV, ADMIN | M1.4 | 3 |
-| POST | `/discovery/sessions/{id}/approve` | Approve diffs to staging | BA, DEV, ADMIN | M1.4 | 3 |
-| POST | `/discovery/promote-batch` | Batch promote staging → production (triggers approval) | BA, DEV, ADMIN | M1.3 | 1 |
-| POST | `/discovery/intents/{id}/utterances/generate` | AI-generate utterance suggestions | BA, DEV, ADMIN | M1.4 | 3 |
-| POST | `/discovery/intents/{id}/response/draft` | AI-draft response | BA, DEV, ADMIN | M1.4 | 3 |
-| GET | `/discovery/snapshots` | List DB-level snapshots | BA, DEV, ADMIN | M1.3 | 1 |
-| POST | `/discovery/snapshots/{id}/restore` | Restore to prior DB snapshot (triggers approval) | BA, DEV, ADMIN | M1.3 | 1 |
+| POST | `/discovery/intents` | Manually create new intent (staging) | TBA, ADMIN | M1.3 | 1 |
+| POST | `/discovery/sources` | Upload knowledge source | TBA, ADMIN | M1.4 | 3 |
+| POST | `/discovery/sessions` | Trigger AI diff generation | TBA, ADMIN | M1.4 | 3 |
+| GET | `/discovery/sessions/{id}` | Get session with diffs | TBA, MGMT, ADMIN, BA, DEV | M1.4 | 3 |
+| PUT | `/discovery/sessions/{id}/diffs/{diffId}` | Edit a diff inline | TBA, ADMIN | M1.4 | 3 |
+| POST | `/discovery/sessions/{id}/approve` | Approve diffs to staging | TBA, ADMIN | M1.4 | 3 |
+| POST | `/discovery/promote-batch` | Batch promote staging → production (triggers approval) | TBA, ADMIN | M1.3 | 1 |
+| POST | `/discovery/intents/{id}/utterances/generate` | AI-generate utterance suggestions | TBA, ADMIN | M1.4 | 3 |
+| POST | `/discovery/intents/{id}/response/draft` | AI-draft response | TBA, ADMIN | M1.4 | 3 |
+| GET | `/discovery/snapshots` | List DB-level snapshots | TBA, MGMT, ADMIN, BA, DEV | M1.3 | 1 |
+| POST | `/discovery/snapshots/{id}/restore` | Restore to prior DB snapshot (triggers approval) | TBA, ADMIN | M1.3 | 1 |
 
 #### Agent Routes
 
 | Method | Path | Purpose | Auth Roles | Module | Phase |
 |--------|------|---------|-----------|--------|-------|
-| GET | `/agents` | List agents with metrics | DEV, ADMIN | M2.1 | 1 |
-| GET | `/agents/{id}` | Get agent detail + metrics | DEV, ADMIN | M2.1 | 1 |
-| PUT | `/agents/{id}` | Update agent config (triggers approval) | DEV, ADMIN | M2.1 | 1 |
-| PUT | `/agents/{id}/status` | Toggle active/inactive (triggers approval) | DEV, ADMIN | M2.1 | 1 |
-| PUT | `/agents/{id}/routing` | Update intent routing (triggers approval) | DEV, ADMIN | M2.1 | 1 |
-| POST | `/agents/{id}/disable` | Disable agent (triggers approval) | DEV, ADMIN | M2.1 | 1 |
+| GET | `/agents` | List agents with metrics | TBA, MGMT, ADMIN, BA, DEV | M2.1 | 1 |
+| GET | `/agents/{id}` | Get agent detail + metrics | TBA, MGMT, ADMIN, BA, DEV | M2.1 | 1 |
+| PUT | `/agents/{id}` | Update agent config (triggers approval) | TBA, ADMIN | M2.1 | 1 |
+| PUT | `/agents/{id}/status` | Toggle active/inactive (triggers approval) | TBA, ADMIN | M2.1 | 1 |
+| PUT | `/agents/{id}/routing` | Update intent routing (triggers approval) | TBA, ADMIN | M2.1 | 1 |
+| POST | `/agents/{id}/disable` | Disable agent (triggers approval) | TBA, ADMIN | M2.1 | 1 |
 
 #### Template Routes
 
 | Method | Path | Purpose | Auth Roles | Module | Phase |
 |--------|------|---------|-----------|--------|-------|
-| GET | `/templates` | List templates | BA, DEV, ADMIN | M3.1 | 1 |
-| POST | `/templates` | Create template | BA, DEV, ADMIN | M3.1 | 1 |
-| GET | `/templates/{id}` | Get template detail + versions | BA, DEV, ADMIN | M3.1 | 1 |
-| PUT | `/templates/{id}` | Update template | BA, DEV, ADMIN | M3.1 | 1 |
-| POST | `/templates/{id}/publish` | Publish template (triggers approval) | BA, DEV, ADMIN | M3.1 | 1 |
-| POST | `/templates/{id}/restore` | Restore prior version (triggers approval) | BA, DEV, ADMIN | M3.1 | 1 |
+| GET | `/templates` | List templates | TBA, MGMT, ADMIN, BA, DEV | M3.1 | 1 |
+| POST | `/templates` | Create template | TBA, ADMIN | M3.1 | 1 |
+| GET | `/templates/{id}` | Get template detail + versions | TBA, MGMT, ADMIN, BA, DEV | M3.1 | 1 |
+| PUT | `/templates/{id}` | Update template | TBA, ADMIN | M3.1 | 1 |
+| POST | `/templates/{id}/publish` | Publish template (triggers approval) | TBA, ADMIN | M3.1 | 1 |
+| POST | `/templates/{id}/restore` | Restore prior version (triggers approval) | TBA, ADMIN | M3.1 | 1 |
 
 #### Document Routes
 
 | Method | Path | Purpose | Auth Roles | Module | Phase |
 |--------|------|---------|-----------|--------|-------|
-| GET | `/documents` | List documents (filterable) | BA, DEV, ADMIN | M3.2 | 1 |
-| POST | `/documents` | Upload document | BA, DEV, ADMIN | M3.2 | 1 |
-| GET | `/documents/{id}` | Get document metadata | BA, DEV, ADMIN | M3.2 | 1 |
-| DELETE | `/documents/{id}` | Deactivate + de-index | BA, DEV, ADMIN | M3.2 | 1 |
-| POST | `/documents/{id}/reindex` | Trigger re-indexing | BA, DEV, ADMIN | M3.3 | 2 |
-| POST | `/documents/reindex-stale` | Bulk re-index all stale/failed | DEV, ADMIN | M3.3 | 2 |
+| GET | `/documents` | List documents (filterable) | TBA, MGMT, ADMIN, BA, DEV | M3.2 | 1 |
+| POST | `/documents` | Upload document | TBA, ADMIN | M3.2 | 1 |
+| GET | `/documents/{id}` | Get document metadata | TBA, MGMT, ADMIN, BA, DEV | M3.2 | 1 |
+| DELETE | `/documents/{id}` | Deactivate + de-index | TBA, ADMIN | M3.2 | 1 |
+| POST | `/documents/{id}/reindex` | Trigger re-indexing | TBA, ADMIN | M3.3 | 2 |
+| POST | `/documents/reindex-stale` | Bulk re-index all stale/failed | TBA, ADMIN | M3.3 | 2 |
 
 #### Guardrail Routes
 
 | Method | Path | Purpose | Auth Roles | Module | Phase |
 |--------|------|---------|-----------|--------|-------|
-| GET | `/guardrails/policy` | Get current guardrail policy | BA, DEV, ADMIN | M4.1 | 1 |
-| PUT | `/guardrails/policy` | Update policy (triggers approval) | DEV, ADMIN | M4.1 | 1 |
-| POST | `/guardrails/test` | Test query against guardrails | DEV, ADMIN | M4.1 | 2 |
+| GET | `/guardrails/policy` | Get current guardrail policy | TBA, MGMT, ADMIN, BA, DEV | M4.1 | 1 |
+| PUT | `/guardrails/policy` | Update policy (triggers approval) | TBA, ADMIN | M4.1 | 1 |
+| POST | `/guardrails/test` | Test query against guardrails | TBA, ADMIN | M4.1 | 2 |
 
 #### Approval Routes
 
 | Method | Path | Purpose | Auth Roles | Module | Phase |
 |--------|------|---------|-----------|--------|-------|
-| GET | `/approvals` | List approvals (filterable by status) | DEV, ADMIN | M5.1 | 1 |
-| GET | `/approvals/{id}` | Get approval detail | DEV, ADMIN | M5.1 | 1 |
-| PUT | `/approvals/{id}/approve` | Approve (checker ≠ maker) | DEV, ADMIN | M5.1 | 1 |
-| PUT | `/approvals/{id}/reject` | Reject with reason | DEV, ADMIN | M5.1 | 1 |
+| GET | `/approvals` | List approvals (filterable by status) | TBA, MGMT, ADMIN | M5.1 | 1 |
+| GET | `/approvals/{id}` | Get approval detail | TBA, MGMT, ADMIN | M5.1 | 1 |
+| PUT | `/approvals/{id}/approve` | Approve (checker ≠ maker) | TBA, MGMT, ADMIN | M5.1 | 1 |
+| PUT | `/approvals/{id}/reject` | Reject with reason | TBA, MGMT, ADMIN | M5.1 | 1 |
 
 #### Audit Routes
 
 | Method | Path | Purpose | Auth Roles | Module | Phase |
 |--------|------|---------|-----------|--------|-------|
-| GET | `/audit` | List audit events (filterable, paginated) | BA, DEV, ADMIN | M5.2 | 1 |
-| GET | `/audit/export` | Export filtered results as CSV | BA, DEV, ADMIN | M5.2 | 1 |
+| GET | `/audit` | List audit events (filterable, paginated) | TBA, MGMT, ADMIN, BA, DEV | M5.2 | 1 |
+| GET | `/audit/export` | Export filtered results as CSV | TBA, MGMT, ADMIN, BA, DEV | M5.2 | 1 |
 
 #### System Routes
 
 | Method | Path | Purpose | Auth Roles | Module | Phase |
 |--------|------|---------|-----------|--------|-------|
-| GET | `/system/kill-switch` | Get kill switch status | BA, DEV, MGMT, ADMIN | M4.3 | 1 |
-| POST | `/system/kill-switch` | Toggle kill switch | DEV, ADMIN | M4.3 | 1 |
+| GET | `/system/kill-switch` | Get kill switch status | TBA, MGMT, ADMIN, BA, DEV | M4.3 | 1 |
+| POST | `/system/kill-switch` | Submit kill switch activation/deactivation (triggers approval) | TBA, ADMIN | M4.3 | 1 |
 | GET | `/system/health` | Health check | Public | — | 1 |
 
 #### Routing Routes (Chatbot-facing)
@@ -485,15 +636,19 @@ All routes are prefixed with `/api/v1`. Authentication via Bearer JWT in the `Au
 | Method | Path | Purpose | Auth Roles | Module | Phase |
 |--------|------|---------|-----------|--------|-------|
 | POST | `/route` | Route customer query | Service-to-service auth | M2.2 | 2 |
-| POST | `/preview/route?include_my_pending=true` | Route query in preview mode. Default (no param or `false`): queries production intent DB only. With `include_my_pending=true`: overlays the authenticated user's pending `PendingApproval` intent changes on top of production snapshot (computed on-the-fly, never persisted). | DEV, BA, ADMIN | M2.3 | 2 |
+| POST | `/route/stream` | Route customer query with streaming response | Service-to-service auth | M2.2 | 2 |
+| POST | `/preview/route?include_my_pending=true` | Route query in preview mode. Default (no param or `false`): queries production intent DB only. With `include_my_pending=true`: overlays the authenticated user's pending `PendingApproval` intent changes on top of production snapshot (computed on-the-fly, never persisted). | TBA, ADMIN, BA, DEV | M2.3 | 2 |
+| POST | `/preview/route/stream?include_my_pending=true` | Streaming preview route | TBA, ADMIN, BA, DEV | M2.3 | 2 |
+
+> **AI Platform integration:** The `/route` and `/preview/route` endpoints call AI Platform's Model Services for query embedding and agent invocation, and AI Platform's LLM Guardrails for injection/hallucination/PII screening. DS owns the orchestration logic; AI Platform owns the model and guardrail services.
 
 #### Dashboard Routes
 
 | Method | Path | Purpose | Auth Roles | Module | Phase |
 |--------|------|---------|-----------|--------|-------|
-| GET | `/dashboard/kpis` | Aggregated KPI data | BA, DEV, MGMT, ADMIN | M6.3 | 3 |
-| GET | `/dashboard/agents` | Per-agent performance metrics | BA, DEV, MGMT, ADMIN | M6.3 | 3 |
-| GET | `/dashboard/costs` | Cost intelligence data | DEV, MGMT, ADMIN | M6.3 | 3 |
+| GET | `/dashboard/kpis` | Aggregated KPI data | TBA, MGMT, ADMIN, BA, DEV | M6.3 | 3 |
+| GET | `/dashboard/agents` | Per-agent performance metrics | TBA, MGMT, ADMIN, BA, DEV | M6.3 | 3 |
+| GET | `/dashboard/costs` | Cost intelligence data | TBA, MGMT, ADMIN, BA, DEV | M6.3 | 3 |
 
 #### User Routes
 
@@ -506,9 +661,9 @@ All routes are prefixed with `/api/v1`. Authentication via Bearer JWT in the `Au
 
 ---
 
-### 3.2 Detailed Endpoint Schemas
+### 4.2 Detailed Endpoint Schemas
 
-#### 3.2.1 Intent Edit with Maker-Checker — `PUT /intents/{id}`
+#### 4.2.1 Intent Edit with Maker-Checker — `PUT /intents/{id}`
 
 Updates an intent and creates a pending approval. The change does NOT take effect until approved.
 
@@ -521,7 +676,7 @@ sequenceDiagram
     participant Audit as Audit Log
 
     Client->>GW: PUT /intents/{id} + Bearer JWT
-    GW->>GW: Validate JWT, check role (BA/DEV/ADMIN)
+    GW->>GW: Validate JWT, check role (TBA/ADMIN)
     GW->>API: Forward + auth context
     API->>DB: SELECT intent WHERE id = {id}
     API->>DB: BEGIN TRANSACTION
@@ -581,7 +736,7 @@ sequenceDiagram
 
 ---
 
-#### 3.2.2 Approval Decision — `PUT /approvals/{id}/approve`
+#### 4.2.2 Approval Decision — `PUT /approvals/{id}/approve`
 
 Approves a pending action. Validates that the approver is not the submitter (maker ≠ checker). Executes the original action and creates audit events.
 
@@ -649,7 +804,7 @@ sequenceDiagram
 
 ---
 
-#### 3.2.3 Batch Intent Promotion — `POST /discovery/promote-batch`
+#### 4.2.3 Batch Intent Promotion — `POST /discovery/promote-batch`
 
 Promotes multiple staging intents to production in a single atomic operation. Called from Intent Discovery tab. Creates an immutable DB-level snapshot in object storage.
 
@@ -691,7 +846,7 @@ Promotes multiple staging intents to production in a single atomic operation. Ca
 
 ---
 
-#### 3.2.4 Audit Trail Query — `GET /audit`
+#### 4.2.4 Audit Trail Query — `GET /audit`
 
 Paginated, filterable query of the immutable audit log.
 
@@ -701,7 +856,7 @@ Paginated, filterable query of the immutable audit log.
 |-----------|------|-------------|---------|
 | `actionType` | string | Filter by action type | `intent.edit` |
 | `entityType` | string | Filter by entity type | `intent`, `agent`, `template`, `guardrail`, `system`, `approval` |
-| `actorRole` | string | Filter by actor role | `BA`, `DEV`, `ADMIN` |
+| `actorRole` | string | Filter by actor role | `TBA`, `MGMT`, `ADMIN`, `BA`, `DEV` |
 | `severity` | string | Filter by severity | `info`, `warning`, `critical` |
 | `dateFrom` | ISO 8601 | Start date (inclusive) | `2026-01-01T00:00:00Z` |
 | `dateTo` | ISO 8601 | End date (inclusive) | `2026-03-27T23:59:59Z` |
@@ -741,7 +896,7 @@ Paginated, filterable query of the immutable audit log.
 
 ---
 
-#### 3.2.5 Guardrail Policy Update — `PUT /guardrails/policy`
+#### 4.2.5 Guardrail Policy Update — `PUT /guardrails/policy`
 
 Updates guardrail policy configuration. Triggers maker-checker approval.
 
@@ -781,18 +936,29 @@ Updates guardrail policy configuration. Triggers maker-checker approval.
 
 ---
 
-#### 3.2.6 Kill Switch Toggle — `POST /system/kill-switch`
+#### 4.2.6 Kill Switch Toggle — `POST /system/kill-switch`
 
-**Activate** (immediate, no approval needed):
+Both activation and deactivation require maker-checker approval. No unilateral action is possible.
+
+**Activate** (requires maker-checker approval):
 ```json
 // Request
 { "action": "activate", "reason": "Unusual chatbot responses detected — investigating" }
 
 // Response (200)
 {
-  "killSwitch": { "active": true, "activatedAt": "2026-03-27T16:00:00Z", "activatedBy": "admin@ocbc.com", "reason": "Unusual chatbot responses detected" }
+  "killSwitch": { "active": false },
+  "pendingApproval": {
+    "id": "approval-059",
+    "actionType": "system.kill_switch_activate",
+    "status": "pending",
+    "submittedBy": "admin@ocbc.com",
+    "submittedAt": "2026-03-27T16:00:00Z"
+  }
 }
 ```
+
+Note: Kill switch remains **inactive** until approval completes. The `active: false` confirms the activation is pending, not executed.
 
 **Deactivate** (requires maker-checker approval):
 ```json
@@ -810,17 +976,18 @@ Updates guardrail policy configuration. Triggers maker-checker approval.
 }
 ```
 
-Note: Kill switch remains **active** until approval completes. The `active: true` in the deactivation response confirms this — the deactivation is pending, not executed.
+Note: Kill switch remains **active** until approval completes.
 
-**Side effects:**
-- Activate: Immediately updates key-value store flag. Creates `audit_log` event with `severity: "critical"`. All subsequent queries routed to template fallback.
-- Deactivate: Creates `PendingApproval` + `audit_log` event. Kill switch stays active until checker approves.
+**Side effects (both):**
+- Creates `PendingApproval` + `audit_log` event with `severity: "critical"`
+- On approval: updates key-value store flag. All subsequent queries adjust routing accordingly.
+- State persists in both database (`system_state` table) and key-value cache
 
 ---
 
-## 4. Data Model
+## 5. Data Model
 
-### 4.1 Entity Relationship Diagram
+### 5.1 Entity Relationship Diagram
 
 ```mermaid
 erDiagram
@@ -899,7 +1066,6 @@ erDiagram
         float temperature
         int max_tokens
         enum status "active | inactive"
-        boolean kill_switch
         timestamp updated_at
     }
 
@@ -944,7 +1110,7 @@ erDiagram
         uuid id PK
         timestamp event_timestamp
         string actor
-        enum actor_role "BA | DEV | ADMIN"
+        enum actor_role "TBA | MGMT | ADMIN | BA | DEV"
         enum action_type "AuditActionType"
         enum entity_type "intent | agent | template | guardrail | system | approval"
         uuid entity_id
@@ -977,7 +1143,7 @@ erDiagram
         uuid id PK
         string email
         string name
-        enum role "BA | DEV | MGMT | ADMIN"
+        enum role "TBA | MGMT | ADMIN | BA | DEV"
         boolean is_active
         timestamp created_at
     }
@@ -995,83 +1161,106 @@ erDiagram
     }
 ```
 
-### 4.2 Key Design Decisions
+### 5.2 Key Design Decisions
 
 - **`audit_log`** — DELETE, UPDATE, and TRUNCATE are revoked at the database level via PostgreSQL grants. This is not application-level enforcement — it is database-enforced immutability.
-- **`intent_utterances.embedding`** — vector column using DB-native vector extension (e.g., pgvector). Used for cosine similarity search during query routing.
+- **`intent_utterances.embedding`** — vector column using DB-native vector extension (e.g., pgvector). Used for local development/testing only. In production, utterance embeddings are indexed in IT's Elasticsearch cluster via DS's Indexing Hub (write path). Query-time vector similarity search uses DS's Smart Search Service (read path) against Elasticsearch.
 - **`intent_versions.snapshot_s3_key`** — pointer to immutable snapshot in object storage with compliance lock (7-year retention).
 - **`pending_approvals.batch_items`** — JSONB array supporting batch operations (e.g., promote 5 intents at once). Each batch item generates its own audit event on approval.
 - **Chatbot Preview — no staging database.** The preview's "Personal Diff Overlay" mode does not use a separate staging database. Instead, it queries production intents and overlays the current user's pending `PendingApproval` records (filtered by `submitted_by === currentUser`, `status === 'pending'`, and intent-related `action_type` values) on the fly. The overlay is computed at request time and never persisted. This means each maker sees only their own proposed changes in preview — there is no shared staging state.
 - **`ai_model_registry`** — required by MAS November 2025 AI consultation paper. Tracks what AI models are used, for what purpose, and their risk assessment status.
+- **Conversation history** — Stored in Postgres (managed by AI Platform). DS reads/writes via MS layer, not direct DB access.
+- **Traces** — Routing traces are emitted by DS and stored in AI Platform's HDFS cold layer. Not in the DS relational schema.
 
 ---
 
-## 5. Integration Points
+## 6. Cross-Team Dependencies
+
+### 6.1 IT Dependencies
+
+| Dependency | What DS Needs | Interface | When Needed |
+|------------|--------------|-----------|-------------|
+| API Gateway | Gateway configured, DS registers routes, auth passthrough | HTTPS, JWT forwarding | Month 1-2 |
+| Elasticsearch Cluster | Provisioned cluster for vector storage + retrieval. DS accesses via two existing central services: Indexing Hub (write) and Smart Search Service (read) | REST API (index/query) | Month 3-4 |
+| External Data / CMS | Vendor CMS solution, DS queries via gateway | HTTPS via gateway | Month 5-6 |
+| Mobile App Microservices | IT-side MSs that Core Application serves | HTTPS, service-to-service auth | Month 5-6 |
+| Infrastructure Hosting | Compute, networking, CI/CD pipeline | Standard deployment | Month 1 (ongoing) |
+
+### 6.2 AI Platform Dependencies
+
+| Dependency | What DS Needs | Interface | When Needed |
+|------------|--------------|-----------|-------------|
+| Postgres DB (Conversation History) | AI Platform manages DB; DS reads/writes via MS layer | REST/gRPC microservice API | Month 1-2 |
+| Model Services (LLM Chat + Embeddings) | Inference API for agent responses and query embedding | HTTPS API | Month 5-6 |
+| LLM Guardrails (Hallucination, Injection, PII) | Screening API that DS calls from routing pipeline | HTTPS API | Month 5-6 |
+| Streaming Support | Streaming responses from Model Services | SSE / WebSocket | Month 5-6 |
+| Cold Layer (HDFS) | Trace storage, DS puts traces | HDFS API / SDK | Month 11-12 |
+
+### 6.3 Unresolved Ownership
+
+| Item | Options | Impact | Resolution Needed By |
+|------|---------|--------|---------------------|
+| RBAC | DS-built authorizer function OR IT gateway-level enforcement | Affects auth architecture, JWT claims design | Before Month 1 |
+| Conversation History Microservice | DS builds MS on AI Platform's Postgres OR AI Platform provides MS | Affects memory layer design | Before Month 5 |
+
+---
+
+## 7. Timeline & Gantt Chart
+
+### 7.1 Capability Blocks
+
+| Month | DS Deliverables | IT Prerequisites | AI Platform Prerequisites |
+|-------|----------------|-----------------|--------------------------|
+| 1-2 | Governance foundation: maker-checker engine, audit trail (append-only), RBAC authorizer, kill switch, DB schema | Infrastructure provisioned, API Gateway configured, Postgres MS layer ready | Postgres DB ready |
+| 3-4 | Content management: intent CRUD + filtering + versioning, template CRUD + versioning, document upload + metadata, agent config UI (view + toggle) | Elasticsearch cluster provisioned and accessible | — |
+| 5-6 | Core Application v1: routing engine (embed→match→dispatch), content safety screening, chatbot preview (production + diff overlay), streaming responses | Gateway integration for mobile app testable | Model Services API available (LLM chat + embeddings), LLM Guardrails API available, Streaming support |
+| 7-8 | Indexing pipeline: document chunking + embedding orchestration via Indexing Hub, KB maintenance flow for BU, hot memory layer | Elasticsearch indexing API stable | — |
+| 9-10 | AI-assisted discovery: LLM intent extraction from documents, diff generation, AI utterance/response generation, confidence scoring | — | Model Services capacity for discovery workloads |
+| 11-12 | Observability: metrics collection, query-to-response time, token rate, cost intelligence, dashboard API, executive dashboard | — | Cold layer (HDFS) ready for trace storage |
+
+### 7.2 Gantt Chart
 
 ```mermaid
-graph TD
-    subgraph External["External Systems"]
-        IdP["Bank IdP\n(SAML/OIDC)"]
-        LLM["Managed LLM Service\n(Chat + Embeddings)"]
-        GuardSvc["Managed Guardrails\n(Content Safety)"]
-        ObjStore["Object Storage\n(Documents + Snapshots)"]
-        ObsPlatform["Observability Platform\n(Logs + Metrics + Traces)"]
-    end
+gantt
+    title Chatbot Platform — 12-Month Delivery Timeline
+    dateFormat YYYY-MM
+    axisFormat %b %Y
 
-    subgraph Platform["Chatbot Backoffice Platform"]
-        GW["API Gateway\n+ Authorizer"]
-        API["Monolith API\n(Phase 1)"]
-        RouteF["Routing Function\n(Phase 2)"]
-        GuardF["Guardrail Function\n(Phase 2)"]
-    end
+    section DS Deliverables
+    Governance (maker-checker, audit, RBAC, kill switch)     :ds1, 2026-04, 2M
+    Content Mgmt (intents, templates, documents, agent config) :ds2, after ds1, 2M
+    Core App v1 (routing, content safety, preview, streaming) :ds3, after ds2, 2M
+    Indexing Pipeline + KB Maintenance + Hot Memory           :ds4, after ds3, 2M
+    AI-Assisted Discovery                                     :ds5, after ds4, 2M
+    Observability (metrics, cost intelligence, dashboard)     :ds6, after ds5, 2M
 
-    subgraph Data["Data Layer"]
-        RDB[("Relational DB\n+ Vector Extension")]
-        KV[("Key-Value Store\n(Cache + Sessions)")]
-    end
+    section IT Dependencies
+    Infrastructure + Gateway Setup                            :it1, 2026-04, 2M
+    Elasticsearch Cluster Provisioning                        :it2, 2026-05, 2M
+    Mobile App MS Integration                                 :it3, 2026-08, 2M
 
-    IdP <-->|"SAML/OIDC\nfederation"| GW
-    GW -->|"JWT + RBAC"| API & RouteF & GuardF
-
-    API -->|"CRUD"| RDB
-    API -->|"cache reads"| KV
-    API -->|"snapshots"| ObjStore
-
-    RouteF -->|"embed query"| LLM
-    RouteF -->|"similarity search"| RDB
-    RouteF -->|"routing cache"| KV
-    RouteF -->|"invoke agent"| LLM
-
-    GuardF -->|"content screening"| GuardSvc
-    GuardF -->|"policy cache"| KV
-
-    API -->|"logs + metrics"| ObsPlatform
-    RouteF -->|"routing traces"| ObsPlatform
-
-    style External fill:#f5f5f5,stroke:#616161
-    style Platform fill:#e3f2fd,stroke:#1565c0
-    style Data fill:#e8f5e9,stroke:#2e7d32
+    section AI Platform Dependencies
+    Postgres DB (conversation history)                          :ai1, 2026-04, 2M
+    Model Services (LLM Chat + Embeddings)                    :ai2, 2026-07, 2M
+    LLM Guardrails API + Streaming                            :ai3, 2026-07, 2M
+    Cold Layer HDFS (trace storage)                           :ai4, 2027-01, 2M
 ```
 
-### Integration Summary
+### 7.3 Critical Path & Risks
 
-| Integration | Protocol | Direction | Auth | Phase |
-|-------------|----------|-----------|------|-------|
-| Bank IdP ↔ Identity Broker | SAML 2.0 / OIDC | Bidirectional | Federation trust | 1 |
-| SPA → API Gateway | HTTPS + JWT Bearer | Client → Server | JWT validation | 1 |
-| API → Relational DB | TCP (PostgreSQL wire protocol) | Server → DB | Token-based (no passwords) | 1 |
-| API → Key-Value Store | HTTPS | Server → Store | IAM / service credentials | 1 |
-| API → Object Storage | HTTPS | Server → Storage | IAM / service credentials | 1 |
-| Routing Function → LLM (Embeddings) | HTTPS | Server → AI | API key / IAM | 2 |
-| Routing Function → LLM (Chat) | HTTPS | Server → AI | API key / IAM | 2 |
-| Guardrail Function → Managed Guardrails | HTTPS | Server → AI | API key / IAM | 2 |
-| All Functions → Observability | Agent / SDK | Server → Monitoring | Auto-configured | 1 |
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| AI Platform Model Services delayed → blocks Core App v1 (Month 5-6) | Cannot build routing or chatbot preview with real AI | Build with mock LLM responses first; swap to real service when available |
+| IT Elasticsearch delayed → blocks indexing pipeline (Month 7-8) | Cannot index knowledge documents for RAG | Use local vector store (pgvector) as fallback for development |
+| RBAC ownership unresolved → blocks governance foundation (Month 1-2) | Auth architecture uncertain | Escalate decision to stakeholders before project kickoff |
+| Streaming support from AI Platform delayed → blocks real-time preview | Preview works but without streaming (full response only) | Implement non-streaming first; add streaming as enhancement |
+| Indexing Hub / Smart Search Service enhancement scope unclear → blocks KB maintenance and routing (Month 7-8) | Existing DS central services may not handle chatbot-scale request volumes without enhancement | Assess capacity early; define enhancement scope and interface contracts in Month 3-4 |
 
 ---
 
-## 6. Cross-Cutting Concerns
+## 8. Cross-Cutting Concerns
 
-### 6.1 Authentication and Authorization
+### 8.1 Authentication and Authorization
 
 **Flow:** Bank IdP → Identity Broker (SAML/OIDC) → JWT issued → API Gateway validates JWT → Authorizer function checks RBAC.
 
@@ -1080,7 +1269,7 @@ graph TD
 {
   "sub": "user-uuid",
   "email": "sarah.chen@ocbc.com",
-  "cognito:groups": ["BA"],  // or custom claim per IdP
+  "cognito:groups": ["BA"],  // mapped to platform role: TBA, MGMT, ADMIN, BA, or DEV
   "exp": 1711540800,
   "iss": "https://identity-broker.example.com"
 }
@@ -1105,7 +1294,7 @@ X-Auth-User-Role: BA
 
 See [Vendor-Agnostic Strategy, Section 3.3](STRATEGY_VENDOR_AGNOSTIC.md#33-identity--auth) for identity broker vendor options.
 
-### 6.2 Audit Logging
+### 8.2 Audit Logging
 
 Every write operation emits an audit event. This is implemented as shared middleware in the monolith API.
 
@@ -1123,7 +1312,7 @@ interface AuditEvent {
   id: string;
   timestamp: string;
   actor: string;              // email of the person
-  actorRole: 'BA' | 'DEV' | 'ADMIN';
+  actorRole: 'TBA' | 'MGMT' | 'ADMIN' | 'BA' | 'DEV';
   actionType: AuditActionType; // 17 distinct types
   entityType: 'intent' | 'agent' | 'template' | 'guardrail' | 'system' | 'approval';
   entityId: string;
@@ -1141,9 +1330,9 @@ interface AuditEvent {
 
 **Retention:** 7 years minimum (MAS TRM 12.2.2). Immutable snapshots in object storage with compliance lock.
 
-### 6.3 Maker-Checker Enforcement
+### 8.3 Maker-Checker Enforcement
 
-**11 action types requiring approval:**
+**12 action types requiring approval:**
 
 | Action Type | Entity | Severity |
 |------------|--------|----------|
@@ -1157,11 +1346,16 @@ interface AuditEvent {
 | `guardrail.policy_change` | Guardrail | warning |
 | `template.publish` | Template | warning |
 | `template.restore` | Template | warning |
+| `system.kill_switch_activate` | System | critical |
 | `system.kill_switch_deactivate` | System | critical |
 
 **API-level enforcement:**
 ```
 // On approval attempt:
+// Only TBA, MGMT, ADMIN can approve
+if (!['TBA', 'MGMT', 'ADMIN'].includes(request.userRole)) {
+  return 403: "Role lacks approval permission"
+}
 if (approval.submittedBy === request.userId) {
   return 403: "Self-approval is not permitted (MAS TRM 9.1.1)"
 }
@@ -1186,7 +1380,7 @@ BEGIN;
 COMMIT;
 ```
 
-### 6.4 Error Handling
+### 8.4 Error Handling
 
 **Standardized error response format:**
 ```json
