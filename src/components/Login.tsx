@@ -1,5 +1,5 @@
 import React, { useState, FormEvent } from 'react';
-import { Eye, EyeOff, ShieldCheck } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import ocbcLogo from '../assets/Logo-ocbc.png';
@@ -103,20 +103,6 @@ export default function Login({ onLogin }: LoginProps) {
             </button>
           </form>
 
-          {/* Demo hint */}
-          <div className="mt-6 pt-5 border-t border-slate-100">
-            <div className="flex items-start gap-2.5 bg-slate-50 rounded-xl p-3 border border-slate-100">
-              <ShieldCheck size={14} className="text-slate-400 shrink-0 mt-0.5" />
-              <div>
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Demo credentials</p>
-                <p className="text-xs text-slate-400 mt-1">
-                  Username: <span className="font-mono font-bold text-slate-600">admin</span>
-                  <span className="mx-1.5 text-slate-300">·</span>
-                  Password: <span className="font-mono font-bold text-slate-600">ocbc2026</span>
-                </p>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>

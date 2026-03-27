@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Upload, RefreshCw, Camera, Shuffle, Sparkles, CheckCircle2 } from 'lucide-react';
+import { RefreshCw, Camera, Shuffle, Sparkles, CheckCircle2, ImageIcon, RotateCcw } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -27,37 +27,45 @@ interface PickerImage {
 const TIER_CONFIG: Record<LifestyleTier, {
   label: string;
   color: string;
-  bg: string;
   border: string;
   badge: string;
-  products: string[];
+  products: { name: string; url: string }[];
   desc: string;
 }> = {
   aspirational: {
     label: 'Aspirational',
     color: 'text-amber-700',
-    bg: 'bg-amber-50',
     border: 'border-amber-200',
     badge: 'bg-amber-100 text-amber-800 border border-amber-300',
-    products: ['OCBC Premier Banking', 'Wealth Advisory', 'Overseas Investment Fund'],
+    products: [
+      { name: 'OCBC Premier Banking', url: 'https://www.ocbc.com/premier-banking/why-join-us' },
+      { name: 'Wealth Advisory', url: 'https://www.ocbc.com/premier-banking/why-join-us' },
+      { name: 'Overseas Investment Fund', url: 'https://www.ocbc.com/personal-banking/investments' },
+    ],
     desc: 'Luxury travel, fine dining & premium experiences',
   },
   balanced: {
     label: 'Balanced',
     color: 'text-blue-700',
-    bg: 'bg-blue-50',
     border: 'border-blue-200',
     badge: 'bg-blue-100 text-blue-800 border border-blue-300',
-    products: ['OCBC RoboInvest', 'CPF Investment Scheme', 'SRS Account'],
+    products: [
+      { name: 'OCBC RoboInvest', url: 'https://www.ocbc.com/personal-banking/investments/roboinvest' },
+      { name: 'CPF Investment Scheme', url: 'https://www.cpf.gov.sg/member/growing-your-savings/earning-higher-returns/investing-your-cpf-savings/cpf-investment-scheme-options' },
+      { name: 'SRS Account', url: 'https://www.ocbc.com/personal-banking/investments/supplementary-retirement-scheme-account' },
+    ],
     desc: 'Family-oriented, moderate lifestyle & travel',
   },
   essential: {
     label: 'Essential',
     color: 'text-green-700',
-    bg: 'bg-green-50',
     border: 'border-green-200',
     badge: 'bg-green-100 text-green-800 border border-green-300',
-    products: ['OCBC 360 Account', 'CPF Voluntary Top-ups', 'Life Goals Savings'],
+    products: [
+      { name: 'OCBC 360 Account', url: 'https://www.ocbc.com/personal-banking/deposits/360-savings-account' },
+      { name: 'CPF Voluntary Top-ups', url: 'https://www.cpf.gov.sg/member/growing-your-savings/saving-more-with-cpf/top-up-to-enjoy-higher-retirement-payouts' },
+      { name: 'Life Goals Savings', url: 'https://www.ocbc.com/personal-banking/start-planning' },
+    ],
     desc: 'Minimalist, wellness & nature-focused living',
   },
 };
@@ -72,9 +80,6 @@ const ALL_IMAGES: PickerImage[] = [
   { id: 'asp3', url: `${_I}asp3.jpg`, tier: 'aspirational' },
   { id: 'asp4', url: `${_I}asp4.jpg`, tier: 'aspirational' },
   { id: 'asp5', url: `${_I}asp5.jpg`, tier: 'aspirational' },
-  { id: 'asp6', url: `${_I}asp6.jpg`, tier: 'aspirational' },
-  { id: 'asp7', url: `${_I}asp7.jpg`, tier: 'aspirational' },
-  { id: 'asp8', url: `${_I}asp8.jpg`, tier: 'aspirational' },
   // Aspirational — Gemini
   { id: 'g_10cs', url: `${_I}Gemini_Generated_Image_10cs4h10cs4h10cs.png`, tier: 'aspirational' },
   { id: 'g_8rfx', url: `${_I}Gemini_Generated_Image_8rfxn18rfxn18rfx.png`, tier: 'aspirational' },
@@ -107,7 +112,6 @@ const ALL_IMAGES: PickerImage[] = [
   { id: 'ess5', url: `${_I}ess5.jpg`, tier: 'essential' },
   { id: 'ess6', url: `${_I}ess6.jpg`, tier: 'essential' },
   { id: 'ess7', url: `${_I}ess7.jpg`, tier: 'essential' },
-  { id: 'ess8', url: `${_I}ess8.jpg`, tier: 'essential' },
   // Essential — Gemini
   { id: 'g_23qi', url: `${_I}Gemini_Generated_Image_23qiyt23qiyt23qi.png`, tier: 'essential' },
   { id: 'g_44at', url: `${_I}Gemini_Generated_Image_44at5244at5244at.png`, tier: 'essential' },
@@ -176,13 +180,18 @@ function WelcomeBubble({ message }: { message: string }) {
         <Camera size={11} className="text-white" />
       </div>
       <div className="bg-white rounded-2xl rounded-bl-sm px-3 py-2 shadow-sm max-w-[210px]">
-        <p className="text-xs text-slate-700 leading-relaxed">{message}</p>
+        <p className="text-sm text-slate-700 leading-relaxed">{message}</p>
       </div>
     </div>
   );
 }
 
-function PhoneShell({ headerLabel, children }: { headerLabel: string; children: React.ReactNode }) {
+function PhoneShell({ headerLabel, children, footer, onReset }: {
+  headerLabel: string;
+  children: React.ReactNode;
+  footer?: React.ReactNode;
+  onReset?: () => void;
+}) {
   return (
     <div className="relative w-[300px] bg-black rounded-[44px] p-[3px] shadow-2xl" style={{ height: 570 }}>
       <div className="w-full h-full bg-[#F2F2F7] rounded-[42px] overflow-hidden flex flex-col">
@@ -199,11 +208,23 @@ function PhoneShell({ headerLabel, children }: { headerLabel: string; children: 
             <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse shrink-0" />
             <span className="text-white text-sm font-semibold truncate">{headerLabel}</span>
           </div>
+          {onReset && (
+            <button
+              onClick={onReset}
+              className="flex items-center gap-1 text-white/60 hover:text-white transition-colors text-xs font-medium ml-1"
+              title="Reset chat"
+            >
+              <RotateCcw size={12} />
+              <span>Reset</span>
+            </button>
+          )}
         </div>
         {/* Scrollable body */}
         <div className="flex-1 overflow-y-auto min-h-0">
           {children}
         </div>
+        {/* Optional sticky footer */}
+        {footer}
       </div>
     </div>
   );
@@ -215,7 +236,7 @@ function TierResultCard({ result, onReset }: { result: TierResult; onReset: () =
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className={cn('m-3 rounded-2xl border p-3', cfg.bg, cfg.border)}
+      className={cn('m-3 rounded-2xl border p-3 bg-white', cfg.border)}
     >
       <div className="flex items-center justify-between mb-2">
         <span className={cn('text-xs font-bold px-2.5 py-0.5 rounded-full', cfg.badge)}>
@@ -225,13 +246,20 @@ function TierResultCard({ result, onReset }: { result: TierResult; onReset: () =
           <RefreshCw size={12} />
         </button>
       </div>
-      <p className="text-xs text-slate-600 mb-2 leading-relaxed">{result.reasoning}</p>
-      <p className={cn('text-xs font-medium leading-relaxed mb-2', cfg.color)}>{result.advice}</p>
+      <p className="text-sm text-slate-600 mb-2 leading-relaxed">{result.reasoning}</p>
+      <p className="text-sm text-slate-700 leading-relaxed mb-2">{result.advice}</p>
       <div className="flex flex-col gap-1">
-        {result.tier && TIER_CONFIG[result.tier].products.map(p => (
-          <span key={p} className="text-[11px] bg-white/70 border border-slate-200 rounded-lg px-2 py-0.5 text-slate-600">
-            → {p}
-          </span>
+        {TIER_CONFIG[result.tier].products.map(p => (
+          <a
+            key={p.name}
+            href={p.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs border border-slate-200 rounded-lg px-2 py-1 text-slate-600 hover:text-[#E3000F] hover:border-red-200 transition-colors flex items-center gap-1.5"
+          >
+            <span className="text-slate-400">→</span>
+            <span className="underline underline-offset-2 decoration-slate-300 hover:decoration-red-300">{p.name}</span>
+          </a>
         ))}
       </div>
     </motion.div>
@@ -320,7 +348,7 @@ function AnalysingBubble() {
           <motion.div animate={{ rotate: 360 }} transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}>
             <Sparkles size={13} className="text-[#E3000F]" />
           </motion.div>
-          <span className="text-[11px] font-bold text-[#E3000F] tracking-wide">Analysing</span>
+          <span className="text-sm font-bold text-[#E3000F] tracking-wide">Analysing</span>
           <div className="flex items-end gap-[2px] h-4">
             {bars.map((bar, i) => (
               <motion.div
@@ -410,48 +438,38 @@ function VisionUploadPhone() {
     setLoading(false);
   };
 
-  return (
-    <PhoneShell headerLabel="Upload and Analyse">
-      <div ref={bodyRef} className="flex flex-col h-full overflow-y-auto">
-        <WelcomeBubble message="Hi! Upload a photo that reflects your ideal retirement — a dream holiday, favourite activity, or everyday moment — and I'll identify your lifestyle profile." />
+  const chatFooter = (
+    <div
+      className="shrink-0 bg-white border-t border-slate-200 px-3 py-2.5 flex items-center gap-3"
+      onDrop={handleDrop}
+      onDragOver={e => e.preventDefault()}
+    >
+      <button
+        onClick={() => fileInputRef.current?.click()}
+        disabled={loading}
+        className="w-11 h-11 bg-[#E3000F] rounded-full flex items-center justify-center shrink-0 hover:bg-red-700 transition-colors disabled:opacity-50 shadow-md"
+      >
+        <ImageIcon size={20} className="text-white" />
+      </button>
+      <span className="text-sm text-slate-400 flex-1 select-none">
+        {loading ? 'Analysing…' : preview ? 'Upload another photo' : 'Tap to upload a lifestyle photo'}
+      </span>
+      <input ref={fileInputRef} type="file" accept="image/*" className="hidden"
+        onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ''; }} />
+    </div>
+  );
 
-        {/* Upload zone — hidden once image is picked */}
-        {!preview && (
-          <div className="flex flex-col items-center justify-center flex-1 px-4 py-4 gap-3">
-            <div
-              onDrop={handleDrop}
-              onDragOver={e => e.preventDefault()}
-              onClick={() => fileInputRef.current?.click()}
-              className="w-full flex-1 flex flex-col items-center justify-center border-2 border-dashed border-slate-300 rounded-2xl cursor-pointer hover:border-slate-400 hover:bg-slate-50 transition-all gap-3 min-h-[200px]"
-            >
-              <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center">
-                <Upload size={20} className="text-slate-400" />
-              </div>
-              <div className="text-center">
-                <p className="text-sm font-semibold text-slate-700">Upload a lifestyle photo</p>
-                <p className="text-sm text-slate-400 mt-1">Drag & drop or tap to browse</p>
-              </div>
-            </div>
-            <p className="text-[10px] text-slate-400 text-center leading-relaxed">
-              Claude's vision model will analyse your image and suggest your retirement lifestyle tier
-            </p>
-            <input ref={fileInputRef} type="file" accept="image/*" className="hidden"
-              onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
-          </div>
-        )}
+  return (
+    <PhoneShell headerLabel="Upload and Analyse" footer={chatFooter} onReset={handleReset}>
+      <div ref={bodyRef} className="flex flex-col pb-3">
+        <WelcomeBubble message="Hi! I'd love to help you plan for a great retirement. Upload a photo that represents your lifestyle — your travels, home, a meal you enjoy, or anything that reflects how you like to live." />
 
         {/* User image bubble */}
         {preview && (
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
             className="flex justify-end px-3 py-2">
-            <div className="relative rounded-2xl rounded-br-sm overflow-hidden max-w-[180px] shadow-sm">
-              <img src={preview} alt="Your upload" className="w-full h-auto max-h-[140px] object-cover block" />
-              {!loading && !result && (
-                <button onClick={handleReset}
-                  className="absolute top-1.5 right-1.5 w-5 h-5 bg-black/50 rounded-full flex items-center justify-center text-white">
-                  <RefreshCw size={10} />
-                </button>
-              )}
+            <div className="rounded-2xl rounded-br-sm overflow-hidden max-w-[180px] shadow-sm">
+              <img src={preview} alt="Your upload" className="w-full h-auto max-h-[160px] object-cover block" />
             </div>
           </motion.div>
         )}
@@ -469,24 +487,18 @@ function VisionUploadPhone() {
         <AnimatePresence>
           {result && (
             <motion.div key="result" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
-              <TierResultCard result={result} onReset={handleReset} />
+              <TierResultCard result={result} onReset={() => { setResult(null); setPreview(null); }} />
             </motion.div>
           )}
           {error && (
             <motion.div key="error" initial={{ opacity: 0 }} animate={{ opacity: 1 }}
               className="mx-3 my-1 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
-              <p className="text-[11px] text-red-600">{error}</p>
-              <button onClick={handleReset} className="text-[10px] text-red-500 underline mt-1">Try again</button>
+              <p className="text-sm text-red-600">{error}</p>
+              <button onClick={handleReset} className="text-xs text-red-500 underline mt-1">Try again</button>
             </motion.div>
           )}
         </AnimatePresence>
-
-        {/* Bottom padding */}
-        <div className="h-3 shrink-0" />
       </div>
-
-      <input ref={fileInputRef} type="file" accept="image/*" className="hidden"
-        onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ''; }} />
     </PhoneShell>
   );
 }
@@ -498,6 +510,7 @@ const MAX_REFRESHES = 5;
 function ImagePickerPhone() {
   const [pickerSet, setPickerSet] = useState(() => getPickerSet());
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [submittedImages, setSubmittedImages] = useState<PickerImage[]>([]);
   const [result, setResult] = useState<TierResult | null>(null);
   const [refreshesLeft, setRefreshesLeft] = useState(MAX_REFRESHES);
 
@@ -520,6 +533,7 @@ function ImagePickerPhone() {
   const handleDiscover = () => {
     if (selected.size === 0) return;
     const selectedImages = pickerSet.filter(img => selected.has(img.id));
+    setSubmittedImages(selectedImages);
     const tier = getMajorityTier(selectedImages);
     const cfg = TIER_CONFIG[tier];
     setResult({
@@ -531,6 +545,7 @@ function ImagePickerPhone() {
 
   const handleReset = () => {
     setSelected(new Set());
+    setSubmittedImages([]);
     setResult(null);
     setPickerSet(getPickerSet());
     setRefreshesLeft(MAX_REFRESHES);
@@ -542,7 +557,7 @@ function ImagePickerPhone() {
   const heights = ['h-28', 'h-24', 'h-32', 'h-24', 'h-28', 'h-32'];
 
   return (
-    <PhoneShell headerLabel="Visual Lifestyle Picker">
+    <PhoneShell headerLabel="Visual Lifestyle Picker" onReset={handleReset}>
       <div className="flex flex-col h-full">
         <WelcomeBubble message="Hi! Tap the images that resonate with how you'd love to spend your retirement. I'll use your choices to suggest your lifestyle profile." />
         {!result ? (
@@ -552,11 +567,11 @@ function ImagePickerPhone() {
               <button
                 onClick={handleRefresh}
                 disabled={refreshesLeft === 0}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 disabled:opacity-35 disabled:cursor-not-allowed transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#E3000F] hover:bg-red-700 disabled:opacity-35 disabled:cursor-not-allowed transition-colors shadow-sm"
                 title={refreshesLeft === 0 ? 'No refreshes left' : `${refreshesLeft} refresh${refreshesLeft !== 1 ? 'es' : ''} left`}
               >
-                <RefreshCw size={13} className="text-slate-600" />
-                <span className="text-[11px] font-bold text-slate-600">{refreshesLeft}</span>
+                <RefreshCw size={13} className="text-white" />
+                <span className="text-xs font-bold text-white">{refreshesLeft}</span>
               </button>
             </div>
             {/* Masonry grid */}
@@ -607,7 +622,7 @@ function ImagePickerPhone() {
               <button
                 onClick={handleDiscover}
                 disabled={selected.size === 0}
-                className="w-full bg-slate-800 text-white py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-slate-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className="w-full bg-[#E3000F] text-white py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-red-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed shadow-sm shadow-red-100"
               >
                 <Shuffle size={14} />
                 Discover My Style
@@ -616,7 +631,25 @@ function ImagePickerPhone() {
             </div>
           </>
         ) : (
-          <TierResultCard result={result} onReset={handleReset} />
+          <>
+            {/* User input: submitted images shown as right-aligned chat bubble */}
+            {submittedImages.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex justify-end px-3 pt-3 pb-1"
+              >
+                <div className="flex flex-wrap gap-1 justify-end max-w-[200px]">
+                  {submittedImages.map(img => (
+                    <div key={img.id} className="w-16 h-16 rounded-xl overflow-hidden shadow-sm shrink-0">
+                      <img src={img.url} alt="" className="w-full h-full object-cover" />
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+            <TierResultCard result={result!} onReset={handleReset} />
+          </>
         )}
       </div>
     </PhoneShell>

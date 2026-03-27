@@ -54,11 +54,13 @@ interface ActivityLogEntry {
 const DOMAIN_OPTIONS = ['Retirement Planning', 'Home Loans', 'Card Services', 'Compliance'];
 
 const DOCUMENT_LINKS: Record<string, string> = {
-  'OCBC_CPF_Life_Product_Guide.pdf': 'https://www.ocbc.com/personal-banking/insurance/cpf-life',
-  'OCBC_Home_Loan_Policy_2025.docx': 'https://www.ocbc.com/personal-banking/loans/home-loans',
+  'OCBC_CPF_Life_Product_Guide.pdf': 'https://www.cpf.gov.sg/member/retirement-income/monthly-payouts/cpf-life',
+  'OCBC_Home_Loan_Policy_2025.docx': 'https://www.ocbc.com/personal-banking/loans/home-loan',
   'OCBC_Card_Services_FAQ.pdf': 'https://www.ocbc.com/personal-banking/cards',
-  'OCBC_360_Account_Handbook.pdf': 'https://www.ocbc.com/personal-banking/deposits/360-account',
-  'OCBC_Wealth_Advisory_Guidelines.pdf': 'https://www.ocbc.com/personal-banking/investments',
+  'CPF_Retirement_Sum_Schemes.pdf': 'https://www.cpf.gov.sg/member/infohub/educational-resources/what-is-the-cpf-retirement-sum',
+  'International_Transfer_Compliance.docx': 'https://www.ocbc.com/personal-banking/send-money/overseas-transfer',
+  'OCBC_360_Account_Handbook.pdf': 'https://www.ocbc.com/personal-banking/deposits/360-savings-account',
+  'OCBC_Wealth_Advisory_Guidelines.pdf': 'https://www.ocbc.com/premier-banking/why-join-us',
 };
 
 const INITIAL_DOCUMENTS: KnowledgeDocument[] = [
