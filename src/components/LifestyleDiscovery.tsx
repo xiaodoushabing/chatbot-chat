@@ -539,7 +539,7 @@ function ImagePickerPhone() {
     setResult({
       tier,
       reasoning: `Based on ${selected.size} image${selected.size > 1 ? 's' : ''} you selected, your retirement style leans ${tier}. ${cfg.desc}.`,
-      advice: `We recommend building your retirement plan around ${cfg.products[0]} and ${cfg.products[1]} to support your ${tier} lifestyle goals. Our advisors can help you map out a personalised CPF and investment strategy.`,
+      advice: `We recommend building your retirement plan around ${cfg.products[0].name} and ${cfg.products[1].name} to support your ${tier} lifestyle goals. Our advisors can help you map out a personalised CPF and investment strategy.`,
     });
   };
 
