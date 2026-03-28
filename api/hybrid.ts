@@ -1,5 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 
+const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
 const RETIREMENT_KNOWLEDGE_BASE = `
 # Singapore Retirement Planning – Knowledge Base
 
@@ -153,8 +155,8 @@ export default async function handler(req: any, res: any) {
     return res.status(204).end();
   }
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  if (!process.env.ANTHROPIC_API_KEY) return res.status(500).json({ error: 'ANTHROPIC_API_KEY is not configured' });
 
-  const client = new Anthropic();
   const { message } = req.body;
 
   res.setHeader('Content-Type', 'text/event-stream');

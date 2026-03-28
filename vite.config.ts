@@ -1,11 +1,9 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import {defineConfig, loadEnv} from 'vite';
-import Anthropic from '@anthropic-ai/sdk';
-import { RAG_SYSTEM_PROMPT, RAG_SYSTEM_PROMPT_GENAI } from './chatbot_demo/src/lib/knowledge-base';
+import {defineConfig, loadEnv, type PluginOption} from 'vite';
 
-function ragApiPlugin(apiKey: string) {
+function ragApiPlugin(apiKey: string, AnthropicClass: any, ragPromptGenai: string, ragPrompt: string): PluginOption {
   function makeLlmMiddleware(systemPrompt: string) {
     return async (req: any, res: any, next: any) => {
       if (req.method === 'OPTIONS') {
@@ -22,7 +20,7 @@ function ragApiPlugin(apiKey: string) {
       for await (const chunk of req) chunks.push(chunk);
       const { message } = JSON.parse(Buffer.concat(chunks).toString());
 
-      const client = new Anthropic({ apiKey });
+      const client = new AnthropicClass({ apiKey });
 
       res.setHeader('Content-Type', 'text/event-stream');
       res.setHeader('Cache-Control', 'no-cache');
@@ -63,7 +61,7 @@ function ragApiPlugin(apiKey: string) {
     for await (const chunk of req) chunks.push(chunk);
     const { image, mimeType } = JSON.parse(Buffer.concat(chunks).toString());
 
-    const client = new Anthropic({ apiKey });
+    const client = new AnthropicClass({ apiKey });
 
     res.setHeader('Content-Type', 'application/json');
 
@@ -119,17 +117,25 @@ Respond with ONLY valid JSON in this exact format (no markdown, no extra text):
   return {
     name: 'rag-api',
     configureServer(server: any) {
-      server.middlewares.use('/api/rag', makeLlmMiddleware(RAG_SYSTEM_PROMPT_GENAI));
-      server.middlewares.use('/api/hybrid', makeLlmMiddleware(RAG_SYSTEM_PROMPT));
+      server.middlewares.use('/api/rag', makeLlmMiddleware(ragPromptGenai));
+      server.middlewares.use('/api/hybrid', makeLlmMiddleware(ragPrompt));
       server.middlewares.use('/api/wow-vision', wowVisionMiddleware);
     },
   };
 }
 
-export default defineConfig(({mode}) => {
+export default defineConfig(async ({mode}) => {
   const env = loadEnv(mode, '.', '');
+  const plugins: PluginOption[] = [react(), tailwindcss()];
+
+  if (mode === 'development') {
+    const { default: Anthropic } = await import('@anthropic-ai/sdk');
+    const { RAG_SYSTEM_PROMPT, RAG_SYSTEM_PROMPT_GENAI } = await import('./chatbot_demo/src/lib/knowledge-base');
+    plugins.push(ragApiPlugin(env.ANTHROPIC_API_KEY, Anthropic, RAG_SYSTEM_PROMPT_GENAI, RAG_SYSTEM_PROMPT));
+  }
+
   return {
-    plugins: [react(), tailwindcss(), ragApiPlugin(env.ANTHROPIC_API_KEY)],
+    plugins,
     define: {
       'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
     },
