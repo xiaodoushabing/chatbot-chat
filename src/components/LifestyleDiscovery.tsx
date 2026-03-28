@@ -514,14 +514,24 @@ function ImagePickerPhone() {
   const handleRefresh = () => {
     if (refreshesLeft === 0) return;
     const newSet = getPickerSet(seenIds);
-    setSeenIds(prev => {
-      const next = new Set(prev);
-      newSet.forEach(img => next.add(img.id));
-      return next;
+    // Preload all images before swapping so they appear simultaneously
+    Promise.all(
+      newSet.map(img => new Promise<void>(resolve => {
+        const el = new Image();
+        el.onload = () => resolve();
+        el.onerror = () => resolve();
+        el.src = img.url;
+      }))
+    ).then(() => {
+      setSeenIds(prev => {
+        const next = new Set(prev);
+        newSet.forEach(img => next.add(img.id));
+        return next;
+      });
+      setPickerSet(newSet);
+      setSelected(new Set());
+      setRefreshesLeft(r => r - 1);
     });
-    setPickerSet(newSet);
-    setSelected(new Set());
-    setRefreshesLeft(r => r - 1);
   };
 
   const handleDiscover = () => {
@@ -538,13 +548,22 @@ function ImagePickerPhone() {
   };
 
   const handleReset = () => {
-    setSelected(new Set());
-    setSubmittedImages([]);
-    setResult(null);
     const newSet = getPickerSet();
-    setSeenIds(new Set(newSet.map(img => img.id)));
-    setPickerSet(newSet);
-    setRefreshesLeft(MAX_REFRESHES);
+    Promise.all(
+      newSet.map(img => new Promise<void>(resolve => {
+        const el = new Image();
+        el.onload = () => resolve();
+        el.onerror = () => resolve();
+        el.src = img.url;
+      }))
+    ).then(() => {
+      setSelected(new Set());
+      setSubmittedImages([]);
+      setResult(null);
+      setSeenIds(new Set(newSet.map(img => img.id)));
+      setPickerSet(newSet);
+      setRefreshesLeft(MAX_REFRESHES);
+    });
   };
 
   // 2-column masonry: 6 images, alternating heights for visual interest
