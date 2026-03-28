@@ -129,6 +129,12 @@ const ALL_IMAGES: PickerImage[] = [
   { id: 'u_zakaria', url: `${_I}zakaria-ahada-VGR_ReUCqNw-unsplash.jpg`, tier: 'essential' },
 ];
 
+// Preload all images into browser cache on module load
+ALL_IMAGES.forEach(img => {
+  const el = new Image();
+  el.src = img.url;
+});
+
 // Resize + compress image to stay under Claude's 5MB base64 limit
 function compressImage(dataUrl: string, mimeType: string): Promise<{ dataUrl: string; mimeType: string }> {
   return new Promise((resolve, reject) => {
