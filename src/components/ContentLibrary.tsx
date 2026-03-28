@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Library, FileText, Database } from 'lucide-react';
 import { motion } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
@@ -17,10 +17,21 @@ interface ContentLibraryProps {
   onAddApproval: (a: Omit<PendingApproval, 'id' | 'submittedAt' | 'status'>) => void;
   onAddAuditEvent: (e: Omit<AuditEvent, 'id' | 'timestamp'>) => void;
   pendingApprovals: PendingApproval[];
+  onSubViewChange?: (label: string | null) => void;
 }
 
-export default function ContentLibrary({ onAddApproval, onAddAuditEvent, pendingApprovals }: ContentLibraryProps) {
+export default function ContentLibrary({ onAddApproval, onAddAuditEvent, pendingApprovals, onSubViewChange }: ContentLibraryProps) {
   const [activeView, setActiveView] = useState<SubView>('templates');
+
+  const subViewLabels: Record<SubView, string> = {
+    'templates': 'Templates',
+    'documents': 'Documents',
+  };
+
+  useEffect(() => {
+    onSubViewChange?.(subViewLabels[activeView]);
+    return () => onSubViewChange?.(null);
+  }, [activeView]);
 
   return (
     <div className="p-8">

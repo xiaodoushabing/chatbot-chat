@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { RefreshCw, Camera, Shuffle, Sparkles, CheckCircle2, ImageIcon, RotateCcw } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
@@ -74,23 +74,24 @@ const TIER_CONFIG: Record<LifestyleTier, {
 
 const _I = '/lifestyle-images/';
 const ALL_IMAGES: PickerImage[] = [
-  // Aspirational — luxury, premium (Unsplash)
+  // Aspirational — luxury, premium
   { id: 'asp1', url: `${_I}asp1.jpg`, tier: 'aspirational' },
-  { id: 'asp2', url: `${_I}asp2.jpg`, tier: 'aspirational' },
-  { id: 'asp3', url: `${_I}asp3.jpg`, tier: 'aspirational' },
   { id: 'asp4', url: `${_I}asp4.jpg`, tier: 'aspirational' },
   { id: 'asp5', url: `${_I}asp5.jpg`, tier: 'aspirational' },
-  // Aspirational — Gemini
-  { id: 'g_10cs', url: `${_I}Gemini_Generated_Image_10cs4h10cs4h10cs.png`, tier: 'aspirational' },
-  { id: 'g_8rfx', url: `${_I}Gemini_Generated_Image_8rfxn18rfxn18rfx.png`, tier: 'aspirational' },
-  { id: 'g_bfc3', url: `${_I}Gemini_Generated_Image_bfc3tsbfc3tsbfc3.png`, tier: 'aspirational' },
-  { id: 'g_fbak', url: `${_I}Gemini_Generated_Image_fbak99fbak99fbak.png`, tier: 'aspirational' },
-  { id: 'g_i5qw', url: `${_I}Gemini_Generated_Image_i5qwzwi5qwzwi5qw.png`, tier: 'aspirational' },
-  { id: 'g_mucu', url: `${_I}Gemini_Generated_Image_mucupvmucupvmucu.png`, tier: 'aspirational' },
-  { id: 'g_x0y6', url: `${_I}Gemini_Generated_Image_x0y6ekx0y6ekx0y6.png`, tier: 'aspirational' },
-  { id: 'g_xlpf', url: `${_I}Gemini_Generated_Image_xlpftxxlpftxxlpf.png`, tier: 'aspirational' },
-  // Balanced — family, travel, hobbies (Unsplash)
-  { id: 'bal1', url: `${_I}bal1.jpg`, tier: 'balanced' },
+  { id: 'asp6', url: `${_I}asp6.jpg`, tier: 'aspirational' },
+  { id: 'asp7', url: `${_I}asp7.jpg`, tier: 'aspirational' },
+  { id: 'g_8rfx', url: `${_I}Gemini_Generated_Image_8rfxn18rfxn18rfx.jpg`, tier: 'aspirational' },
+  { id: 'g_fbak', url: `${_I}Gemini_Generated_Image_fbak99fbak99fbak.jpg`, tier: 'aspirational' },
+  { id: 'g_x0y6', url: `${_I}Gemini_Generated_Image_x0y6ekx0y6ekx0y6.jpg`, tier: 'aspirational' },
+  { id: 'g_xlpf', url: `${_I}Gemini_Generated_Image_xlpftxxlpftxxlpf.jpg`, tier: 'aspirational' },
+  { id: 'u_iwood', url: `${_I}iwood-R5v8Xtc0ecg-unsplash.jpg`, tier: 'aspirational' },
+  { id: 'u_kyle', url: `${_I}kyle-head-PW8K-W-Kni0-unsplash.jpg`, tier: 'aspirational' },
+  { id: 'u_neom', url: `${_I}neom-HXW26Gw8bk4-unsplash.jpg`, tier: 'aspirational' },
+  { id: 'u_valeriia', url: `${_I}valeriia-bugaiova-_pPHgeHz1uk-unsplash.jpg`, tier: 'aspirational' },
+  { id: 'u_nils', url: `${_I}nils-nedel-ONpGBpns3cs-unsplash.jpg`, tier: 'aspirational' },
+  { id: 'u_elena', url: `${_I}elena-mozhvilo-zGppw6GUA40-unsplash.jpg`, tier: 'aspirational' },
+  { id: 'u_aleksandr', url: `${_I}aleksandr-popov-hTv8aaPziOQ-unsplash.jpg`, tier: 'aspirational' },
+  // Balanced — family, travel, hobbies
   { id: 'bal2', url: `${_I}bal2.jpg`, tier: 'balanced' },
   { id: 'bal3', url: `${_I}bal3.jpg`, tier: 'balanced' },
   { id: 'bal4', url: `${_I}bal4.jpg`, tier: 'balanced' },
@@ -98,25 +99,34 @@ const ALL_IMAGES: PickerImage[] = [
   { id: 'bal6', url: `${_I}bal6.jpg`, tier: 'balanced' },
   { id: 'bal7', url: `${_I}bal7.jpg`, tier: 'balanced' },
   { id: 'bal8', url: `${_I}bal8.jpg`, tier: 'balanced' },
-  // Balanced — Gemini
-  { id: 'g_b01r', url: `${_I}Gemini_Generated_Image_b01r6xb01r6xb01r.png`, tier: 'balanced' },
-  { id: 'g_ddyk', url: `${_I}Gemini_Generated_Image_ddykbxddykbxddyk.png`, tier: 'balanced' },
-  { id: 'g_g3oc', url: `${_I}Gemini_Generated_Image_g3oc9ig3oc9ig3oc.png`, tier: 'balanced' },
-  { id: 'g_j23o', url: `${_I}Gemini_Generated_Image_j23ozrj23ozrj23o.png`, tier: 'balanced' },
-  { id: 'g_ny97', url: `${_I}Gemini_Generated_Image_ny976eny976eny97.png`, tier: 'balanced' },
-  // Essential — wellness, nature, minimalist (Unsplash)
+  { id: 'g_g3oc', url: `${_I}Gemini_Generated_Image_g3oc9ig3oc9ig3oc.jpg`, tier: 'balanced' },
+  { id: 'g_ny97', url: `${_I}Gemini_Generated_Image_ny976eny976eny97.jpg`, tier: 'balanced' },
+  { id: 'u_aaron', url: `${_I}aaron-burden-cEukkv42O40-unsplash.jpg`, tier: 'balanced' },
+  { id: 'u_charlotte', url: `${_I}charlotte-noelle-98WPMlTl5xo-unsplash.jpg`, tier: 'balanced' },
+  { id: 'u_benjamin', url: `${_I}benjamin-davies-mqN-EV9rNlY-unsplash.jpg`, tier: 'balanced' },
+  { id: 'u_jacqueline', url: `${_I}jacqueline-martinez-5Yx2DKLE6Xw-unsplash.jpg`, tier: 'balanced' },
+  { id: 'u_hans', url: `${_I}hans-jurgen-mager-qQWV91TTBrE-unsplash.jpg`, tier: 'balanced' },
+  { id: 'u_kalen', url: `${_I}kalen-emsley-kGSapVfg8Kw-unsplash.jpg`, tier: 'balanced' },
+  { id: 'u_sagar', url: `${_I}sagar-patil-8UcNYpynFLU-unsplash.jpg`, tier: 'balanced' },
+  { id: 'u_library', url: `${_I}library-of-congress-7LdGlMX1exM-unsplash.jpg`, tier: 'balanced' },
+  { id: 'u_thomas', url: `${_I}thomas-ashlock-RAjND0B3HDw-unsplash.jpg`, tier: 'balanced' },
+  // Essential — wellness, nature, minimalist
   { id: 'ess1', url: `${_I}ess1.jpg`, tier: 'essential' },
   { id: 'ess2', url: `${_I}ess2.jpg`, tier: 'essential' },
   { id: 'ess3', url: `${_I}ess3.jpg`, tier: 'essential' },
   { id: 'ess4', url: `${_I}ess4.jpg`, tier: 'essential' },
   { id: 'ess5', url: `${_I}ess5.jpg`, tier: 'essential' },
   { id: 'ess6', url: `${_I}ess6.jpg`, tier: 'essential' },
-  { id: 'ess7', url: `${_I}ess7.jpg`, tier: 'essential' },
-  // Essential — Gemini
-  { id: 'g_23qi', url: `${_I}Gemini_Generated_Image_23qiyt23qiyt23qi.png`, tier: 'essential' },
-  { id: 'g_44at', url: `${_I}Gemini_Generated_Image_44at5244at5244at.png`, tier: 'essential' },
-  { id: 'g_7cdy', url: `${_I}Gemini_Generated_Image_7cdyd77cdyd77cdy.png`, tier: 'essential' },
-  { id: 'g_clcr', url: `${_I}Gemini_Generated_Image_clcrarclcrarclcr.png`, tier: 'essential' },
+  { id: 'g_23qi', url: `${_I}Gemini_Generated_Image_23qiyt23qiyt23qi.jpg`, tier: 'essential' },
+  { id: 'g_7cdy', url: `${_I}Gemini_Generated_Image_7cdyd77cdyd77cdy.jpg`, tier: 'essential' },
+  { id: 'u_anna', url: `${_I}anna-kolosyuk-D5nh6mCW52c-unsplash.jpg`, tier: 'essential' },
+  { id: 'u_andrew', url: `${_I}andrew-neel-cckf4TsHAuw-unsplash.jpg`, tier: 'essential' },
+  { id: 'u_harli', url: `${_I}harli-marten-M9jrKDXOQoU-unsplash.jpg`, tier: 'essential' },
+  { id: 'u_marc', url: `${_I}marc-najera-SwK6MSxTLDE-unsplash.jpg`, tier: 'essential' },
+  { id: 'u_mo', url: `${_I}mo-jiaming-JXQDFY_W2OM-unsplash.jpg`, tier: 'essential' },
+  { id: 'u_jon', url: `${_I}jon-eckert-IoIbdFdGCnQ-unsplash.jpg`, tier: 'essential' },
+  { id: 'u_or', url: `${_I}or-hakim-S2Eql9vHN3o-unsplash.jpg`, tier: 'essential' },
+  { id: 'u_zakaria', url: `${_I}zakaria-ahada-VGR_ReUCqNw-unsplash.jpg`, tier: 'essential' },
 ];
 
 // Resize + compress image to stay under Claude's 5MB base64 limit
@@ -479,6 +489,21 @@ function ImagePickerPhone() {
   const [submittedImages, setSubmittedImages] = useState<PickerImage[]>([]);
   const [result, setResult] = useState<TierResult | null>(null);
   const [refreshesLeft, setRefreshesLeft] = useState(MAX_REFRESHES);
+  const [imagesLoaded, setImagesLoaded] = useState(false);
+
+  useEffect(() => {
+    setImagesLoaded(false);
+    let cancelled = false;
+    Promise.all(
+      pickerSet.map(img => new Promise<void>(resolve => {
+        const el = new Image();
+        el.onload = () => resolve();
+        el.onerror = () => resolve();
+        el.src = img.url;
+      }))
+    ).then(() => { if (!cancelled) setImagesLoaded(true); });
+    return () => { cancelled = true; };
+  }, [pickerSet]);
 
   const toggleSelect = (id: string) => {
     if (result) return;
@@ -520,7 +545,7 @@ function ImagePickerPhone() {
   // 2-column masonry: 6 images, alternating heights for visual interest
   const cols: PickerImage[][] = [[], []];
   pickerSet.forEach((img, i) => cols[i % 2].push(img));
-  const heights = ['h-28', 'h-24', 'h-32', 'h-24', 'h-28', 'h-32'];
+  const heights = ['h-24', 'h-20', 'h-28', 'h-20', 'h-24', 'h-28'];
 
   return (
     <PhoneShell headerLabel="Visual Lifestyle Picker">
@@ -542,46 +567,69 @@ function ImagePickerPhone() {
             </div>
             {/* Masonry grid */}
             <AnimatePresence mode="wait">
-              <motion.div
-                key={pickerSet.map(i => i.id).join('-')}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                className="flex gap-0.5 px-0.5 flex-1 min-h-0"
-              >
-                {cols.map((col, ci) => (
-                  <div key={ci} className="flex flex-col gap-0.5 flex-1">
-                    {col.map((img, ri) => {
-                      const hClass = heights[ci === 0 ? ri : ri + 3] ?? 'h-24';
-                      const isSelected = selected.has(img.id);
-                      return (
-                        <button
-                          key={img.id}
-                          onClick={() => toggleSelect(img.id)}
-                          className={cn(
-                            'relative overflow-hidden rounded-lg transition-all',
-                            hClass,
-                            isSelected ? 'ring-2 ring-[#E3000F] ring-offset-0' : 'opacity-90 hover:opacity-100'
-                          )}
-                        >
-                          <img
-                            src={img.url}
-                            alt=""
-                            className="w-full h-full object-cover"
-                            loading="lazy"
-                          />
-                          {isSelected && (
-                            <div className="absolute inset-0 bg-[#E3000F]/20 flex items-center justify-center">
-                              <CheckCircle2 size={18} className="text-white drop-shadow" />
-                            </div>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                ))}
-              </motion.div>
+              {!imagesLoaded ? (
+                <motion.div
+                  key="loading"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="flex items-center justify-center flex-1 min-h-[200px]"
+                >
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                  >
+                    <RefreshCw size={20} className="text-slate-300" />
+                  </motion.div>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key={pickerSet.map(i => i.id).join('-')}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.25 }}
+                  className="flex gap-0.5 px-0.5 flex-1 min-h-0"
+                >
+                  {cols.map((col, ci) => (
+                    <div key={ci} className="flex flex-col gap-0.5 flex-1">
+                      {col.map((img, ri) => {
+                        const hClass = heights[ci === 0 ? ri : ri + 3] ?? 'h-24';
+                        const isSelected = selected.has(img.id);
+                        return (
+                          <motion.button
+                            key={img.id}
+                            initial={{ opacity: 0, scale: 0.92 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ duration: 0.3, ease: 'easeOut' }}
+                            onClick={() => toggleSelect(img.id)}
+                            className={cn(
+                              'relative overflow-hidden rounded-lg transition-all',
+                              hClass,
+                              isSelected ? 'ring-2 ring-[#E3000F] ring-offset-0' : 'opacity-90 hover:opacity-100'
+                            )}
+                          >
+                            <img
+                              src={img.url}
+                              alt=""
+                              className="w-full h-full object-cover"
+                            />
+                            {isSelected && (
+                              <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                className="absolute inset-0 bg-[#E3000F]/20 flex items-center justify-center"
+                              >
+                                <CheckCircle2 size={18} className="text-white drop-shadow" />
+                              </motion.div>
+                            )}
+                          </motion.button>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </motion.div>
+              )}
             </AnimatePresence>
             {/* Action */}
             <div className="p-3 bg-white shrink-0">

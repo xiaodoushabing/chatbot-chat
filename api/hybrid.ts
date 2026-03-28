@@ -1,7 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
 
-const client = new Anthropic();
-
 const RETIREMENT_KNOWLEDGE_BASE = `
 # Singapore Retirement Planning – Knowledge Base
 
@@ -156,6 +154,7 @@ export default async function handler(req: any, res: any) {
   }
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
+  const client = new Anthropic();
   const { message } = req.body;
 
   res.setHeader('Content-Type', 'text/event-stream');

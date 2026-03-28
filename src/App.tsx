@@ -460,7 +460,9 @@ export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(() => localStorage.getItem('ocbc_auth') === 'true');
   const handleLogin = () => { setIsAuthenticated(true); localStorage.setItem('ocbc_auth', 'true'); };
   const handleLogout = () => { setIsAuthenticated(false); localStorage.removeItem('ocbc_auth'); };
-  const [activeTab, setActiveTab] = useState<Tab>('preview');
+  const [activeTab, setActiveTabRaw] = useState<Tab>('preview');
+  const [subViewLabel, setSubViewLabel] = useState<string | null>(null);
+  const setActiveTab = (tab: Tab) => { setSubViewLabel(null); setActiveTabRaw(tab); };
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [showMoreNav, setShowMoreNav] = useState(false);
   const [killSwitchActive, setKillSwitchActive] = useState(() => {
@@ -737,9 +739,15 @@ export default function App() {
             <div className="flex items-center gap-2 text-base font-medium text-slate-500">
               <span>Admin</span>
               <ChevronRight size={16} />
-              <span className="text-slate-900 font-bold">
+              <span className={subViewLabel ? 'text-slate-500' : 'text-slate-900 font-bold'}>
                 {allNavItems.find(n => n.id === activeTab)?.label}
               </span>
+              {subViewLabel && (
+                <>
+                  <ChevronRight size={16} />
+                  <span className="text-slate-900 font-bold">{subViewLabel}</span>
+                </>
+              )}
             </div>
           </div>
 
@@ -791,10 +799,10 @@ export default function App() {
               {activeTab === 'active-agents' && <ActiveAgents onAddApproval={addApproval} onAddAuditEvent={addAuditEvent} onNavigate={(tab) => setActiveTab(tab as Tab)} pendingApprovals={pendingApprovals} />}
               {activeTab === 'audit-trail' && <AuditTrail auditEvents={auditEvents} />}
               {activeTab === 'change-control' && <AdminControlInterface approvals={pendingApprovals} onApprovalDecision={processApproval} onAddApproval={addApproval} onAddAuditEvent={addAuditEvent} />}
-              {activeTab === 'content-library' && <ContentLibrary onAddApproval={addApproval} onAddAuditEvent={addAuditEvent} pendingApprovals={pendingApprovals} />}
+              {activeTab === 'content-library' && <ContentLibrary onAddApproval={addApproval} onAddAuditEvent={addAuditEvent} pendingApprovals={pendingApprovals} onSubViewChange={setSubViewLabel} />}
               {activeTab === 'preview' && (
                 <div className="p-6">
-                  <ChatbotPreview sidebarOpen={isSidebarOpen} />
+                  <ChatbotPreview sidebarOpen={isSidebarOpen} onSubViewChange={setSubViewLabel} />
                 </div>
               )}
             </motion.div>

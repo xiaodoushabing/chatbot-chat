@@ -625,8 +625,19 @@ function PhoneColumn({ engine, state, showTraces, onButtonClick }: {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export default function ChatbotPreview({ sidebarOpen = true }: { sidebarOpen?: boolean }) {
+export default function ChatbotPreview({ sidebarOpen = true, onSubViewChange }: { sidebarOpen?: boolean; onSubViewChange?: (label: string | null) => void }) {
   const [activeSubView, setActiveSubView] = useState<SubView>('chatbot-approaches');
+
+  const subViewLabels: Record<SubView, string> = {
+    'chatbot-approaches': 'Chatbot Approaches',
+    'lifestyle-discovery': 'Lifestyle Discovery',
+  };
+
+  useEffect(() => {
+    onSubViewChange?.(subViewLabels[activeSubView]);
+    return () => onSubViewChange?.(null);
+  }, [activeSubView]);
+
   const [input, setInput] = useState('');
   const [showTraces, setShowTraces] = useState(false);
 

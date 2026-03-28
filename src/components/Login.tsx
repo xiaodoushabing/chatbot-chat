@@ -1,5 +1,5 @@
 import React, { useState, FormEvent } from 'react';
-import { Eye, EyeOff, Shield } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { motion, AnimatePresence } from 'motion/react';
@@ -67,13 +67,13 @@ export default function Login({ onLogin }: LoginProps) {
           className="text-center mb-10"
         >
           <div className="flex items-center justify-center gap-3 mb-5">
-            <img src={ocbcLogo} alt="OCBC" className="h-12 object-contain" />
-            <div className="border-l-2 border-slate-300 pl-3 text-left">
-              <div className="font-black text-xl tracking-tight text-slate-900 leading-none">AI Admin</div>
-              <div className="text-xs font-bold text-[#E3000F] uppercase tracking-widest mt-1">Suite</div>
+            <img src={ocbcLogo} alt="OCBC" className="h-14 object-contain" />
+            <div className="border-l-2 border-slate-300 pl-4 text-left">
+              <div className="font-black text-2xl tracking-tight text-slate-900 leading-none">AI Admin</div>
+              <div className="text-sm font-bold text-[#E3000F] uppercase tracking-widest mt-1">Suite</div>
             </div>
           </div>
-          <p className="text-sm text-slate-500 leading-relaxed">
+          <p className="text-base text-slate-600 leading-relaxed font-medium">
             Sign in to manage the OCBC retirement chatbot platform.
           </p>
         </motion.div>
@@ -88,7 +88,7 @@ export default function Login({ onLogin }: LoginProps) {
           {/* Top edge shimmer */}
           <div className="absolute top-0 left-8 right-8 h-px bg-gradient-to-r from-transparent via-white/60 to-transparent z-10" />
 
-          <div className="bg-white/60 backdrop-blur-xl rounded-3xl border border-white/80 shadow-2xl p-8">
+          <div className="bg-white/70 backdrop-blur-xl rounded-3xl border border-white/80 shadow-[0_8px_40px_rgba(0,0,0,0.12)] p-10">
             <form onSubmit={handleSubmit} className="flex flex-col gap-5">
               <motion.div
                 initial={{ opacity: 0, y: 12 }}
@@ -165,16 +165,6 @@ export default function Login({ onLogin }: LoginProps) {
           </div>
         </motion.div>
 
-        {/* Security badge */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5, delay: 0.7 }}
-          className="flex items-center justify-center gap-1.5 mt-6 text-slate-400"
-        >
-          <Shield size={13} />
-          <span className="text-xs">Secured with enterprise-grade encryption</span>
-        </motion.div>
       </motion.div>
     </div>
   );
