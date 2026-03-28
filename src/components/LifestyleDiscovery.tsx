@@ -186,11 +186,10 @@ function WelcomeBubble({ message }: { message: string }) {
   );
 }
 
-function PhoneShell({ headerLabel, children, footer, onReset }: {
+function PhoneShell({ headerLabel, children, footer }: {
   headerLabel: string;
   children: React.ReactNode;
   footer?: React.ReactNode;
-  onReset?: () => void;
 }) {
   return (
     <div className="relative w-[300px] bg-black rounded-[44px] p-[3px] shadow-2xl" style={{ height: 570 }}>
@@ -198,26 +197,6 @@ function PhoneShell({ headerLabel, children, footer, onReset }: {
         {/* Dynamic island */}
         <div className="flex justify-center pt-3 pb-1 shrink-0">
           <div className="w-16 h-5 bg-black rounded-full" />
-        </div>
-        {/* Header bar */}
-        <div className="bg-slate-800 px-4 py-2.5 shrink-0 flex items-center gap-2">
-          <div className="w-7 h-7 bg-white/20 rounded-full flex items-center justify-center shrink-0">
-            <Camera size={14} className="text-white" />
-          </div>
-          <div className="flex-1 min-w-0 flex items-center gap-2">
-            <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse shrink-0" />
-            <span className="text-white text-sm font-semibold truncate">{headerLabel}</span>
-          </div>
-          {onReset && (
-            <button
-              onClick={onReset}
-              className="flex items-center gap-1 text-white/60 hover:text-white transition-colors text-xs font-medium ml-1"
-              title="Reset chat"
-            >
-              <RotateCcw size={12} />
-              <span>Reset</span>
-            </button>
-          )}
         </div>
         {/* Scrollable body */}
         <div className="flex-1 overflow-y-auto min-h-0">
@@ -230,7 +209,7 @@ function PhoneShell({ headerLabel, children, footer, onReset }: {
   );
 }
 
-function TierResultCard({ result, onReset }: { result: TierResult; onReset: () => void }) {
+function TierResultCard({ result }: { result: TierResult }) {
   const cfg = TIER_CONFIG[result.tier];
   return (
     <motion.div
@@ -242,9 +221,6 @@ function TierResultCard({ result, onReset }: { result: TierResult; onReset: () =
         <span className={cn('text-xs font-bold px-2.5 py-0.5 rounded-full', cfg.badge)}>
           {cfg.label}
         </span>
-        <button onClick={onReset} className="text-slate-400 hover:text-slate-600 transition-colors">
-          <RefreshCw size={12} />
-        </button>
       </div>
       <p className="text-sm text-slate-600 mb-2 leading-relaxed">{result.reasoning}</p>
       <p className="text-sm text-slate-700 leading-relaxed mb-2">{result.advice}</p>
@@ -460,7 +436,7 @@ function VisionUploadPhone() {
   );
 
   return (
-    <PhoneShell headerLabel="Upload and Analyse" footer={chatFooter} onReset={handleReset}>
+    <PhoneShell headerLabel="Upload and Analyse" footer={chatFooter}>
       <div ref={bodyRef} className="flex flex-col pb-3">
         <WelcomeBubble message="Hi! I'd love to help you plan for a great retirement. Upload a photo that represents your lifestyle — your travels, home, a meal you enjoy, or anything that reflects how you like to live." />
 
@@ -487,7 +463,7 @@ function VisionUploadPhone() {
         <AnimatePresence>
           {result && (
             <motion.div key="result" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
-              <TierResultCard result={result} onReset={() => { setResult(null); setPreview(null); }} />
+              <TierResultCard result={result} />
             </motion.div>
           )}
           {error && (
@@ -557,7 +533,7 @@ function ImagePickerPhone() {
   const heights = ['h-28', 'h-24', 'h-32', 'h-24', 'h-28', 'h-32'];
 
   return (
-    <PhoneShell headerLabel="Visual Lifestyle Picker" onReset={handleReset}>
+    <PhoneShell headerLabel="Visual Lifestyle Picker">
       <div className="flex flex-col h-full">
         <WelcomeBubble message="Hi! Tap the images that resonate with how you'd love to spend your retirement. I'll use your choices to suggest your lifestyle profile." />
         {!result ? (
@@ -648,7 +624,7 @@ function ImagePickerPhone() {
                 </div>
               </motion.div>
             )}
-            <TierResultCard result={result!} onReset={handleReset} />
+            <TierResultCard result={result!} />
           </>
         )}
       </div>
@@ -659,21 +635,33 @@ function ImagePickerPhone() {
 // ─── Main component ────────────────────────────────────────────────────────────
 
 export default function LifestyleDiscovery() {
+  const [resetKey, setResetKey] = useState(0);
+  const handleReset = () => setResetKey(k => k + 1);
+
   return (
     <div className="flex flex-col gap-6">
       {/* Header */}
-      <div>
-        <h2 className="text-3xl font-bold text-slate-900">Lifestyle Discovery</h2>
-        <p className="text-slate-500 mt-2 text-base max-w-2xl">
-          Compare two approaches to understanding a customer's retirement lifestyle — letting them upload a personal photo for AI analysis, versus guiding them through a curated visual selection.
-        </p>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h2 className="text-3xl font-bold text-slate-900">Lifestyle Discovery</h2>
+          <p className="text-slate-500 mt-2 text-base max-w-2xl">
+            Compare two approaches to understanding a customer's retirement lifestyle — letting them upload a personal photo for AI analysis, versus guiding them through a curated visual selection.
+          </p>
+        </div>
+        <button
+          onClick={handleReset}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-200 hover:border-slate-300 text-sm font-bold text-slate-600 transition-all"
+        >
+          <RotateCcw size={14} />
+          Reset Chat
+        </button>
       </div>
 
       {/* Phones + info cards */}
       <div className="flex gap-12 justify-center flex-wrap xl:flex-nowrap">
         {/* Left group: Vision Upload phone + card, bottom-aligned */}
         <div className="flex items-end gap-5">
-          <VisionUploadPhone />
+          <VisionUploadPhone key={`vision-${resetKey}`} />
           <TechCard
             title="Upload & Analyse"
             subtitle="AI vision reads your real lifestyle photo to classify your retirement tier."
@@ -688,7 +676,7 @@ export default function LifestyleDiscovery() {
 
         {/* Right group: Image Picker phone + card, bottom-aligned */}
         <div className="flex items-end gap-5">
-          <ImagePickerPhone />
+          <ImagePickerPhone key={`picker-${resetKey}`} />
           <TechCard
             title="Visual Picker"
             subtitle="Pick photos that speak to you — AI infers your lifestyle from vibes alone."
