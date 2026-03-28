@@ -920,19 +920,19 @@ export default function ChatbotPreview({ sidebarOpen = true }: { sidebarOpen?: b
             {/* Query chips — row layout */}
             <div className="flex-1 bg-white rounded-2xl border border-slate-200 shadow-sm p-5 flex flex-col gap-3">
               <div className="flex gap-2 items-center flex-wrap">
-                <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wide">Simple →</span>
+                <span className="text-[10px] font-medium text-teal-600 uppercase tracking-wide">Simple →</span>
                 {SIMPLE_QUERIES.map(q => (
                   <button key={q} onClick={() => sendMessage(q)} disabled={isAnySending}
-                    className="text-xs text-gray-600 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-full px-3 py-1 transition-colors disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap">
+                    className="text-xs text-teal-800 bg-teal-50 hover:bg-teal-100 border border-teal-300 rounded-full px-3 py-1 transition-colors disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap">
                     {q}
                   </button>
                 ))}
               </div>
               <div className="flex gap-2 items-center flex-wrap">
-                <span className="text-[10px] font-medium text-amber-600 uppercase tracking-wide">Complex →</span>
+                <span className="text-[10px] font-medium text-indigo-500 uppercase tracking-wide">Complex →</span>
                 {COMPLEX_QUERIES.map(q => (
                   <button key={q} onClick={() => sendMessage(q)} disabled={isAnySending}
-                    className="text-xs text-[#E3000F] bg-red-50 hover:bg-red-100 border border-red-200 rounded-full px-3 py-1 transition-colors disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap">
+                    className="text-xs text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-300 rounded-full px-3 py-1 transition-colors disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap">
                     {q}
                   </button>
                 ))}
@@ -941,13 +941,13 @@ export default function ChatbotPreview({ sidebarOpen = true }: { sidebarOpen?: b
                 <span className="text-[10px] font-medium text-amber-600 uppercase tracking-wide">Edge: Hybrid ✓ · GenAI hallucinates ✗</span>
                 {EDGE_1.map(q => (
                   <button key={q} onClick={() => sendMessage(q)} disabled={isAnySending}
-                    className="text-xs text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-400 rounded-full px-3 py-1 transition-colors disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap">
+                    className="text-xs text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded-full px-3 py-1 transition-colors disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap">
                     {q}
                   </button>
                 ))}
               </div>
               <div className="flex gap-2 items-center flex-wrap">
-                <span className="text-[10px] font-medium text-rose-600 uppercase tracking-wide">Edge: Both Hybrid & GenAI hallucinate ✗</span>
+                <span className="text-[10px] font-medium text-rose-500 uppercase tracking-wide">Edge: Both Hybrid & GenAI hallucinate ✗</span>
                 {EDGE_2.map(q => (
                   <button key={q} onClick={() => sendMessage(q)} disabled={isAnySending}
                     className="text-xs text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-300 rounded-full px-3 py-1 transition-colors disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap">
@@ -958,7 +958,7 @@ export default function ChatbotPreview({ sidebarOpen = true }: { sidebarOpen?: b
             </div>
 
             {/* Ask a question */}
-            <form onSubmit={handleSend} className="flex flex-col gap-3 bg-white rounded-2xl border border-slate-200 shadow-sm p-5 w-72 shrink-0">
+            <form onSubmit={handleSend} className="flex flex-col gap-3 bg-white rounded-2xl border border-slate-200 shadow-sm p-5 w-[21.6rem] shrink-0">
               <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Ask a question</span>
               <textarea
                 value={input}
@@ -987,25 +987,25 @@ export default function ChatbotPreview({ sidebarOpen = true }: { sidebarOpen?: b
             {/* Quick chips */}
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 flex flex-col gap-3">
               <div className="flex flex-col gap-1.5">
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Simple</span>
+                <span className="text-xs font-bold text-teal-600 uppercase tracking-widest">Simple</span>
                 {SIMPLE_QUERIES.map(q => (
                   <button key={q} onClick={() => sendMessage(q)} disabled={isAnySending}
-                    className="text-left text-sm text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl px-3 py-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed leading-snug">
+                    className="text-left text-sm text-teal-800 bg-teal-50 hover:bg-teal-100 border border-teal-300 rounded-xl px-3 py-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed leading-snug">
                     {q}
                   </button>
                 ))}
               </div>
               <div className="flex flex-col gap-1.5">
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Complex</span>
+                <span className="text-xs font-bold text-indigo-500 uppercase tracking-widest">Complex</span>
                 {COMPLEX_QUERIES.map(q => (
                   <button key={q} onClick={() => sendMessage(q)} disabled={isAnySending}
-                    className="text-left text-sm text-[#E3000F] bg-red-50 hover:bg-red-100 border border-red-200 rounded-xl px-3 py-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed leading-snug">
+                    className="text-left text-sm text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-300 rounded-xl px-3 py-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed leading-snug">
                     {q}
                   </button>
                 ))}
               </div>
               <div className="flex flex-col gap-1.5">
-                <span className="text-xs font-bold text-amber-600 uppercase tracking-widest">Edge case: Hybrid ✓ · GenAI hallucinates ✗</span>
+                <span className="text-xs font-bold text-amber-600 uppercase tracking-widest">Edge: Hybrid ✓ · GenAI hallucinates ✗</span>
                 {EDGE_1.map(q => (
                   <button key={q} onClick={() => sendMessage(q)} disabled={isAnySending}
                     className="text-left text-sm text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded-xl px-3 py-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed leading-snug">
@@ -1014,10 +1014,10 @@ export default function ChatbotPreview({ sidebarOpen = true }: { sidebarOpen?: b
                 ))}
               </div>
               <div className="flex flex-col gap-1.5">
-                <span className="text-xs font-bold text-amber-600 uppercase tracking-widest">Edge case: Both Hybrid & GenAI hallucinate ✗</span>
+                <span className="text-xs font-bold text-rose-300 uppercase tracking-widest">Edge: Both Hybrid & GenAI hallucinate ✗</span>
                 {EDGE_2.map(q => (
                   <button key={q} onClick={() => sendMessage(q)} disabled={isAnySending}
-                    className="text-left text-sm text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded-xl px-3 py-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed leading-snug">
+                    className="text-left text-sm text-rose-600 bg-rose-50/60 hover:bg-rose-50 border border-rose-200 rounded-xl px-3 py-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed leading-snug">
                     {q}
                   </button>
                 ))}
