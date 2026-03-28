@@ -493,8 +493,6 @@ function ImagePickerPhone() {
   const [submittedImages, setSubmittedImages] = useState<PickerImage[]>([]);
   const [result, setResult] = useState<TierResult | null>(null);
   const [refreshesLeft, setRefreshesLeft] = useState(MAX_REFRESHES);
-  const [imagesLoaded, setImagesLoaded] = useState(false);
-
   // Track initial set as seen
   useEffect(() => {
     setSeenIds(prev => {
@@ -503,20 +501,6 @@ function ImagePickerPhone() {
       return next;
     });
   }, []);
-
-  useEffect(() => {
-    setImagesLoaded(false);
-    let cancelled = false;
-    Promise.all(
-      pickerSet.map(img => new Promise<void>(resolve => {
-        const el = new Image();
-        el.onload = () => resolve();
-        el.onerror = () => resolve();
-        el.src = img.url;
-      }))
-    ).then(() => { if (!cancelled) setImagesLoaded(true); });
-    return () => { cancelled = true; };
-  }, [pickerSet]);
 
   const toggleSelect = (id: string) => {
     if (result) return;
@@ -588,28 +572,12 @@ function ImagePickerPhone() {
             </div>
             {/* Masonry grid */}
             <AnimatePresence mode="wait">
-              {!imagesLoaded ? (
-                <motion.div
-                  key="loading"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="flex items-center justify-center flex-1 min-h-[200px]"
-                >
-                  <motion.div
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                  >
-                    <RefreshCw size={20} className="text-slate-300" />
-                  </motion.div>
-                </motion.div>
-              ) : (
                 <motion.div
                   key={pickerSet.map(i => i.id).join('-')}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  transition={{ duration: 0.25 }}
+                  transition={{ duration: 0.15 }}
                   className="flex gap-0.5 px-0.5 flex-1 min-h-0"
                 >
                   {cols.map((col, ci) => (
@@ -622,7 +590,7 @@ function ImagePickerPhone() {
                             key={img.id}
                             initial={{ opacity: 0, scale: 0.92 }}
                             animate={{ opacity: 1, scale: 1 }}
-                            transition={{ duration: 0.3, ease: 'easeOut' }}
+                            transition={{ duration: 0.15, ease: 'easeOut' }}
                             onClick={() => toggleSelect(img.id)}
                             className={cn(
                               'relative overflow-hidden rounded-lg transition-all',
@@ -650,7 +618,6 @@ function ImagePickerPhone() {
                     </div>
                   ))}
                 </motion.div>
-              )}
             </AnimatePresence>
             {/* Action */}
             <div className="p-3 bg-white shrink-0">
