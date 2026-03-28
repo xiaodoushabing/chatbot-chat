@@ -165,12 +165,12 @@ function shuffleArray<T>(arr: T[]): T[] {
   return a;
 }
 
-// Pick 2 from each tier at random (6 total), then shuffle — mirrors Flask logic
-function getPickerSet(): PickerImage[] {
+// Pick 2 from each tier at random (6 total), then shuffle — excludes already-seen images
+function getPickerSet(seen: Set<string> = new Set()): PickerImage[] {
   const pick = (tier: LifestyleTier) => {
-    const pool = ALL_IMAGES.filter(i => i.tier === tier);
-    const shuffled = shuffleArray(pool);
-    return shuffled.slice(0, 2);
+    let pool = ALL_IMAGES.filter(i => i.tier === tier && !seen.has(i.id));
+    if (pool.length < 2) pool = ALL_IMAGES.filter(i => i.tier === tier);
+    return shuffleArray(pool).slice(0, 2);
   };
   return shuffleArray([...pick('aspirational'), ...pick('balanced'), ...pick('essential')]);
 }
@@ -484,12 +484,25 @@ function VisionUploadPhone() {
 const MAX_REFRESHES = 5;
 
 function ImagePickerPhone() {
-  const [pickerSet, setPickerSet] = useState(() => getPickerSet());
+  const [seenIds, setSeenIds] = useState<Set<string>>(() => new Set());
+  const [pickerSet, setPickerSet] = useState(() => {
+    const initial = getPickerSet();
+    return initial;
+  });
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [submittedImages, setSubmittedImages] = useState<PickerImage[]>([]);
   const [result, setResult] = useState<TierResult | null>(null);
   const [refreshesLeft, setRefreshesLeft] = useState(MAX_REFRESHES);
   const [imagesLoaded, setImagesLoaded] = useState(false);
+
+  // Track initial set as seen
+  useEffect(() => {
+    setSeenIds(prev => {
+      const next = new Set(prev);
+      pickerSet.forEach(img => next.add(img.id));
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     setImagesLoaded(false);
@@ -516,7 +529,13 @@ function ImagePickerPhone() {
 
   const handleRefresh = () => {
     if (refreshesLeft === 0) return;
-    setPickerSet(getPickerSet());
+    const newSet = getPickerSet(seenIds);
+    setSeenIds(prev => {
+      const next = new Set(prev);
+      newSet.forEach(img => next.add(img.id));
+      return next;
+    });
+    setPickerSet(newSet);
     setSelected(new Set());
     setRefreshesLeft(r => r - 1);
   };
@@ -538,7 +557,9 @@ function ImagePickerPhone() {
     setSelected(new Set());
     setSubmittedImages([]);
     setResult(null);
-    setPickerSet(getPickerSet());
+    const newSet = getPickerSet();
+    setSeenIds(new Set(newSet.map(img => img.id)));
+    setPickerSet(newSet);
     setRefreshesLeft(MAX_REFRESHES);
   };
 
