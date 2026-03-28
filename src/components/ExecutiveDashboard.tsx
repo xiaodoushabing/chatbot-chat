@@ -65,10 +65,31 @@ const QUERY_DATA = [
   { name: 'Sun', queries: 2800, satisfaction: 95 },
 ];
 
+const QUERY_DATA_30D = [
+  { name: 'Mar 1', queries: 4100 }, { name: 'Mar 2', queries: 3800 }, { name: 'Mar 3', queries: 4500 },
+  { name: 'Mar 4', queries: 4900 }, { name: 'Mar 5', queries: 5200 }, { name: 'Mar 6', queries: 5600 },
+  { name: 'Mar 7', queries: 7100 }, { name: 'Mar 8', queries: 5300 }, { name: 'Mar 9', queries: 3100 },
+  { name: 'Mar 10', queries: 2900 }, { name: 'Mar 11', queries: 4300 }, { name: 'Mar 12', queries: 4700 },
+  { name: 'Mar 13', queries: 5000 }, { name: 'Mar 14', queries: 7400 }, { name: 'Mar 15', queries: 5500 },
+  { name: 'Mar 16', queries: 3300 }, { name: 'Mar 17', queries: 2700 }, { name: 'Mar 18', queries: 4400 },
+  { name: 'Mar 19', queries: 4600 }, { name: 'Mar 20', queries: 5300 }, { name: 'Mar 21', queries: 6800 },
+  { name: 'Mar 22', queries: 5100 }, { name: 'Mar 23', queries: 3400 }, { name: 'Mar 24', queries: 2600 },
+  { name: 'Mar 25', queries: 4200 }, { name: 'Mar 26', queries: 4800 }, { name: 'Mar 27', queries: 5100 },
+  { name: 'Mar 28', queries: 7200 },
+];
+
 const INTENT_DATA = [
   { name: 'OCBC 360 Account', value: 45 },
   { name: 'Home Loans', value: 25 },
   { name: 'CPF Life & Retirement', value: 15 },
+  { name: 'Wealth Advisory', value: 10 },
+  { name: 'Others', value: 5 },
+];
+
+const INTENT_DATA_30D = [
+  { name: 'OCBC 360 Account', value: 42 },
+  { name: 'Home Loans', value: 27 },
+  { name: 'CPF Life & Retirement', value: 16 },
   { name: 'Wealth Advisory', value: 10 },
   { name: 'Others', value: 5 },
 ];
@@ -93,34 +114,66 @@ interface HeroContent {
   buttonLabel: string;
 }
 
-const HERO_CONTENT: Record<ProjectOption, HeroContent> = {
-  'Retirement Planning': {
-    headline: 'Trending: "OCBC 360 Account Changes"',
-    body: '340% spike in queries about new OCBC 360 interest rate tiers. Customers asking about',
-    highlight1: '"salary credit requirements"',
-    highlight2: '"wealth bonus"',
-    buttonLabel: 'Review 360 Policy',
+const HERO_CONTENT: Record<string, Record<ProjectOption, HeroContent>> = {
+  '7d': {
+    'Retirement Planning': {
+      headline: 'Trending: "OCBC 360 Account Changes"',
+      body: '340% spike in queries about new OCBC 360 interest rate tiers. Customers asking about',
+      highlight1: '"salary credit requirements"',
+      highlight2: '"wealth bonus"',
+      buttonLabel: 'Review 360 Policy',
+    },
+    'Home Loans': {
+      headline: 'Trending: "Fixed Rate Lock-In Queries"',
+      body: '218% spike in queries about fixed-rate packages. Customers asking about',
+      highlight1: '"lock-in period penalties"',
+      highlight2: '"refinancing options"',
+      buttonLabel: 'Review Loan Policy',
+    },
+    'Card Services': {
+      headline: 'Trending: "Miles Card Rewards Redemption"',
+      body: '175% spike in queries about miles redemption. Customers asking about',
+      highlight1: '"transfer partners"',
+      highlight2: '"expiry waivers"',
+      buttonLabel: 'Review Cards Policy',
+    },
+    'All Projects': {
+      headline: 'Cross-Project: Multi-Domain Query Surge',
+      body: 'Query volume up 29% across all use cases this week. Highest growth in',
+      highlight1: '"retirement planning"',
+      highlight2: '"home loan advisory"',
+      buttonLabel: 'View All Intents',
+    },
   },
-  'Home Loans': {
-    headline: 'Trending: "Fixed Rate Lock-In Queries"',
-    body: '218% spike in queries about fixed-rate packages. Customers asking about',
-    highlight1: '"lock-in period penalties"',
-    highlight2: '"refinancing options"',
-    buttonLabel: 'Review Loan Policy',
-  },
-  'Card Services': {
-    headline: 'Trending: "Miles Card Rewards Redemption"',
-    body: '175% spike in queries about miles redemption. Customers asking about',
-    highlight1: '"transfer partners"',
-    highlight2: '"expiry waivers"',
-    buttonLabel: 'Review Cards Policy',
-  },
-  'All Projects': {
-    headline: 'Cross-Project: Multi-Domain Query Surge',
-    body: 'Query volume up 29% across all use cases this week. Highest growth in',
-    highlight1: '"retirement planning"',
-    highlight2: '"home loan advisory"',
-    buttonLabel: 'View All Intents',
+  '30d': {
+    'Retirement Planning': {
+      headline: 'Opportunity: "CPF Life Payout Confusion"',
+      body: 'Recurring pattern over 30 days — 1,240 queries on CPF Life payout options with 18% fallback rate. Top misunderstood areas:',
+      highlight1: '"Standard vs Escalating Plan"',
+      highlight2: '"deferral to age 70 benefit"',
+      buttonLabel: 'Update CPF Life Intent',
+    },
+    'Home Loans': {
+      headline: 'Opportunity: "Refinancing Window Queries"',
+      body: 'Steady 30-day trend — 890 queries about refinancing timing. Customers consistently confused about',
+      highlight1: '"lock-in expiry calculations"',
+      highlight2: '"TDSR threshold changes"',
+      buttonLabel: 'Improve Refinance FAQ',
+    },
+    'Card Services': {
+      headline: 'Opportunity: "Miles Expiry Anxiety"',
+      body: '30-day analysis reveals 640 queries about miles expiring. Common frustration around',
+      highlight1: '"auto-extension eligibility"',
+      highlight2: '"minimum spend to retain miles"',
+      buttonLabel: 'Clarify Miles Policy',
+    },
+    'All Projects': {
+      headline: 'Cross-Project: Emerging Retirement + Property Gap',
+      body: '30-day data shows growing cross-domain queries up 34%. Users increasingly asking about',
+      highlight1: '"CPF OA impact on retirement"',
+      highlight2: '"downsizing for retirement income"',
+      buttonLabel: 'Review Cross-Intent Routes',
+    },
   },
 };
 
@@ -292,6 +345,47 @@ const AGENT_PERF_DATA: AgentPerfRow[] = [
   },
 ];
 
+// ─── Time-range-dependent data ───────────────────────────────────────────────
+
+const AGENT_PERF_DATA_30D: AgentPerfRow[] = [
+  { agent: 'Retirement_Planner_Agent', active: true, sessions: '13,680', fallbackRate: 3.5, fallbackDisplay: '3.5%', latencyMs: 1880, latencyDisplay: '1,880 ms', satisfaction: 90.8, satisfactionDisplay: '90.8%',
+    sparkline: [{ v: 460 },{ v: 480 },{ v: 520 },{ v: 490 },{ v: 510 },{ v: 530 },{ v: 490 },{ v: 500 },{ v: 540 },{ v: 510 },{ v: 480 },{ v: 520 },{ v: 550 },{ v: 490 },{ v: 500 },{ v: 530 },{ v: 560 },{ v: 510 },{ v: 490 },{ v: 520 },{ v: 540 },{ v: 570 },{ v: 530 },{ v: 490 },{ v: 510 },{ v: 550 },{ v: 580 },{ v: 520 },{ v: 490 },{ v: 510 }] },
+  { agent: 'Loan_Advisory_Agent', active: true, sessions: '8,720', fallbackRate: 6.4, fallbackDisplay: '6.4%', latencyMs: 2180, latencyDisplay: '2,180 ms', satisfaction: 86.9, satisfactionDisplay: '86.9%',
+    sparkline: [{ v: 280 },{ v: 290 },{ v: 310 },{ v: 300 },{ v: 290 },{ v: 320 },{ v: 310 },{ v: 300 },{ v: 330 },{ v: 320 },{ v: 290 },{ v: 310 },{ v: 340 },{ v: 320 },{ v: 300 },{ v: 320 },{ v: 340 },{ v: 310 },{ v: 290 },{ v: 310 },{ v: 330 },{ v: 350 },{ v: 320 },{ v: 300 },{ v: 310 },{ v: 330 },{ v: 340 },{ v: 310 },{ v: 290 },{ v: 310 }] },
+  { agent: 'Card_Services_Agent', active: true, sessions: '7,760', fallbackRate: 5.1, fallbackDisplay: '5.1%', latencyMs: 1690, latencyDisplay: '1,690 ms', satisfaction: 88.7, satisfactionDisplay: '88.7%',
+    sparkline: [{ v: 250 },{ v: 260 },{ v: 270 },{ v: 260 },{ v: 280 },{ v: 290 },{ v: 270 },{ v: 260 },{ v: 280 },{ v: 290 },{ v: 270 },{ v: 260 },{ v: 280 },{ v: 290 },{ v: 285 },{ v: 270 },{ v: 280 },{ v: 290 },{ v: 275 },{ v: 265 },{ v: 280 },{ v: 290 },{ v: 285 },{ v: 270 },{ v: 260 },{ v: 275 },{ v: 285 },{ v: 278 },{ v: 270 },{ v: 278 }] },
+  { agent: 'Wealth_Advisory_Agent', active: true, sessions: '6,600', fallbackRate: 11.8, fallbackDisplay: '11.8%', latencyMs: 2480, latencyDisplay: '2,480 ms', satisfaction: 81.5, satisfactionDisplay: '81.5%',
+    sparkline: [{ v: 190 },{ v: 200 },{ v: 210 },{ v: 220 },{ v: 210 },{ v: 230 },{ v: 240 },{ v: 220 },{ v: 210 },{ v: 230 },{ v: 240 },{ v: 250 },{ v: 230 },{ v: 220 },{ v: 240 },{ v: 250 },{ v: 260 },{ v: 240 },{ v: 230 },{ v: 250 },{ v: 260 },{ v: 250 },{ v: 240 },{ v: 250 },{ v: 260 },{ v: 250 },{ v: 240 },{ v: 250 },{ v: 236 },{ v: 236 }] },
+  { agent: 'Fraud_Detection_Agent', active: true, sessions: '16,840', fallbackRate: 1.6, fallbackDisplay: '1.6%', latencyMs: 440, latencyDisplay: '440 ms', satisfaction: 94.2, satisfactionDisplay: '94.2%',
+    sparkline: [{ v: 560 },{ v: 580 },{ v: 590 },{ v: 610 },{ v: 600 },{ v: 590 },{ v: 610 },{ v: 620 },{ v: 600 },{ v: 590 },{ v: 610 },{ v: 620 },{ v: 600 },{ v: 590 },{ v: 610 },{ v: 620 },{ v: 610 },{ v: 600 },{ v: 620 },{ v: 610 },{ v: 600 },{ v: 610 },{ v: 620 },{ v: 600 },{ v: 590 },{ v: 610 },{ v: 620 },{ v: 601 },{ v: 610 },{ v: 601 }] },
+  { agent: 'Investment_Insights_Agent', active: false, sessions: '0', fallbackRate: 0, fallbackDisplay: '—', latencyMs: 0, latencyDisplay: '—', satisfaction: 0, satisfactionDisplay: '—',
+    sparkline: [{ v: 0 },{ v: 0 },{ v: 0 },{ v: 0 },{ v: 0 },{ v: 0 },{ v: 0 },{ v: 0 },{ v: 0 },{ v: 0 },{ v: 0 },{ v: 0 },{ v: 0 },{ v: 0 },{ v: 0 },{ v: 0 },{ v: 0 },{ v: 0 },{ v: 0 },{ v: 0 },{ v: 0 },{ v: 0 },{ v: 0 },{ v: 0 },{ v: 0 },{ v: 0 },{ v: 0 },{ v: 0 },{ v: 0 },{ v: 0 }] },
+];
+
+const AGENT_COST_DATA_30D: AgentCostRow[] = [
+  { agent: 'Retirement_Planner_Agent', sessions: 13680, sessionsDisplay: '13,680', cost: 1249.60, costDisplay: '$1,249.60', costPer1k: '$91.34', trend: '↓ 5%', trendUp: false },
+  { agent: 'Loan_Advisory_Agent', sessions: 8720, sessionsDisplay: '8,720', cost: 1150.40, costDisplay: '$1,150.40', costPer1k: '$131.93', trend: '↑ 3%', trendUp: true },
+  { agent: 'Card_Services_Agent', sessions: 7760, sessionsDisplay: '7,760', cost: 967.20, costDisplay: '$967.20', costPer1k: '$124.64', trend: '↓ 2%', trendUp: false },
+  { agent: 'Wealth_Advisory_Agent', sessions: 6600, sessionsDisplay: '6,600', cost: 852.40, costDisplay: '$852.40', costPer1k: '$129.15', trend: '↑ 7%', trendUp: true },
+  { agent: 'Fraud_Detection_Agent', sessions: 16840, sessionsDisplay: '16,840', cost: 769.60, costDisplay: '$769.60', costPer1k: '$45.70', trend: '↓ 1%', trendUp: false },
+  { agent: 'Investment_Insights_Agent', sessions: 0, sessionsDisplay: '0', cost: 0, costDisplay: '$0.00', costPer1k: '$0.00', trend: '—', trendUp: null },
+];
+
+const STATS_BY_RANGE = {
+  '7d': { interactions: '32,740', interactionsChange: '+12.5%', customers: '18,210', customersChange: '+8.2%', satisfaction: '91.3%', satisfactionChange: '+2.1%', fallback: '3.2%', fallbackChange: '-0.8%' },
+  '30d': { interactions: '128,400', interactionsChange: '+9.3%', customers: '72,840', customersChange: '+6.1%', satisfaction: '89.7%', satisfactionChange: '+1.4%', fallback: '4.1%', fallbackChange: '-0.5%' },
+};
+
+const GUARDRAIL_BY_RANGE = {
+  '7d': { hallucinations: 247, attacks: 89, riskAttempts: 12, hallPct: '0.75%', hallChange: '-12%', attackPct: '2.4%', attackChange: '+8%', vectors: 12 },
+  '30d': { hallucinations: 1043, attacks: 347, riskAttempts: 48, hallPct: '0.81%', hallChange: '-9%', attackPct: '2.7%', attackChange: '+11%', vectors: 19 },
+};
+
+const COST_BY_RANGE = {
+  '7d': { monthlyCost: '$1,247.30', costPer1k: '$0.038', projected: '$14,967', costChange: '-8% vs Feb', per1kChange: '+2%' },
+  '30d': { monthlyCost: '$4,989.20', costPer1k: '$0.039', projected: '$14,967', costChange: '-6% vs Feb', per1kChange: '+3%' },
+};
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 interface ExecutiveDashboardProps {
@@ -312,7 +406,16 @@ export default function ExecutiveDashboard({ onNavigate, killSwitchActive, onUpd
   const [showDeactivateSubmit, setShowDeactivateSubmit] = useState(false);
   const [showCostIntelligence, setShowCostIntelligence] = useState(false);
   const [showGuardrailConfig, setShowGuardrailConfig] = useState(false);
+  const [timeRange, setTimeRange] = useState<'7d' | '30d'>('7d');
   const guardrailConfigRef = useRef<HTMLDivElement>(null);
+
+  const queryData = timeRange === '7d' ? QUERY_DATA : QUERY_DATA_30D;
+  const intentData = timeRange === '7d' ? INTENT_DATA : INTENT_DATA_30D;
+  const agentPerfData = timeRange === '7d' ? AGENT_PERF_DATA : AGENT_PERF_DATA_30D;
+  const agentCostData = timeRange === '7d' ? AGENT_COST_DATA : AGENT_COST_DATA_30D;
+  const stats = STATS_BY_RANGE[timeRange];
+  const guardrails = GUARDRAIL_BY_RANGE[timeRange];
+  const costStats = COST_BY_RANGE[timeRange];
 
   // Inject print CSS on mount
   useEffect(() => {
@@ -427,7 +530,7 @@ export default function ExecutiveDashboard({ onNavigate, killSwitchActive, onUpd
     }, 800);
   };
 
-  const hero = HERO_CONTENT[selectedProject];
+  const hero = HERO_CONTENT[timeRange][selectedProject];
   const today = new Date().toLocaleDateString('en-SG', { day: 'numeric', month: 'long', year: 'numeric' });
 
   return (
@@ -530,8 +633,8 @@ export default function ExecutiveDashboard({ onNavigate, killSwitchActive, onUpd
         <div className="flex flex-wrap items-center gap-3">
           {/* Time filter */}
           <div className="flex items-center gap-1.5 bg-white h-10 px-1.5 rounded-xl border border-slate-200 shadow-sm">
-            <button className="h-7 px-4 text-sm font-semibold bg-slate-100 text-slate-900 rounded-lg">Last 7 Days</button>
-            <button className="h-7 px-4 text-sm font-semibold text-slate-500 hover:text-slate-700">Last 30 Days</button>
+            <button onClick={() => setTimeRange('7d')} className={cn("h-7 px-4 text-sm font-semibold rounded-lg", timeRange === '7d' ? "bg-slate-100 text-slate-900" : "text-slate-500 hover:text-slate-700")}>Last 7 Days</button>
+            <button onClick={() => setTimeRange('30d')} className={cn("h-7 px-4 text-sm font-semibold rounded-lg", timeRange === '30d' ? "bg-slate-100 text-slate-900" : "text-slate-500 hover:text-slate-700")}>Last 30 Days</button>
           </div>
 
           {/* Project selector — same h-10 */}
@@ -647,20 +750,20 @@ export default function ExecutiveDashboard({ onNavigate, killSwitchActive, onUpd
               </button>
             </div>
             <div className="flex items-end gap-3">
-              <span className="text-7xl font-black leading-none">247</span>
+              <span className="text-7xl font-black leading-none">{guardrails.hallucinations}</span>
               <span className="text-xl font-semibold text-emerald-200 pb-1">hallucinations caught</span>
             </div>
             <p className="text-lg text-emerald-100 leading-relaxed">
-              Deterministic fact-checking layer intercepted 247 inaccurate responses this week before they reached customers.
+              Deterministic fact-checking layer intercepted {guardrails.hallucinations} inaccurate responses {timeRange === '7d' ? 'this week' : 'this month'} before they reached customers.
             </p>
             <div className="flex items-center gap-4 mt-2">
               <div className="flex items-center gap-2 px-4 py-2 bg-white/15 rounded-xl">
                 <Eye size={18} />
-                <span className="text-base font-bold">0.75% of Total Queries</span>
+                <span className="text-base font-bold">{guardrails.hallPct} of Total Queries</span>
               </div>
               <div className="flex items-center gap-2 px-4 py-2 bg-white/15 rounded-xl">
                 <Activity size={18} />
-                <span className="text-base font-bold">-12% vs Last Period</span>
+                <span className="text-base font-bold">{guardrails.hallChange} vs Last Period</span>
               </div>
             </div>
           </div>
@@ -688,20 +791,20 @@ export default function ExecutiveDashboard({ onNavigate, killSwitchActive, onUpd
               </button>
             </div>
             <div className="flex items-end gap-3">
-              <span className="text-7xl font-black leading-none">89</span>
+              <span className="text-7xl font-black leading-none">{guardrails.attacks}</span>
               <span className="text-xl font-semibold text-violet-200 pb-1">injection attacks blocked</span>
             </div>
             <p className="text-lg text-violet-100 leading-relaxed">
-              Prompt injection detection shielded the chatbot from 89 adversarial attempts across 12 unique threat vectors.
+              Prompt injection detection shielded the chatbot from {guardrails.attacks} adversarial attempts across {guardrails.vectors} unique threat vectors.
             </p>
             <div className="flex items-center gap-4 mt-2">
               <div className="flex items-center gap-2 px-4 py-2 bg-white/15 rounded-xl">
                 <AlertTriangle size={18} />
-                <span className="text-base font-bold">2.4% of Total Queries</span>
+                <span className="text-base font-bold">{guardrails.attackPct} of Total Queries</span>
               </div>
               <div className="flex items-center gap-2 px-4 py-2 bg-white/15 rounded-xl">
                 <ShieldAlert size={18} />
-                <span className="text-base font-bold">+8% vs Last Period</span>
+                <span className="text-base font-bold">{guardrails.attackChange} vs Last Period</span>
               </div>
             </div>
           </div>
@@ -722,7 +825,7 @@ export default function ExecutiveDashboard({ onNavigate, killSwitchActive, onUpd
             <button className="text-slate-400 hover:text-slate-600 no-print"><MoreHorizontal size={18} /></button>
           </div>
           <h4 className="text-lg font-bold text-slate-900">Potential Malicious Activity</h4>
-          <p className="text-base text-slate-600 leading-relaxed">Detected 12 attempts to bypass financial advice guardrails using prompt injection techniques from 3 unique IPs in the last 24 hours.</p>
+          <p className="text-base text-slate-600 leading-relaxed">Detected {guardrails.riskAttempts} attempts to bypass financial advice guardrails using prompt injection techniques from {Math.ceil(guardrails.riskAttempts / 4)} unique IPs in the last {timeRange === '7d' ? '24 hours' : '7 days'}.</p>
           <div className="mt-3 no-print">
             <button className="px-5 py-2.5 bg-rose-600 text-white hover:bg-rose-700 rounded-xl text-sm font-bold transition-all">
               Alert TISO
@@ -765,7 +868,7 @@ export default function ExecutiveDashboard({ onNavigate, killSwitchActive, onUpd
                       <th className="px-4 py-4 text-sm font-bold text-slate-400 uppercase tracking-wider">
                         <div className="flex flex-col">
                           <span>Sessions</span>
-                          <span className="text-slate-300 font-normal normal-case tracking-normal">7-day trend</span>
+                          <span className="text-slate-300 font-normal normal-case tracking-normal">{timeRange === '7d' ? '7-day' : '30-day'} trend</span>
                         </div>
                       </th>
                       <th className="text-right px-4 py-4 text-sm font-bold text-slate-400 uppercase tracking-wider">Fallback Rate</th>
@@ -774,12 +877,12 @@ export default function ExecutiveDashboard({ onNavigate, killSwitchActive, onUpd
                     </tr>
                   </thead>
                   <tbody>
-                    {AGENT_PERF_DATA.map((row, i) => (
+                    {agentPerfData.map((row, i) => (
                       <tr
                         key={row.agent}
                         className={cn(
                           'border-b border-slate-50 transition-colors hover:bg-slate-50/60',
-                          i === AGENT_PERF_DATA.length - 1 && 'border-b-0'
+                          i === agentPerfData.length - 1 && 'border-b-0'
                         )}
                       >
                         <td className="px-8 py-4">
@@ -889,29 +992,29 @@ export default function ExecutiveDashboard({ onNavigate, killSwitchActive, onUpd
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                   <StatCard
                     title="Customer Interactions"
-                    value="32,740"
-                    change="+12.5%"
+                    value={stats.interactions}
+                    change={stats.interactionsChange}
                     trend="up"
                     icon={<MessageSquare size={22} className="text-[#E3000F]" />}
                   />
                   <StatCard
                     title="Active Customers"
-                    value="18,210"
-                    change="+8.2%"
+                    value={stats.customers}
+                    change={stats.customersChange}
                     trend="up"
                     icon={<Users size={22} className="text-emerald-600" />}
                   />
                   <StatCard
                     title="Avg Satisfaction"
-                    value="91.3%"
-                    change="+2.1%"
+                    value={stats.satisfaction}
+                    change={stats.satisfactionChange}
                     trend="up"
                     icon={<Activity size={22} className="text-indigo-600" />}
                   />
                   <StatCard
                     title="Fallback Rate"
-                    value="3.2%"
-                    change="-0.8%"
+                    value={stats.fallback}
+                    change={stats.fallbackChange}
                     trend="down"
                     icon={<TrendingUp size={22} className="text-amber-600" />}
                   />
@@ -927,7 +1030,7 @@ export default function ExecutiveDashboard({ onNavigate, killSwitchActive, onUpd
                     </div>
                     <div className="h-[260px] w-full">
                       <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={QUERY_DATA}>
+                        <AreaChart data={queryData}>
                           <defs>
                             <linearGradient id="colorQueries" x1="0" y1="0" x2="0" y2="1">
                               <stop offset="5%" stopColor="#E3000F" stopOpacity={0.1}/>
@@ -956,7 +1059,7 @@ export default function ExecutiveDashboard({ onNavigate, killSwitchActive, onUpd
                       <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
                           <Pie
-                            data={INTENT_DATA}
+                            data={intentData}
                             cx="50%"
                             cy="50%"
                             innerRadius={60}
@@ -964,7 +1067,7 @@ export default function ExecutiveDashboard({ onNavigate, killSwitchActive, onUpd
                             paddingAngle={5}
                             dataKey="value"
                           >
-                            {INTENT_DATA.map((entry, index) => (
+                            {intentData.map((entry, index) => (
                               <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                             ))}
                           </Pie>
@@ -972,7 +1075,7 @@ export default function ExecutiveDashboard({ onNavigate, killSwitchActive, onUpd
                         </PieChart>
                       </ResponsiveContainer>
                       <div className="flex flex-col gap-3 ml-4">
-                        {INTENT_DATA.map((item, i) => (
+                        {intentData.map((item, i) => (
                           <div key={item.name} className="flex items-center gap-2">
                             <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[i] }} />
                             <span className="text-sm font-medium text-slate-600">{item.name}</span>
@@ -1017,27 +1120,27 @@ export default function ExecutiveDashboard({ onNavigate, killSwitchActive, onUpd
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="bg-slate-900 rounded-2xl p-6 border border-amber-500/20 flex flex-col gap-3">
                     <span className="text-xs font-bold text-amber-400 uppercase tracking-widest">Monthly AI Cost</span>
-                    <span className="text-4xl font-black text-white leading-none">$1,247.30</span>
+                    <span className="text-4xl font-black text-white leading-none">{costStats.monthlyCost}</span>
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-slate-400">March 2026</span>
                       <span className="flex items-center gap-1 text-sm font-bold text-emerald-400 bg-emerald-400/10 px-2.5 py-1 rounded-lg">
-                        <TrendingDown size={13} />-8% vs Feb
+                        <TrendingDown size={13} />{costStats.costChange}
                       </span>
                     </div>
                   </div>
                   <div className="bg-slate-900 rounded-2xl p-6 border border-amber-500/20 flex flex-col gap-3">
                     <span className="text-xs font-bold text-amber-400 uppercase tracking-widest">Cost per 1,000 Queries</span>
-                    <span className="text-4xl font-black text-white leading-none">$0.038</span>
+                    <span className="text-4xl font-black text-white leading-none">{costStats.costPer1k}</span>
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-slate-400">Rolling 30-day avg</span>
                       <span className="flex items-center gap-1 text-sm font-bold text-amber-400 bg-amber-400/10 px-2.5 py-1 rounded-lg">
-                        <TrendingUp size={13} />+2%
+                        <TrendingUp size={13} />{costStats.per1kChange}
                       </span>
                     </div>
                   </div>
                   <div className="bg-slate-900 rounded-2xl p-6 border border-amber-500/20 flex flex-col gap-3">
                     <span className="text-xs font-bold text-amber-400 uppercase tracking-widest">Projected Annual Cost</span>
-                    <span className="text-4xl font-black text-white leading-none">$14,967</span>
+                    <span className="text-4xl font-black text-white leading-none">{costStats.projected}</span>
                     <div className="flex flex-col gap-1">
                       <span className="text-sm text-slate-400">At current query volume</span>
                       <span className="text-xs font-semibold text-emerald-400">vs $180K self-hosted GPU estimate</span>
@@ -1061,8 +1164,8 @@ export default function ExecutiveDashboard({ onNavigate, killSwitchActive, onUpd
                         </tr>
                       </thead>
                       <tbody>
-                        {AGENT_COST_DATA.map((row, i) => (
-                          <tr key={row.agent} className={cn('border-b border-slate-800/60 transition-colors hover:bg-slate-800/40', i === AGENT_COST_DATA.length - 1 && 'border-b-0')}>
+                        {agentCostData.map((row, i) => (
+                          <tr key={row.agent} className={cn('border-b border-slate-800/60 transition-colors hover:bg-slate-800/40', i === agentCostData.length - 1 && 'border-b-0')}>
                             <td className="px-6 py-4">
                               <span className={cn('font-mono text-sm font-semibold', row.sessions === 0 ? 'text-slate-500' : 'text-slate-200')}>{row.agent}</span>
                               {row.sessions === 0 && <span className="ml-2 text-sm text-slate-600">(inactive)</span>}

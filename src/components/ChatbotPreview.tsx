@@ -19,7 +19,7 @@ type SubView = 'chatbot-approaches' | 'lifestyle-discovery';
 interface RoutingTrace {
   intent: string;
   confidence: number | null;
-  riskLevel: 'Low' | 'High' | null;
+  queryType: 'Simple' | 'Complex' | null;
   responseMode: 'GenAI' | 'Template' | 'Exclude' | null;
   agent: string | null;
 }
@@ -94,7 +94,7 @@ const INITIAL_MESSAGES: Record<Engine, Message[]> = {
   hybrid: [{
     id: 'init-hybrid', role: 'bot', type: 'text',
     content: "Hello! I'm your AI-powered retirement advisor with comprehensive knowledge of OCBC products. I have access to your dashboard data. How can I help you plan for the future today?",
-    trace: { intent: 'No match (greeting)', confidence: null, riskLevel: null, responseMode: 'GenAI', agent: 'Retirement_Planner_Agent' },
+    trace: { intent: 'No match (greeting)', confidence: null, queryType: null, responseMode: 'GenAI', agent: 'Retirement_Planner_Agent' },
   }],
   rag: [{
     id: 'init-rag', role: 'bot', type: 'text',
@@ -134,35 +134,35 @@ const RETIREMENT_INTENTS: Intent[] = [
     description: 'Questions about CPF accounts, interest rates, and contribution rules',
     keywords: ['cpf','central','provident','fund','ordinary','special','medisave','oa','sa','ma','ra','contribution','payout','withdrawal','topup','interest','rate','retirement','account','life','balance','scheme','srs','supplementary','age'],
     trainingExamples: ['how does CPF work','what is CPF OA interest rate','CPF contribution rates for employees','what is CPF Life monthly payout','when can I withdraw my CPF','how to top up CPF special account','CPF retirement sum requirements','difference between BRS FRS ERS','how much is CPF Life payout','What is the SRS retirement age','SRS withdrawal age','what age can I withdraw SRS','SRS retirement withdrawal rules'],
-    templateResponse: { text: 'I can help with your CPF queries. What would you like to know?', buttons: ['CPF OA/SA Interest Rates','CPF Contribution Rates','CPF Life Monthly Payouts','CPF Retirement Sum (BRS/FRS/ERS)'] },
+    templateResponse: { text: 'Your CPF has three main accounts: Ordinary Account (OA) at 2.5% p.a., Special Account (SA) at 4.0%, and MediSave (MA) at 4.0%. Total contribution is 37% of salary (20% employee + 17% employer, capped at $6,800/month). The 2024 retirement sums are: BRS $99,400, FRS $198,800, and ERS $298,200.', buttons: ['CPF OA/SA Interest Rates','CPF Contribution Rates','CPF Life Monthly Payouts','CPF Retirement Sum (BRS/FRS/ERS)'] },
   },
   {
     id: 'retirement_planning', name: 'Retirement Planning',
     description: 'Planning retirement age, income needs, and retirement goals',
     keywords: ['retire','retirement','early','age','financial','freedom','goal','plan','planning','income','need','much','when','comfortably','55','60','62','63','65','lifestyle','comfortable','target'],
     trainingExamples: ['when can I retire','how much do I need to retire comfortably','I want to retire at 55','what is the retirement age in Singapore','how to plan for retirement at 40','how much monthly income do I need in retirement','retire early in Singapore','how much to save for retirement','retirement goal planning','am i on track for retirement'],
-    templateResponse: { text: 'Let me help you plan your retirement. Here are key areas to explore:', buttons: ['Calculate My Retirement Needs','Singapore Retirement Age Guide','Monthly Income Planning','Start My Retirement Plan'] },
+    templateResponse: { text: 'Singapore\'s official retirement age is 63, with re-employment up to 68. CPF Life payouts begin at 65 (deferring to 70 gives ~7% more per year). A common benchmark is the 4% rule — you\'ll need about 25x your annual expenses. For a comfortable retirement at $3,500/month, that means a target fund of ~$1,050,000.', buttons: ['Calculate My Retirement Needs','Singapore Retirement Age Guide','Monthly Income Planning','Start My Retirement Plan'] },
   },
   {
     id: 'retirement_gap', name: 'Retirement Gap',
     description: 'Calculating shortfall between current savings and retirement target',
     keywords: ['gap','shortfall','enough','savings','short','more','insufficient','track','behind','deficit','difference','close','bridge','narrow','afford','fall','catch','up'],
     trainingExamples: ['do I have enough savings for retirement','how to close my retirement gap','I have a retirement shortfall','how much more do I need to save','calculate my retirement deficit','how to narrow the retirement gap','afford to retire at 63'],
-    templateResponse: { text: 'Let me help you assess your retirement gap. What would you like to do?', buttons: ['Calculate My Retirement Gap','Top Up CPF Special Account','Invest to Close the Gap','Review My Savings Plan'] },
+    templateResponse: { text: 'Here\'s how to calculate your gap: determine your target monthly income, multiply by 300 to get the total fund needed. Then subtract your projected CPF Life payout (~$1,560–$1,670/month at FRS) and compare the remaining portfolio needed against your current savings plus projected growth.', buttons: ['Calculate My Retirement Gap','Top Up CPF Special Account','Invest to Close the Gap','Review My Savings Plan'] },
   },
   {
     id: 'investment_options', name: 'Investment Options',
     description: 'Retirement investments including SRS, unit trusts, and annuities',
     keywords: ['invest','investment','unit','trust','srs','supplementary','scheme','endowment','annuity','robo','portfolio','return','growth','risk','fund','etf','stock','bond','diversify','product','savings'],
     trainingExamples: ['what investment options do I have for retirement','how to invest for retirement in Singapore','should I use SRS account','OCBC investment products for retirement','low risk investment for retirees','best way to grow retirement savings','unit trust for retirement planning','SRS tax savings'],
-    templateResponse: { text: 'Here are retirement investment options available through OCBC:', buttons: ['SRS (Tax-Advantaged Savings)','Unit Trusts & ETFs','Endowment & Annuity Plans','OCBC RoboInvest'] },
+    templateResponse: { text: 'Key options include SRS (up to $15,300/year contribution with dollar-for-dollar tax relief, only 50% taxable at withdrawal), OCBC RoboInvest (from $100/month, 4–8% historical returns), and SRS-eligible unit trusts for diversified growth. SRS is especially valuable if you\'re in the 11.5%+ tax bracket.', buttons: ['SRS (Tax-Advantaged Savings)','Unit Trusts & ETFs','Endowment & Annuity Plans','OCBC RoboInvest'] },
   },
   {
     id: 'life_events', name: 'Life Events Planning',
     description: 'Planning major milestones and their impact on retirement',
     keywords: ['life','event','marriage','wedding','children','child','education','property','home','house','buy','family','travel','milestone','dream','car','kids','school','university','goal','micro'],
     trainingExamples: ['planning to get married soon','saving for my children university education','how do life events affect my retirement plan','planning for family expenses and retirement','dream home and retirement savings','micro retirement planning','travel goals and retirement savings'],
-    templateResponse: { text: 'Life events significantly impact your retirement. Which are you planning for?', buttons: ['Marriage & Family Planning',"Children's Education Fund",'Property Purchase Impact','Travel & Lifestyle Goals'] },
+    templateResponse: { text: 'Using CPF OA for property reduces your retirement savings — a key trade-off to plan for. For children\'s education, budget $8,000–$16,000/year locally or $30,000–$80,000/year overseas. Marriage planning should include joint expense efficiency, insurance reviews, and CPF nominee updates.', buttons: ['Marriage & Family Planning',"Children's Education Fund",'Property Purchase Impact','Travel & Lifestyle Goals'] },
   },
 ];
 
@@ -176,6 +176,40 @@ const OUT_OF_SCOPE_INTENT_DATA = {
 
 // Simple intents use template only; complex intents trigger LLM (same as chatbot_demo)
 const SIMPLE_INTENTS = new Set(['cpf_inquiry', 'retirement_gap', 'life_events']);
+
+// Direct button responses — substantive answers for each preconfigured button
+const BUTTON_RESPONSES: Record<string, { text: string; intentId: string }> = {
+  // cpf_inquiry buttons
+  'CPF OA/SA Interest Rates': { text: 'CPF interest rates are: Ordinary Account (OA) earns 2.5% p.a. and Special Account (SA) earns 4.0% p.a. The first $60,000 of combined balances earns an extra 1% (extra 1% on OA up to $20,000). Members aged 55+ get an additional 1% on the first $30,000 and 0.5% on the next $30,000.', intentId: 'cpf_inquiry' },
+  'CPF Contribution Rates': { text: 'For employees aged 55 and below, the total CPF contribution rate is 37% of gross salary — 20% from the employee and 17% from the employer. The Ordinary Wage ceiling is $6,800/month. Contributions are allocated: 23% to OA, 6% to SA, and 8% to MA for those ≤35.', intentId: 'cpf_inquiry' },
+  'CPF Life Monthly Payouts': { text: 'CPF Life monthly payouts depend on your retirement sum: Basic Retirement Sum ($99,400) gives ~$860–$930/month, Full Retirement Sum ($198,800) gives ~$1,560–$1,670/month, and Enhanced Retirement Sum ($298,200) gives ~$2,200–$2,430/month. Payouts start at age 65 — deferring to 70 increases payouts by ~7% per year.', intentId: 'cpf_inquiry' },
+  'CPF Retirement Sum (BRS/FRS/ERS)': { text: 'The 2024 CPF retirement sums are: Basic (BRS) $99,400, Full (FRS) $198,800, and Enhanced (ERS) $298,200. At age 55, your OA and SA merge into a Retirement Account (RA). If your RA meets the FRS, excess OA savings can be withdrawn. The ERS provides the highest CPF Life payouts.', intentId: 'cpf_inquiry' },
+  // retirement_planning buttons
+  'Calculate My Retirement Needs': { text: 'Use the Rule of 300: multiply your desired monthly retirement income by 300. For example, $3,500/month × 300 = $1,050,000 total needed. Then subtract your projected CPF Life payout (~$1,560/month at FRS = $468,000 over 25 years). Your private savings need to cover the remaining ~$582,000.', intentId: 'retirement_planning' },
+  'Singapore Retirement Age Guide': { text: 'Singapore\'s official retirement age is 63 (raised from 62 in 2022). Employers must offer re-employment up to age 68. CPF Life payouts begin at 65 — you can defer up to age 70 for ~7% higher payouts per year deferred. For early retirement before 63, you\'ll need sufficient private savings to bridge the gap until CPF kicks in.', intentId: 'retirement_planning' },
+  'Monthly Income Planning': { text: 'Typical monthly retirement expenses in Singapore: Basic needs (housing, food, transport) $1,500–$2,000, Comfortable lifestyle (+ leisure, dining) $2,500–$3,500, Premium (travel, private healthcare) $4,000+. Always add $500–$1,000/month as a healthcare buffer. Factor in 2–3% annual inflation — $3,000 today = ~$4,900 in 20 years.', intentId: 'retirement_planning' },
+  'Start My Retirement Plan': { text: 'Key steps to start: (1) Maximise CPF SA contributions — guaranteed 4% risk-free. (2) Open an SRS account for tax savings if you\'re in the 11.5%+ bracket. (3) Keep 6–12 months expenses in liquid cash. (4) Invest the rest for growth via OCBC RoboInvest or unit trusts. (5) Review your plan every 3–5 years or after major life events.', intentId: 'retirement_planning' },
+  // retirement_gap buttons
+  'Calculate My Retirement Gap': { text: 'Step-by-step: (1) Target monthly income × 12 ÷ 0.04 = total fund needed. E.g., $3,500/month = $1,050,000. (2) Subtract CPF Life payout value: $1,670/month × 12 ÷ 0.04 = $501,000. (3) Remaining need: $549,000. (4) Compare against current savings + projected growth at your expected return rate. The difference is your retirement gap.', intentId: 'retirement_gap' },
+  'Top Up CPF Special Account': { text: 'CPF SA top-ups earn a guaranteed 4.0% p.a. — one of the best risk-free returns available. You can top up via cash (tax relief up to $8,000/year) or transfer from OA to SA (no cap, but irreversible). Top-ups compound over time: $8,000/year for 20 years at 4% grows to ~$250,000. Do this via the CPF website or OCBC banking app.', intentId: 'retirement_gap' },
+  'Invest to Close the Gap': { text: 'To close a $549,000 gap over 20 years, you\'d need to invest ~$1,400/month at 5% annual returns, or ~$1,150/month at 7%. Options: OCBC RoboInvest (from $100/month, 4–8% historical returns), SRS-eligible unit trusts, or a mix of ETFs and bonds. Start with your risk tolerance — conservative portfolios target 4–5%, balanced 6–8%.', intentId: 'retirement_gap' },
+  'Review My Savings Plan': { text: 'A healthy savings review covers: (1) Current net worth vs target retirement fund. (2) Monthly savings rate — aim for at least 20% of gross income. (3) CPF balance trajectory — check via CPF app. (4) Investment returns vs assumptions. (5) Insurance coverage for critical illness and disability. Revisit annually or after salary changes, property purchases, or family milestones.', intentId: 'retirement_gap' },
+  // investment_options buttons
+  'SRS (Tax-Advantaged Savings)': { text: 'SRS lets you contribute up to $15,300/year (citizens/PRs) with dollar-for-dollar tax relief. At a 22% tax bracket, that\'s $3,366 saved annually. Invest SRS funds in unit trusts, ETFs, or fixed deposits via OCBC. At retirement age (63), only 50% of withdrawals are taxable spread over 10 years — effective tax rate drops to ~3%. Early withdrawal incurs 5% penalty + full tax.', intentId: 'investment_options' },
+  'Unit Trusts & ETFs': { text: 'OCBC offers a wide range of SRS-eligible unit trusts: equity funds (higher growth, 6–10% historical), fixed income (stable, 3–5%), and balanced funds (4–7%). ETFs provide low-cost diversification — popular choices include STI ETF for Singapore exposure and global index ETFs. Minimum investment from $1,000 lump sum or $100/month via regular savings plans.', intentId: 'investment_options' },
+  'Endowment & Annuity Plans': { text: 'OCBC Life Income provides guaranteed lifetime monthly income starting at your chosen age. Premiums are paid over a fixed term (10–25 years), and payouts continue for life — ideal for building a predictable income floor in retirement. Endowment plans offer capital protection with modest returns (2–3% p.a.), suitable for conservative investors who prioritise certainty.', intentId: 'investment_options' },
+  'OCBC RoboInvest': { text: 'OCBC RoboInvest is an automated portfolio manager: minimum $100/month or $3,500 lump sum. Choose from risk profiles (Conservative to Aggressive) including ESG portfolios. Historical returns range from 4–8% p.a. depending on risk level. Fees are 0.88% p.a. (no hidden charges). It automatically rebalances your portfolio — ideal for hands-off retirement investing.', intentId: 'investment_options' },
+  // life_events buttons
+  'Marriage & Family Planning': { text: 'Marriage brings financial efficiencies — combined household expenses are typically 30% lower per person. Key actions: review and update CPF nominations, consolidate insurance coverage, set joint financial goals, and draft wills. If planning children, start budgeting early: raising a child in Singapore costs $200,000–$400,000 from birth to age 18.', intentId: 'life_events' },
+  "Children's Education Fund": { text: 'Local university (NUS/NTU/SMU) costs $8,000–$16,000/year for 4 years. Overseas universities: $30,000–$80,000/year. Start a dedicated education fund early — $500/month for 18 years at 5% returns grows to ~$175,000. Consider using an OCBC savings plan or unit trust earmarked for education. Don\'t sacrifice retirement savings for education — student loans exist, retirement loans don\'t.', intentId: 'life_events' },
+  'Property Purchase Impact': { text: 'Using CPF OA for your home loan directly reduces your retirement savings — this is the biggest trade-off most Singaporeans face. A $500,000 HDB purchase using CPF OA could reduce your retirement fund by $200,000+. Strategy: consider downsizing at retirement to unlock equity (e.g., 5-room to 3-room can release $200,000–$400,000). Rental income from investment property can supplement retirement income.', intentId: 'life_events' },
+  'Travel & Lifestyle Goals': { text: 'Budget for travel goals separately from retirement: a comfortable annual travel budget of $5,000–$15,000 requires an additional $125,000–$375,000 in your retirement fund (using the 4% rule). Consider micro-retirements — 3–6 month sabbaticals before full retirement. Budget 12–18 months of expenses as a buffer before any career break, and maintain CPF voluntary contributions during gaps.', intentId: 'life_events' },
+  // out_of_scope redirect buttons
+  'CPF & Retirement Accounts': { text: 'Your CPF has three main accounts: Ordinary Account (OA) at 2.5% p.a., Special Account (SA) at 4.0%, and MediSave (MA) at 4.0%. Total contribution is 37% of salary (20% employee + 17% employer, capped at $6,800/month). The 2024 retirement sums are: BRS $99,400, FRS $198,800, and ERS $298,200.', intentId: 'cpf_inquiry' },
+  'Retirement Planning Goals': { text: 'Singapore\'s official retirement age is 63, with re-employment up to 68. CPF Life payouts begin at 65 (deferring to 70 gives ~7% more per year). A common benchmark is the 4% rule — you\'ll need about 25x your annual expenses. For a comfortable retirement at $3,500/month, that means a target fund of ~$1,050,000.', intentId: 'retirement_planning' },
+  'Close My Retirement Gap': { text: 'Here\'s how to calculate your gap: determine your target monthly income, multiply by 300 to get the total fund needed. Then subtract your projected CPF Life payout (~$1,560–$1,670/month at FRS) and compare the remaining portfolio needed against your current savings plus projected growth.', intentId: 'retirement_gap' },
+  'Investment Options': { text: 'Key options include SRS (up to $15,300/year contribution with dollar-for-dollar tax relief, only 50% taxable at withdrawal), OCBC RoboInvest (from $100/month, 4–8% historical returns), and SRS-eligible unit trusts for diversified growth. SRS is especially valuable if you\'re in the 11.5%+ tax bracket.', intentId: 'investment_options' },
+};
 
 // Hallucination caches — keyed by exact original-case strings (matching chatbot_demo/src/lib/intents.ts)
 // EC1: RAG only — cpf_inquiry is simple so Hybrid safely returns template
@@ -279,6 +313,12 @@ interface NLUResult {
 }
 
 function simulateNLU(input: string): NLUResult {
+  // Direct button response lookup
+  const btnResponse = BUTTON_RESPONSES[input];
+  if (btnResponse) {
+    return { content: btnResponse.text, type: 'nlu-template', outOfScope: false, latency: 50, intent: btnResponse.intentId, confidence: 99 };
+  }
+
   const result = classifyMessage(input);
   const confidence = Math.round(result.score * 100);
 
@@ -297,15 +337,24 @@ function simulateNLU(input: string): NLUResult {
 
 // ─── Hybrid simulator ─────────────────────────────────────────────────────────
 
+const INTENT_AGENT_MAP: Record<string, string> = {
+  cpf_inquiry: 'CPF_Advisory_Agent',
+  retirement_planning: 'Retirement_Planner_Agent',
+  retirement_gap: 'Gap_Analysis_Agent',
+  investment_options: 'Investment_Advisory_Agent',
+  life_events: 'Life_Events_Agent',
+};
+
 function buildTrace(classResult: ClassifyResult): RoutingTrace {
   const confidence = classResult.score > 0 ? Math.round(classResult.score * 100) : null;
   const intentId = classResult.intent.id;
   const intentName = classResult.intent.name;
   const isSimple = !classResult.outOfScope && SIMPLE_INTENTS.has(intentId);
   const responseMode: 'GenAI' | 'Template' | 'Exclude' = classResult.outOfScope ? 'Exclude' : isSimple ? 'Template' : 'GenAI';
-  const agent = responseMode === 'GenAI' ? 'Retirement_Planner_Agent' : null;
+  const queryType: 'Simple' | 'Complex' | null = classResult.outOfScope ? null : isSimple ? 'Simple' : 'Complex';
+  const agent = responseMode === 'GenAI' ? (INTENT_AGENT_MAP[intentId] ?? 'Retirement_Planner_Agent') : (INTENT_AGENT_MAP[intentId] ?? null);
 
-  return { intent: intentName, confidence, riskLevel: 'Low', responseMode, agent };
+  return { intent: intentName, confidence, queryType, responseMode, agent };
 }
 
 interface HybridResult {
@@ -315,6 +364,16 @@ interface HybridResult {
 
 function simulateHybrid(input: string): HybridResult {
   const lower = input.toLowerCase();
+
+  // 0. Direct button response lookup
+  const btnResponse = BUTTON_RESPONSES[input];
+  if (btnResponse) {
+    const intentObj = RETIREMENT_INTENTS.find(i => i.id === btnResponse.intentId);
+    const isSimple = SIMPLE_INTENTS.has(btnResponse.intentId);
+    const agentName = INTENT_AGENT_MAP[btnResponse.intentId] ?? 'Retirement_Planner_Agent';
+    const trace: RoutingTrace = { intent: intentObj?.name ?? btnResponse.intentId, confidence: 99, queryType: isSimple ? 'Simple' : 'Complex', responseMode: isSimple ? 'Template' : 'GenAI', agent: agentName };
+    return { message: { role: 'bot', content: btnResponse.text, type: isSimple ? 'nlu-template' : 'text', trace }, delay: isSimple ? 350 : 1100 };
+  }
 
   // 1. Hallucination cache check (exact original-case key, same as chatbot_demo)
   if (HYBRID_HALLUCINATION_CACHE[input]) {
@@ -426,7 +485,7 @@ function RoutingTraceCard({ trace }: { trace: RoutingTrace }) {
           <motion.div key="trace" initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.18 }} className="overflow-hidden">
             <div className="px-2.5 pb-2.5 pt-1 border-t border-slate-200 grid grid-cols-2 gap-x-3 gap-y-1.5">
               <div className="flex flex-col gap-0.5"><span className="text-slate-400 uppercase tracking-wider font-bold">Intent</span><span className="text-slate-700 font-medium">{trace.intent}{trace.confidence !== null && <span className="ml-1 text-slate-400">({trace.confidence}%)</span>}</span></div>
-              <div className="flex flex-col gap-0.5"><span className="text-slate-400 uppercase tracking-wider font-bold">Risk</span>{trace.riskLevel === null ? <span className="text-slate-400">—</span> : <span className={cn('inline-flex items-center px-1.5 py-0.5 rounded font-bold w-fit', trace.riskLevel === 'Low' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700')}>{trace.riskLevel}</span>}</div>
+              <div className="flex flex-col gap-0.5"><span className="text-slate-400 uppercase tracking-wider font-bold">Query Type</span>{trace.queryType === null ? <span className="text-slate-400">—</span> : <span className={cn('inline-flex items-center px-1.5 py-0.5 rounded font-bold w-fit', trace.queryType === 'Simple' ? 'bg-teal-100 text-teal-700' : 'bg-indigo-100 text-indigo-700')}>{trace.queryType}</span>}</div>
               <div className="flex flex-col gap-0.5"><span className="text-slate-400 uppercase tracking-wider font-bold">Mode</span>{trace.responseMode === null ? <span className="text-slate-400">—</span> : <span className={cn('inline-flex items-center px-1.5 py-0.5 rounded font-bold w-fit', modeColor(trace.responseMode))}>{trace.responseMode}</span>}</div>
               <div className="flex flex-col gap-0.5"><span className="text-slate-400 uppercase tracking-wider font-bold">Agent</span><span className="text-slate-700 font-medium">{trace.agent ?? '—'}</span></div>
             </div>
@@ -729,7 +788,7 @@ export default function ChatbotPreview({ sidebarOpen = true }: { sidebarOpen?: b
 
     const ragClassResult = classifyMessage(trimmed);
     const ragBaseTrace = buildTrace(ragClassResult);
-    const ragTrace: RoutingTrace = { ...ragBaseTrace, agent: 'RAG_Retrieval_Agent' };
+    const ragTrace: RoutingTrace = { ...ragBaseTrace, responseMode: 'GenAI' };
     const ragStreamId = String(ts + 30);
     ragStartRef.current = ts;
 
@@ -980,83 +1039,84 @@ export default function ChatbotPreview({ sidebarOpen = true }: { sidebarOpen?: b
           </div>
         </div>
       ) : (
-        /* Sidebar collapsed: chips + input on left, phones on right */
-        <div className="flex gap-5 items-start">
-          {/* Left sidebar (sticky) */}
-          <div className="w-96 shrink-0 sticky top-6 flex flex-col gap-3">
-            {/* Quick chips */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 flex flex-col gap-3">
-              <div className="flex flex-col gap-1.5">
-                <span className="text-xs font-bold text-teal-600 uppercase tracking-widest">Simple</span>
-                {SIMPLE_QUERIES.map(q => (
-                  <button key={q} onClick={() => sendMessage(q)} disabled={isAnySending}
-                    className="text-left text-sm text-teal-800 bg-teal-50 hover:bg-teal-100 border border-teal-300 rounded-xl px-3 py-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed leading-snug">
-                    {q}
-                  </button>
-                ))}
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <span className="text-xs font-bold text-indigo-500 uppercase tracking-widest">Complex</span>
-                {COMPLEX_QUERIES.map(q => (
-                  <button key={q} onClick={() => sendMessage(q)} disabled={isAnySending}
-                    className="text-left text-sm text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-300 rounded-xl px-3 py-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed leading-snug">
-                    {q}
-                  </button>
-                ))}
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <span className="text-xs font-bold text-amber-600 uppercase tracking-widest">Edge: Hybrid ✓ · GenAI hallucinates ✗</span>
-                {EDGE_1.map(q => (
-                  <button key={q} onClick={() => sendMessage(q)} disabled={isAnySending}
-                    className="text-left text-sm text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded-xl px-3 py-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed leading-snug">
-                    {q}
-                  </button>
-                ))}
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <span className="text-xs font-bold text-rose-300 uppercase tracking-widest">Edge: Both Hybrid & GenAI hallucinate ✗</span>
-                {EDGE_2.map(q => (
-                  <button key={q} onClick={() => sendMessage(q)} disabled={isAnySending}
-                    className="text-left text-sm text-rose-600 bg-rose-50/60 hover:bg-rose-50 border border-rose-200 rounded-xl px-3 py-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed leading-snug">
-                    {q}
-                  </button>
-                ))}
-              </div>
+        /* Sidebar collapsed: phones left/center, chips right, input bottom */
+        <div className="flex flex-col gap-5">
+          <div className="flex gap-5 items-start">
+            {/* 3 phones */}
+            <div className="flex gap-9 items-start flex-1 justify-center flex-wrap xl:flex-nowrap">
+              {(['nlu', 'hybrid', 'rag'] as Engine[]).map(engine => (
+                <PhoneColumn
+                  key={engine}
+                  engine={engine}
+                  state={{ nlu: nluState, hybrid: hybridState, rag: ragState }[engine]}
+                  showTraces={showTraces}
+                  onButtonClick={sendMessage}
+                />
+              ))}
             </div>
 
-            {/* Input */}
-            <form onSubmit={handleSend} className="flex flex-col gap-2 bg-white rounded-2xl border border-slate-200 shadow-sm p-3">
-              <input
-                type="text"
-                value={input}
-                onChange={e => setInput(e.target.value)}
-                disabled={isAnySending}
-                placeholder="Ask a question..."
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#E3000F] transition-all disabled:opacity-50"
-              />
-              <button
-                type="submit"
-                disabled={isAnySending || !input.trim()}
-                className="w-full bg-[#E3000F] text-white py-2 rounded-xl hover:bg-red-700 transition-all shadow-md shadow-red-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-bold text-sm"
-              >
-                <Send size={14} />
-                Send to all
-              </button>
-            </form>
+            {/* Right sidebar: query chips (sticky) */}
+            <div className="w-[21.6rem] shrink-0 sticky top-6">
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 flex flex-col gap-3">
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-xs font-bold text-teal-600 uppercase tracking-widest">Simple</span>
+                  {SIMPLE_QUERIES.map(q => (
+                    <button key={q} onClick={() => sendMessage(q)} disabled={isAnySending}
+                      className="text-left text-sm text-teal-800 bg-teal-50 hover:bg-teal-100 border border-teal-300 rounded-xl px-3 py-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed leading-snug">
+                      {q}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-xs font-bold text-indigo-500 uppercase tracking-widest">Complex</span>
+                  {COMPLEX_QUERIES.map(q => (
+                    <button key={q} onClick={() => sendMessage(q)} disabled={isAnySending}
+                      className="text-left text-sm text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-300 rounded-xl px-3 py-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed leading-snug">
+                      {q}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-xs font-bold text-amber-600 uppercase tracking-widest">Edge: Hybrid ✓ · GenAI hallucinates ✗</span>
+                  {EDGE_1.map(q => (
+                    <button key={q} onClick={() => sendMessage(q)} disabled={isAnySending}
+                      className="text-left text-sm text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded-xl px-3 py-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed leading-snug">
+                      {q}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-xs font-bold text-rose-500 uppercase tracking-widest">Edge: Both Hybrid & GenAI hallucinate ✗</span>
+                  {EDGE_2.map(q => (
+                    <button key={q} onClick={() => sendMessage(q)} disabled={isAnySending}
+                      className="text-left text-sm text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-300 rounded-xl px-3 py-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed leading-snug">
+                      {q}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* 3 phones */}
-          <div className="flex gap-8 items-start flex-1 justify-center flex-wrap xl:flex-nowrap">
-            {(['nlu', 'hybrid', 'rag'] as Engine[]).map(engine => (
-              <PhoneColumn
-                key={engine}
-                engine={engine}
-                state={{ nlu: nluState, hybrid: hybridState, rag: ragState }[engine]}
-                showTraces={showTraces}
-                onButtonClick={sendMessage}
-              />
-            ))}
-          </div>
+          {/* Bottom: ask a question (full width) */}
+          <form onSubmit={handleSend} className="flex items-center gap-3 bg-white rounded-2xl border border-slate-200 shadow-sm p-3">
+            <input
+              type="text"
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              disabled={isAnySending}
+              placeholder="Ask a question..."
+              className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#E3000F] transition-all disabled:opacity-50"
+            />
+            <button
+              type="submit"
+              disabled={isAnySending || !input.trim()}
+              className="bg-[#E3000F] text-white px-5 py-2 rounded-xl hover:bg-red-700 transition-all shadow-md shadow-red-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2 font-bold text-sm shrink-0"
+            >
+              <Send size={14} />
+              Send to all
+            </button>
+          </form>
         </div>
       )}
       </>)}

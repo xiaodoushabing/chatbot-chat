@@ -1,5 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 
+const client = new Anthropic();
+
 const RETIREMENT_KNOWLEDGE_BASE = `
 # Singapore Retirement Planning – Knowledge Base
 
@@ -152,10 +154,6 @@ export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const { message } = req.body;
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' });
-
-  const client = new Anthropic({ apiKey });
 
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
@@ -174,8 +172,12 @@ export default async function handler(req: any, res: any) {
       }
     }
     res.write(`data: ${JSON.stringify({ type: 'end' })}\n\n`);
-  } catch {
-    res.write(`data: ${JSON.stringify({ type: 'error', text: 'An error occurred.' })}\n\n`);
+  } catch (err: any) {
+    const errorMsg = err?.status === 429
+      ? "I'm experiencing high demand right now. Please try again in a moment."
+      : "I'm sorry, I encountered an error. Please try again.";
+    res.write(`data: ${JSON.stringify({ type: 'delta', text: errorMsg })}\n\n`);
+    res.write(`data: ${JSON.stringify({ type: 'end' })}\n\n`);
   }
   res.end();
 }
