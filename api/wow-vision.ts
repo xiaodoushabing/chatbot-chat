@@ -1,5 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 
+const client = new Anthropic();
+
 const WOW_VISION_PROMPT = `You are a retirement lifestyle advisor at OCBC Bank Singapore. Your role is to help customers understand how their lifestyle aspirations connect to their retirement financial plan.
 
 Analyse this image and classify the retirement lifestyle tier it represents into exactly one of:
@@ -20,10 +22,6 @@ export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const { image, mimeType } = req.body;
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' });
-
-  const client = new Anthropic({ apiKey });
 
   try {
     const base64Data = image.includes(',') ? image.split(',')[1] : image;
