@@ -256,31 +256,21 @@ function TechCard({
   tags: { text: string; style: string }[];
 }) {
   return (
-    <div className="w-[260px] bg-white rounded-2xl border border-slate-200 shadow-sm p-5 flex flex-col gap-3">
+    <div className="w-[240px] flex flex-col gap-2">
       <div>
-        <p className="text-base font-bold text-slate-900">{title}</p>
-        <p className="text-sm text-slate-500 mt-1">{subtitle}</p>
+        <p className="text-sm font-bold text-slate-800">{title}</p>
+        <p className="text-xs text-slate-500 mt-0.5 leading-snug min-h-[28px]">{subtitle}</p>
       </div>
-      <div className="flex flex-wrap gap-1.5">
+      <div className="flex flex-wrap gap-1">
         {tags.map(t => (
-          <span key={t.text} className={cn('text-xs font-semibold px-2.5 py-0.5 rounded-full border', t.style)}>
+          <span key={t.text} className={cn('text-[0.65rem] px-2 py-0.5 rounded-full font-semibold border', t.style)}>
             {t.text}
           </span>
         ))}
       </div>
-      <div className="flex flex-col gap-1.5 text-sm">
-        {pros.map(p => (
-          <div key={p} className="flex items-start gap-1.5 text-green-700 leading-snug">
-            <span className="shrink-0 font-bold">+</span>
-            <span>{p}</span>
-          </div>
-        ))}
-        {cons.map(c => (
-          <div key={c} className="flex items-start gap-1.5 text-red-600 leading-snug">
-            <span className="shrink-0 font-bold">−</span>
-            <span>{c}</span>
-          </div>
-        ))}
+      <div className="flex flex-col gap-0.5">
+        {pros.map(p => <p key={p} className="text-xs text-slate-600 flex gap-1"><span className="text-green-500 shrink-0">+</span>{p}</p>)}
+        {cons.map(c => <p key={c} className="text-xs text-slate-500 flex gap-1"><span className="text-red-400 shrink-0">−</span>{c}</p>)}
       </div>
     </div>
   );
@@ -658,9 +648,9 @@ export default function LifestyleDiscovery() {
       </div>
 
       {/* Phones + info cards */}
-      <div className="flex gap-12 justify-center flex-wrap xl:flex-nowrap">
-        {/* Left group: Vision Upload phone + card, bottom-aligned */}
-        <div className="flex items-end gap-5">
+      <div className="flex gap-6 justify-center flex-wrap xl:flex-nowrap px-6">
+        {/* Left group: Vision Upload phone + card */}
+        <div className="flex items-end gap-4">
           <VisionUploadPhone key={`vision-${resetKey}`} />
           <TechCard
             title="Upload & Analyse"
@@ -674,8 +664,8 @@ export default function LifestyleDiscovery() {
           />
         </div>
 
-        {/* Right group: Image Picker phone + card, bottom-aligned */}
-        <div className="flex items-end gap-5">
+        {/* Right group: Image Picker phone + card */}
+        <div className="flex items-end gap-4">
           <ImagePickerPhone key={`picker-${resetKey}`} />
           <TechCard
             title="Visual Picker"
