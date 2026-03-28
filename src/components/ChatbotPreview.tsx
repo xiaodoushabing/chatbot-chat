@@ -977,7 +977,7 @@ export default function ChatbotPreview({ sidebarOpen = true }: { sidebarOpen?: b
           {/* Bottom area: query chips (rows) + ask input */}
           <div className="flex gap-5 items-stretch">
             {/* Query chips — row layout */}
-            <div className="flex-1 bg-white rounded-2xl border border-slate-200 shadow-sm p-5 flex flex-col gap-3">
+            <div className="flex-1 bg-white rounded-2xl border border-slate-200 shadow-sm p-5 flex flex-col gap-5">
               <div className="flex gap-2 items-center flex-wrap">
                 <span className="text-[10px] font-medium text-teal-600 uppercase tracking-wide">Simple →</span>
                 {SIMPLE_QUERIES.map(q => (
@@ -1055,9 +1055,9 @@ export default function ChatbotPreview({ sidebarOpen = true }: { sidebarOpen?: b
               ))}
             </div>
 
-            {/* Right sidebar: query chips (sticky) */}
+            {/* Right sidebar: query chips (sticky, match phone height) */}
             <div className="w-[21.6rem] shrink-0 sticky top-6">
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 flex flex-col gap-3">
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 flex flex-col gap-5 h-[570px] overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
                 <div className="flex flex-col gap-1.5">
                   <span className="text-xs font-bold text-teal-600 uppercase tracking-widest">Simple</span>
                   {SIMPLE_QUERIES.map(q => (
