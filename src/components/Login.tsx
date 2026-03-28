@@ -4,7 +4,8 @@ import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { motion, AnimatePresence } from 'motion/react';
 import ocbcLogo from '../assets/Logo-ocbc.png';
-import skylineBg from '../assets/sg-skyline.jpg';
+
+const skylineBg = '/sg-skyline.jpg';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
