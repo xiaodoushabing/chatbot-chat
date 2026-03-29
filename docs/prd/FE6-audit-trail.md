@@ -24,7 +24,7 @@ interface AuditEvent {
   actor: string               // display name
   actorRole: 'BA' | 'DEV' | 'ADMIN'
   actionType: AuditActionType
-  entityType: 'intent' | 'agent' | 'template' | 'document' | 'guardrail' | 'system' | 'auth'
+  entityType: 'intent' | 'agent' | 'template' | 'document' | 'guardrail' | 'system' | 'approval'
   entityId: string
   entityName: string          // human-readable
   description: string         // plain-English summary
@@ -35,17 +35,16 @@ interface AuditEvent {
 }
 ```
 
-### 2.2 AuditActionType union
+### 2.2 AuditActionType union (20 types)
 
 Groups:
-- **Intent:** `intent.create` | `intent.edit` | `intent.delete` | `intent.approve` | `intent.promote` | `intent.rollback`
-- **Agent:** `agent.config_change` | `agent.status_change`
-- **Template:** `template.create` | `template.edit` | `template.publish` | `template.restore`
-- **Document:** `document.add` | `document.remove` | `document.update`
-- **Guardrail:** `guardrail.policy_change`
-- **System:** `system.kill_switch_activate` | `system.kill_switch_deactivate`
-- **Approval:** `approval.submit` | `approval.approve` | `approval.reject` | `approval.expire`
-- **Auth:** `auth.login` | `auth.logout`
+- **Intent (6):** `intent.create` | `intent.edit` | `intent.delete` | `intent.toggle_status` | `intent.rollback` | `intent.promote`
+- **Agent (3):** `agent.config_change` | `agent.status_change` | `agent.kill_switch`
+- **Template (2):** `template.publish` | `template.restore`
+- **Document (3):** `document.reindex` | `document.delete` | `document.full_reindex`
+- **Guardrail (1):** `guardrail.policy_change`
+- **System (2):** `system.kill_switch_activate` | `system.kill_switch_deactivate`
+- **Approval (3):** `approval.submit` | `approval.approve` | `approval.reject`
 
 ### 2.3 Severity mapping
 
@@ -59,21 +58,35 @@ Groups:
 
 ## 3. Mock Data Requirements
 
-Minimum 20 events spanning the last 7 days (relative to 2026-03-26):
+27 mock events spanning the last 7 days (relative to 2026-03-29):
 
 | Must include | Count |
 |-------------|-------|
-| `system.kill_switch_activate` / `deactivate` | 2–3 |
-| `approval.approve` / `reject` | 2–3 |
-| `intent.promote` / `intent.rollback` | 3–4 |
-| `auth.login` / `auth.logout` | 2–3 |
-| `guardrail.policy_change` | ≥1 |
-| `intent.create` / `intent.edit` | ≥3 |
-| `agent.config_change` | ≥1 |
-| `template.publish` | ≥1 |
+| `system.kill_switch_activate` / `deactivate` | 2-3 |
+| `approval.approve` / `reject` / `submit` | 3-4 |
+| `intent.promote` / `intent.rollback` | 3-4 |
+| `intent.create` / `intent.edit` / `intent.toggle_status` | 3-4 |
+| `guardrail.policy_change` | 1-2 |
+| `agent.config_change` / `agent.status_change` | 2-3 |
+| `template.publish` / `template.restore` | 2-3 |
+| `document.reindex` / `document.delete` / `document.full_reindex` | 2-3 |
 
 Actors: Sarah Chen (BA), James Lim (DEV), Admin (ADMIN).
 Use cases: `retirement-planning`, `account-services`.
+
+### 3.1 Batch Correlation
+
+Some events share a `batchId` to group related operations (e.g., a batch intent promotion creates one approval event and multiple intent.promote events).
+
+```typescript
+interface AuditEvent {
+  // ... existing fields ...
+  batchId?: string;        // groups related events
+  batchItems?: string[];   // entity names in the batch
+}
+```
+
+Clicking a batchId in the UI filters the event list to show only events with the same batchId.
 
 ---
 
@@ -109,7 +122,7 @@ Always visible (no collapsible toggle). Renders as a white card with `rounded-2x
 | To date | `<input type="date">` | today |
 | Actor | Text input with `Search` icon | empty |
 | Action type | `<select>` (All + each type, grouped by category with `<optgroup>`) | All |
-| Entity type | `<select>` (All / Intent / Agent / Template / Document / Guardrail / System / Auth) | All |
+| Entity type | `<select>` (All / Intent / Agent / Template / Document / Guardrail / System / Approval) | All |
 | Severity | `<select>` (All / Info / Warning / Critical) | All |
 | Clear filters link | Appears right-aligned when any filter deviates from default | — |
 
@@ -209,7 +222,7 @@ Rows: all filtered events (not paginated). Values with commas or quotes must be 
 
 ## 6. Acceptance Criteria
 
-- [ ] At least 20 mock events displayed
+- [ ] 27 mock events displayed
 - [ ] All 6 filters work in combination (AND logic)
 - [ ] Date range filter correctly compares ISO timestamps
 - [ ] Clearing filters resets all inputs to defaults
@@ -230,5 +243,5 @@ Rows: all filtered events (not paginated). Values with commas or quotes must be 
 - Wire to `GET /audit?from=&to=&actor=&action_type=&entity_type=` API
 - Replace client-side filter logic with query params
 - Add server-side pagination (cursor-based)
-- Wire export to `GET /audit/export` endpoint (streaming CSV from Aurora)
+- Wire export to `GET /audit/export` endpoint (streaming CSV from database)
 - Add real-time polling for new events (30s interval)

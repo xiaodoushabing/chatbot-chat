@@ -4,7 +4,7 @@
 > Replaces the "everything is Phase 1" approach with genuine incremental delivery.
 > **This version describes architecture in terms of capabilities with vendor options — no single-vendor commitment.**
 >
-> **Date:** 2026-03-26
+> **Date:** 2026-03-29
 > **Author perspective:** Senior Product Manager with software engineering background
 > **Audience:** Senior management (business case) + Engineering leads (technical decisions)
 
@@ -12,7 +12,7 @@
 
 ## Executive Summary
 
-**What exists today:** A fully functional proof-of-concept with 9 tabs demonstrating the complete vision — maker-checker workflows, audit trails, guardrails configuration, intent lifecycle management, AI-assisted discovery, and executive observability. Deployed at Firebase, ready for demonstration.
+**What exists today:** A fully functional proof-of-concept with 8 navigation modules (4 primary, 4 secondary) plus sub-views including a 3-engine Bot Tech Benchmark and Lifestyle Discovery vision AI demo demonstrating the complete vision — maker-checker workflows, audit trails, guardrails configuration, intent lifecycle management, AI-assisted discovery, and executive observability. The POC includes serverless API routes providing real LLM-powered chatbot responses and vision analysis. Ready for demonstration.
 
 **What this document proposes:** A realistic 12-month roadmap to move from POC to production, accounting for banking procurement realities, MAS regulatory requirements, and incremental value delivery. Architecture decisions are expressed as **capability requirements** with vendor options — allowing the bank to plug in preferred providers without rearchitecting.
 
@@ -46,7 +46,7 @@
 |---|----------|---------------|---------------|
 | 1 | **Two-DB strategy (Relational + Key-Value)** | Correct separation: relational DB for ACID-compliant data (audit, templates, approvals), key-value store for sub-millisecond hot-path reads (sessions, cache, kill switch). Industry standard for banking platforms. | MAS TRM 11.1 — data stores must match sensitivity and access patterns |
 | 2 | **Auto-scaling managed relational database** | Variable admin-tool traffic (bursty approval storms, bulk audit exports) suits auto-scaling. Avoids over-provisioning. Multi-AZ failover supported. | Financial services best practice — right-sizing for variable workloads |
-| 3 | **Maker-checker as first-class citizen** | MAS TRM 9.1.1 mandates segregation of duties. The shared type system (`PendingApproval` in `src/types.ts`) and App.tsx wiring demonstrate the pattern end-to-end. Not an afterthought. | MAS TRM 9.1.1 — "never alone" principle |
+| 3 | **Maker-checker as first-class citizen** | MAS TRM 9.1.1 mandates segregation of duties. The shared type system (`PendingApproval` in `src/types.ts`) and App.tsx wiring demonstrate the pattern end-to-end. The POC now implements **15 approval action types** (up from the original 12) including document operations (reindex, delete, full_reindex). Not an afterthought. | MAS TRM 9.1.1 — "never alone" principle |
 | 4 | **Append-only audit log, DELETE revoked at DB level** | Database-enforced immutability via PostgreSQL grants (REVOKE DELETE/UPDATE/TRUNCATE). Not just application-level — correct for banking. | MAS TRM 9.1.3, 12.2.2 — log integrity, minimum 1-year retention |
 | 5 | **Immutable object storage for intent snapshots** | COMPLIANCE mode, 7-year retention. Immutability enforced at storage layer (e.g., S3 Object Lock, Azure Immutable Blob). Banking-grade. | MAS TRM 12.2.2 — protected from unauthorized modification |
 | 6 | **Token-based DB auth (no passwords)** | Connection proxy with short-lived token generation. No credentials in environment variables. Tokens rotate frequently. | MAS TRM 10.2 — cryptographic controls, no plaintext credentials |
@@ -91,8 +91,8 @@ graph TB
         ADMIN_U["Admin\n(users, kill switch, approvals)"]
     end
 
-    subgraph Frontend["React SPA — 9 Tabs"]
-        UI["Active Intents | Discovery | Dashboard\nPreview | Agents | Content Library\nGuardrails | Audit Trail | Change Control"]
+    subgraph Frontend["React SPA — 8 Modules"]
+        UI["Active Topics | Topic Discovery | Observability\nBot Tech Benchmark | Active Agents | Content Library\nAudit Trail | Change Control"]
     end
 
     subgraph Gateway["API Gateway + Auth"]
@@ -243,40 +243,47 @@ sequenceDiagram
 
 ```mermaid
 block-beta
-    columns 5
-    space:1 BA DEV MGMT ADMIN
+    columns 6
+    space:1 TBA BA DEV MGMT ADMIN
 
-    Intents:1 ba_i["R/W"] dev_i["R/W"] mgmt_i["—"] admin_i["R/W"]
-    Agents:1 ba_a["—"] dev_a["R/W"] mgmt_a["—"] admin_a["R/W"]
-    Guardrails:1 ba_g["Read"] dev_g["R/W"] mgmt_g["—"] admin_g["R/W"]
-    Audit:1 ba_au["Read"] dev_au["Read"] mgmt_au["—"] admin_au["Read"]
-    Metrics:1 ba_m["Read"] dev_m["Read"] mgmt_m["Read"] admin_m["Read"]
-    KillSwitch:1 ba_k["Read"] dev_k["R/W"] mgmt_k["Read"] admin_k["R/W"]
-    Users:1 ba_u["—"] dev_u["—"] mgmt_u["—"] admin_u["R/W"]
+    Intents:1 tba_i["R/W"] ba_i["Read"] dev_i["R/W"] mgmt_i["—"] admin_i["R/W"]
+    Agents:1 tba_a["R/W"] ba_a["—"] dev_a["R/W"] mgmt_a["—"] admin_a["R/W"]
+    Guardrails:1 tba_g["R/W"] ba_g["Read"] dev_g["R/W"] mgmt_g["—"] admin_g["R/W"]
+    Audit:1 tba_au["Read"] ba_au["Read"] dev_au["Read"] mgmt_au["—"] admin_au["Read"]
+    Metrics:1 tba_m["Read"] ba_m["Read"] dev_m["Read"] mgmt_m["Read"] admin_m["Read"]
+    KillSwitch:1 tba_k["R/W"] ba_k["Read"] dev_k["R/W"] mgmt_k["Read"] admin_k["R/W"]
+    Users:1 tba_u["—"] ba_u["—"] dev_u["—"] mgmt_u["—"] admin_u["R/W"]
 
-    style ba_i fill:#c8e6c9
+    style tba_i fill:#c8e6c9
+    style ba_i fill:#fff9c4
     style dev_i fill:#c8e6c9
     style admin_i fill:#c8e6c9
+    style tba_a fill:#c8e6c9
     style ba_a fill:#ffcdd2
     style mgmt_a fill:#ffcdd2
     style dev_a fill:#c8e6c9
     style admin_a fill:#c8e6c9
+    style tba_g fill:#c8e6c9
     style ba_g fill:#fff9c4
     style dev_g fill:#c8e6c9
     style mgmt_g fill:#ffcdd2
     style admin_g fill:#c8e6c9
+    style tba_au fill:#fff9c4
     style ba_au fill:#fff9c4
     style dev_au fill:#fff9c4
     style mgmt_au fill:#ffcdd2
     style admin_au fill:#fff9c4
+    style tba_m fill:#fff9c4
     style ba_m fill:#fff9c4
     style dev_m fill:#fff9c4
     style mgmt_m fill:#fff9c4
     style admin_m fill:#fff9c4
+    style tba_k fill:#c8e6c9
     style ba_k fill:#fff9c4
     style dev_k fill:#c8e6c9
     style mgmt_k fill:#fff9c4
     style admin_k fill:#c8e6c9
+    style tba_u fill:#ffcdd2
     style ba_u fill:#ffcdd2
     style dev_u fill:#ffcdd2
     style mgmt_u fill:#ffcdd2
@@ -459,6 +466,62 @@ sequenceDiagram
     GW->>Customer: Response
 ```
 
+### 2.8 Bot Tech Benchmark Architecture
+
+The POC includes a side-by-side comparison of three chatbot engine architectures. This is not just a demo feature — it directly maps to the production routing architecture:
+
+| POC Engine | Production Equivalent | Response Mode |
+|-----------|----------------------|--------------|
+| Traditional (NLU) | Template-only path | `responseMode: 'template'` |
+| Hybrid (Traditional + GenAI) | Full routing engine (recommended) | `responseMode: 'genai'` for complex, `'template'` for simple |
+| Full GenAI (RAG) | GenAI-only mode (no template fallback) | `responseMode: 'genai'` (all queries) |
+
+**Architecture implication:** The Hybrid path in the benchmark demonstrates the exact routing logic that the Phase 2 routing engine will implement — embedding-based intent matching, confidence thresholds, and mode-based dispatch. The benchmark provides a testable reference implementation before production infrastructure exists. The POC already makes real LLM calls via serverless API endpoints (`api/rag.ts` for Full GenAI, `api/hybrid.ts` for Hybrid complex queries), with client-side TF-IDF intent classification for the Traditional NLU engine.
+
+### 2.9 Vision AI Architecture (Lifestyle Discovery)
+
+The POC demonstrates multimodal AI capability through a Lifestyle Discovery feature with two parallel UX approaches: (1) Vision Upload — user uploads a lifestyle photo for vision LLM classification, and (2) Visual Picker — user selects from a curated pool of ~50 images (shown 6 at a time, 2 per tier) for tier determination. Both approaches use a vision-capable LLM via a serverless API endpoint (`api/wow-vision.ts`).
+
+**Production architecture mapping:**
+
+```mermaid
+graph LR
+    subgraph Client["Client"]
+        IMG[Image Selection\n2-4 lifestyle images]
+    end
+
+    subgraph Gateway["API Gateway"]
+        GW[Auth + Rate Limit]
+    end
+
+    subgraph Processing["Processing"]
+        COMP[Image Compression\nmax 1024x1024]
+        GUARD_V[Pre-Vision\nGuardrails]
+    end
+
+    subgraph AI["Managed LLM Service"]
+        VISION[Vision API\nMultimodal Analysis]
+    end
+
+    subgraph Response["Response"]
+        TIER[Tier Classification\nAspirations / Balanced / Essential]
+        PROD[Product Recommendations\nOCBC Product Catalog]
+    end
+
+    IMG --> GW --> COMP --> GUARD_V --> VISION --> TIER --> PROD
+
+    style Client fill:#f5f5f5,stroke:#9e9e9e
+    style AI fill:#fff3e0,stroke:#ef6c00
+    style Response fill:#e8f5e9,stroke:#2e7d32
+```
+
+**Key considerations:**
+- Vision API calls are stateless — no session management required
+- Image compression at client side reduces bandwidth and API cost
+- Same API gateway and guardrails pipeline as text-based routing
+- Product recommendation engine links to existing OCBC product catalog (future integration)
+- Vendor-agnostic: any multimodal LLM service supporting image input (Claude, GPT-4V, Gemini) can serve this capability
+
 ---
 
 ## Part 3: Capability-to-Vendor Matrix
@@ -555,7 +618,7 @@ gantt
     section Phase 3 — Productivity
     Intent Discovery Pipeline      :p3a, 2026-12, 2027-01
     AI Generation + Observability  :p3b, 2026-12, 2027-02
-    Executive Dashboard (real)     :p3c, 2027-01, 2027-02
+    Observability (real metrics)   :p3c, 2027-01, 2027-02
 
     section Phase 4 — Go-Live
     VAPT + Pen Testing             :crit, vapt, 2027-02, 2027-03
@@ -572,7 +635,7 @@ gantt
 stateDiagram-v2
     [*] --> Draft: BA creates intent
     Draft --> Staging: BA submits for review
-    Staging --> Staging: BA edits & tests\nin Chatbot Preview
+    Staging --> Staging: BA edits & tests\nin Bot Tech Benchmark
     Staging --> PendingApproval: BA requests\npromotion to prod
     PendingApproval --> Production: Checker approves
     PendingApproval --> Staging: Checker rejects\n(with reason)
@@ -597,7 +660,7 @@ stateDiagram-v2
 
 The POC is not throwaway work. It serves three purposes:
 
-1. **Immediate (Month 0):** Senior management demo to secure budget and cloud buy-in. Every tab demonstrates a real capability. The mock data tells a coherent story about governance, compliance, and AI-assisted operations.
+1. **Immediate (Month 0):** Senior management demo to secure budget and cloud buy-in. Every module demonstrates a real capability. Admin modules use mock data telling a coherent governance story; Bot Tech Benchmark and Lifestyle Discovery make real LLM calls via serverless API routes, showing production-quality AI responses.
 
 2. **Medium-term (Months 2-5):** Functional specification for the backend API. Every mock data shape in every component IS the future API response contract. The POC is the spec.
 
@@ -683,7 +746,7 @@ graph LR
 
 | Action | Detail |
 |--------|--------|
-| Demo the POC | Use existing Firebase deployment. Walk through all 9 tabs: maker-checker flow, audit trail, guardrails, intent lifecycle, executive dashboard. |
+| Demo the POC | Use existing POC deployment. Walk through all 8 modules: maker-checker flow, audit trail, guardrails, intent lifecycle, bot tech benchmark (with live LLM responses), agent configuration, content library, observability dashboard, and lifestyle discovery (with live vision AI). |
 | Prepare cloud buy-in narrative | Cost projections (Part 6). MAS TRM alignment (Part 8). Build-vs-buy analysis. |
 | Start procurement paperwork | Cloud account request to Cloud CoE. AI vendor risk assessment intake form. |
 | Identify bank's IdP | Confirm ADFS / Azure AD / Okta. This determines auth architecture. |
@@ -723,7 +786,7 @@ graph LR
 | Relational DB schema | All tables from F2 PRD + intents (moved from key-value store) + AI Model Registry (new). Vector extension enabled. | F2 (expanded) |
 | Auth | Identity broker as SAML/OIDC federation. Authorizer function with RBAC. 4 roles. | F3 (revised) |
 | Monolith API | Single handler. Routes: `/intents`, `/templates`, `/audit`, `/approvals`, `/system`, `/documents`, `/users`. | New (consolidates I1, T1, A1, MC1, DOC1) |
-| Frontend integration | Wire 4 tabs to real API: **Active Intents**, **Content Library**, **Audit Trail**, **Change Control**. Remove mock data. | FE1, FE6, FE8 |
+| Frontend integration | Wire 4 modules to real API: **Active Topics**, **Content Library**, **Audit Trail**, **Change Control**. Remove mock data. | FE1, FE6, FE8 |
 
 **Not in Phase 1:** Routing engine, AI generation, discovery pipeline, agents, LLM-based guardrails, real-time observability, chatbot preview with real routing. All require AI vendor approval.
 
@@ -745,7 +808,7 @@ graph LR
 | Agent framework | Managed AI agents (one per domain). Config in key-value store. Session store with 24h TTL. | AG1 |
 | Document indexing | Object storage upload → processing → embedding model → vector extension. Status tracking. | DOC2 |
 | Key-value routing cache | Denormalized intent lookup for sub-ms routing reads. Refreshed on promote. | New |
-| Frontend integration | Wire: **Chatbot Preview**, **Active Agents**, **Guardrails Config**. | FE4, FE5, FE7 |
+| Frontend integration | Wire: **Bot Tech Benchmark**, **Active Agents**, **Guardrails Config**. | FE4, FE5, FE7 |
 
 **Team:** Add 1 ML/AI engineer (total: 2 devs + 1 DevOps).
 **Monthly cloud cost:** ~$800-2,000.
@@ -761,7 +824,7 @@ graph LR
 | Intent Discovery pipeline | Upload docs → LLM extracts intents → generate diffs → review → promote to staging. | D1 |
 | AI generation | Utterance generation + RAG response drafting. Draft-only (human review required). | G1 |
 | Observability | Custom metrics + cost tracking cache + dashboard API. Per-agent cost attribution. | OBS1 |
-| Frontend integration | Wire: **Intent Discovery**, **Executive Dashboard** (real metrics). | FE2, FE3 |
+| Frontend integration | Wire: **Topic Discovery**, **Observability** (real metrics). | FE2, FE3 |
 | Vector search evaluation | If routing p95 > 200ms or intent count > 50K → plan migration to dedicated vector service. | Decision point |
 
 **Team:** Same as Phase 2.
@@ -920,8 +983,8 @@ quadrantChart
 | **AI Inventory** | `ai_model_registry` table. Tracks: model, provider, purpose, materiality, version. | 1 (schema), 2 (data) |
 | **Materiality tiering** | `materiality_tier` field. Retirement chatbot = High (customer-facing). | 2 |
 | **Lifecycle controls** | Agent config versioning. System prompts in object storage (versioned). Full audit trail. | 2 |
-| **Board accountability** | Executive Dashboard with AI usage, cost, quality metrics. | 3 |
-| **Independent validation** | Chatbot Preview (staging-only). Guardrail test mode. Routing trace. | 2 |
+| **Board accountability** | Observability dashboard with AI usage, cost, quality metrics. | 3 |
+| **Independent validation** | Bot Tech Benchmark (staging-only). Guardrail test mode. Routing trace. | 2 |
 
 ### 8.3 FEAT Principles
 
@@ -955,11 +1018,28 @@ These decisions cannot be made by the development team alone.
 
 | Asset | Location | Status |
 |-------|----------|--------|
-| POC React SPA (9 tabs) | `src/components/*.tsx` | Complete, mock data |
+| POC React SPA (8 modules) | `src/components/*.tsx` | Complete, mock data for admin; real LLM for benchmark |
+| Serverless API routes | `api/rag.ts`, `api/hybrid.ts`, `api/wow-vision.ts` | Live — LLM-powered responses |
+| --- App.tsx (shell, auth, navigation) | `src/App.tsx` | Sidebar with primary/secondary nav |
+| --- Login.tsx | `src/components/Login.tsx` | Hardcoded auth (admin/ocbc2026) |
+| --- ChatbotPreview.tsx (Bot Tech Benchmark) | `src/components/ChatbotPreview.tsx` | 3-engine comparison |
+| --- LifestyleDiscovery.tsx | `src/components/LifestyleDiscovery.tsx` | Vision AI tier assessment |
+| --- ActiveIntents.tsx (Active Topics) | `src/components/ActiveIntents.tsx` | 6 intents, CRUD, maker-checker |
+| --- ExecutiveDashboard.tsx (Observability) | `src/components/ExecutiveDashboard.tsx` | KPIs, charts, kill switch controls |
+| --- IntentDiscovery.tsx (Topic Discovery) | `src/components/IntentDiscovery.tsx` | Source mgmt, diffs, promotion |
+| --- ActiveAgents.tsx | `src/components/ActiveAgents.tsx` | 6 agents, full config |
+| --- ContentLibrary.tsx | `src/components/ContentLibrary.tsx` | Tab wrapper |
+| --- TemplateManagement.tsx | `src/components/TemplateManagement.tsx` | 5 templates, variable system |
+| --- DocumentManagement.tsx | `src/components/DocumentManagement.tsx` | 8 docs, indexing lifecycle |
+| --- GuardrailsConfig.tsx | `src/components/GuardrailsConfig.tsx` | Policies, test panel |
+| --- AuditTrail.tsx | `src/components/AuditTrail.tsx` | 27 events, diff viewer |
+| --- AdminControlInterface.tsx (Change Control) | `src/components/AdminControlInterface.tsx` | 15 approval types |
+| --- types.ts (shared types) | `src/types.ts` | ApprovalActionType (15), AuditActionType (20), AuditEvent |
 | Infrastructure PRD | `docs/prd/F1-infrastructure.md` | Needs revision per this document |
 | Database Schema PRD | `docs/prd/F2-aurora-schema.md` | Needs expansion (intents + AI registry) |
 | Auth/RBAC PRD | `docs/prd/F3-auth-rbac.md` | Needs revision (SAML/OIDC default) |
-| Frontend PRDs (8) | `docs/prd/FE1-FE8*.md` | Complete, backend-ready |
+| Frontend PRDs (8) | `docs/prd/FE1-FE8*.md` | Updated to match current UI |
+| Master PRD | `docs/prd/PRD.md` | Consolidated feature inventory |
 | Master Plan (SSOT) | Tracked separately | Needs re-tiering |
 | Task Index | `AGENT_TASKS.md` | Needs re-tiering |
 

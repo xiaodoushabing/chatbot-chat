@@ -2,7 +2,7 @@
 
 **Task ID:** TASK-FE-DASHBOARD
 **File:** `src/components/ExecutiveDashboard.tsx`
-**SSOT Sections:** 1D (Observability & Analytics), Section 7 (AWS Buy-In Narrative)
+**SSOT Sections:** 1D (Observability & Analytics), Section 7 (Cloud Platform Value Narrative)
 **Status:** Mock data only (no real API calls in this iteration)
 
 ---
@@ -29,17 +29,17 @@ Add five new capability areas to the existing `ExecutiveDashboard` component. Al
 
 ---
 
-## Change 2: AWS Cost Intelligence Section
+## Change 2: Agent Cost Intelligence Section
 
 **Position:** After the guardrail cards (emerald + violet row), before the Risk Alert card.
 
-**Section header:** "AWS Cost Intelligence" with `DollarSign` icon (amber accent).
+**Section header:** "Agent Cost Intelligence" with `DollarSign` icon (amber accent).
 
 **Three stat cards (row):**
 
 | Card | Value | Subtext | Trend badge |
 |------|-------|---------|-------------|
-| Monthly Bedrock Cost | $1,247.30 | March 2026 | -8% vs Feb (green — cost down = good) |
+| Monthly LLM Cost | $1,247.30 | March 2026 | -8% vs Feb (green — cost down = good) |
 | Cost per 1,000 Queries | $0.038 | Rolling 30-day avg | +2% (amber) |
 | Projected Annual Cost | $14,967 | At current query volume | note: "vs $180K self-hosted GPU estimate" in small emerald text |
 
@@ -66,7 +66,7 @@ Total costs: $312.40 + $287.60 + $241.80 + $213.10 + $192.40 + $0 = $1,247.30 (m
 
 ## Change 3: Per-Agent Performance Breakdown (Collapsible)
 
-**Position:** After the AWS Cost Intelligence section.
+**Position:** After the Agent Cost Intelligence section.
 
 **Pattern:** Same collapsible pattern as the existing "Detailed Analytics" section — `AnimatePresence` + `motion.div` with height animation.
 
@@ -111,17 +111,79 @@ Total costs: $312.40 + $287.60 + $241.80 + $213.10 + $192.40 + $0 = $1,247.30 (m
 
 ---
 
-## Change 5: Hero Section Enhancement
+## Change 5: Hero Banner with Trending Insights
 
-**AWS Powered badge:** Small pill badge in the top-right of the hero card. AWS orange `#FF9900`. Contains "AWS Powered" text and a small cloud icon (use `Cloud` from lucide-react).
+**Hero banner** at the top of the dashboard with trending insights and project context.
 
-**Project-aware title:** When `selectedProject` is not "Retirement Planning", the hero heading and body text change to reflect the selected project context. Use a lookup map keyed by project name.
+**Cloud Powered badge:** Small pill badge in the top-right of the hero card. Contains "Cloud Powered" text and a small cloud icon (use `Cloud` from lucide-react).
+
+**Project Selector:** Dropdown integrated into the hero banner. Options: "Retirement Planning" (default), "Home Loans", "Card Services", "All Projects". Selecting a project updates the hero heading, subtitle, and "Review Policy" action buttons.
 
 **Example titles per project:**
-- Retirement Planning: "Trending: OCBC 360 Account Changes" (existing text)
-- Home Loans: "Trending: Fixed Rate Lock-In Queries"
-- Card Services: "Trending: Miles Card Rewards Redemption"
-- All Projects: "Cross-Project: Multi-Domain Query Surge"
+- Retirement Planning: "Trending: OCBC 360 Account Changes" — "Review Policy" links to Active Topics
+- Home Loans: "Trending: Fixed Rate Lock-In Queries" — "Review Policy" links to Active Topics
+- Card Services: "Trending: Miles Card Rewards Redemption" — "Review Policy" links to Active Topics
+- All Projects: "Cross-Project: Multi-Domain Query Surge" — "Review All" links to Active Topics
+
+**Action buttons:** Each hero banner includes contextual "Review Policy" buttons that highlight the trending insight for the selected project.
+
+---
+
+## Change 6: Kill Switch Controls
+
+**Position:** Prominently displayed in the Observability dashboard header area, near the KPI cards.
+
+**Activate flow:**
+1. "Activate Kill Switch" button (red outline, `Power` icon) visible when kill switch is inactive
+2. Click opens confirmation dialog: "This will immediately disable all LLM agent calls. All queries will be served by template responses or exclusion messages."
+3. Buttons: "Cancel" | "Activate Emergency Override" (red, `Power` icon)
+4. On confirm: kill switch activates, creates pending approval + audit event (`system.kill_switch_activate`), shows toast: "Kill switch activated — submitted for approval"
+
+**Deactivate flow:**
+1. When kill switch is active, header shows red banner: "KILL SWITCH ACTIVE — GenAI Disabled"
+2. "Deactivate" button (white outline on red)
+3. Click opens maker-checker submission: "Deactivation requires checker approval. Submit for review?"
+4. On confirm: creates pending approval (`system.kill_switch_deactivate`), shows toast: "Deactivation submitted for approval"
+
+**Visual indicators when active:**
+- Pulsing red dot in dashboard header
+- "GenAI Disabled" system status badge
+- All GenAI metric cards show warning state
+
+---
+
+## Change 7: Guardrails Monitor
+
+**Position:** After the existing guardrail cards (emerald + violet row).
+
+**Three stat cards (row):**
+
+| Card | Value | Subtext | Style |
+|------|-------|---------|-------|
+| Hallucinations Detected | 247 | 0.75% of total queries | Amber border, `Brain` icon |
+| Successful Blocks | 158 | Topics excluded + words denied | Emerald border, `ShieldCheck` icon |
+| Risk Attempts | 89 | 2.4% of total queries | Red border, `AlertTriangle` icon |
+
+**Details (expandable):**
+- Top blocked topics this period
+- Top denied phrases triggered
+- Injection attempts breakdown
+
+---
+
+## Change 8: Cost Projection
+
+**Position:** Within the Agent Cost Intelligence section (Change 2).
+
+**Three projection cards:**
+
+| Card | Value | Subtext |
+|------|-------|---------|
+| Monthly Cost | $1,247.30 | March 2026 actual |
+| Cost per 1,000 Queries | $0.038 | Rolling 30-day average |
+| Projected Annual Cost | $14,967 | At current query volume, vs $180K self-hosted GPU estimate |
+
+These are the summary stat cards for the cost intelligence section, with the per-agent cost table below providing the breakdown.
 
 ---
 

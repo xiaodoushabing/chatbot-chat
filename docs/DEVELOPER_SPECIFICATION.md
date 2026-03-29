@@ -2,8 +2,8 @@
 
 > System-level architecture with team ownership, DS module details, API specification, data model, cross-team dependencies, and delivery timeline.
 >
-> **Date:** 2026-03-27
-> **Version:** 2.0
+> **Date:** 2026-03-29
+> **Version:** 3.0
 > **Status:** Draft — pending team lead review and signoff
 > **Audience:** DS team leads and developers (primary) | IT and AI Platform leads (dependency coordination)
 > **Related:**
@@ -109,7 +109,7 @@ graph TD
 
 | Component | Description | Interface to Other Teams |
 |-----------|-------------|--------------------------|
-| Backoffice (FE + BE) | React SPA (9 tabs) + monolith API backend | — |
+| Backoffice (FE + BE) | React SPA (8 modules: Active Topics, Topic Discovery, Observability, Bot Tech Benchmark, Active Agents, Content Library, Audit Trail, Change Control) + monolith API backend | — |
 | Core Application | Routing engine, intent matching, agent orchestration | Calls AI Platform Model Services + LLM Guardrails; reads/writes Postgres via MS layer |
 | Indexing Hub Extension * | Document chunking, embedding orchestration, pipeline state machine (write path) | Pushes embeddings to IT Elasticsearch |
 | Smart Search Service Extension * | Vector similarity retrieval from Elasticsearch (read path) | Queries IT Elasticsearch |
@@ -149,7 +149,7 @@ The platform uses a three-tier memory model:
 
 | Deliverable | Description | Phase |
 |-------------|-------------|-------|
-| **Backoffice Frontend** | React SPA with 9 tabs: Intent Discovery, Active Intents, Active Agents, Templates, Documents, Guardrails, Approvals, Audit Trail, Executive Dashboard | 1-3 |
+| **Backoffice Frontend** | React SPA with 8 modules: Active Topics, Topic Discovery, Observability, Bot Tech Benchmark (3-engine comparison + Lifestyle Discovery), Active Agents, Content Library (Templates + Documents), Audit Trail, Change Control | 1-3 |
 | **Backoffice Backend** | Monolith API (Phase 1) decomposing into focused services as complexity grows | 1-3 |
 | **Core Application** | Routing engine (embed query, match intent, dispatch to GenAI/Template/Exclude), agent orchestration, streaming responses | 2 |
 | **Indexing Hub Extension** | Document chunking, embedding orchestration, pipeline state machine (pending/indexed/failed/stale). Existing DS central service — may need enhancement for chatbot-scale volumes. | 2 |
@@ -185,6 +185,7 @@ The platform uses a three-tier memory model:
   - Template-mode intent linking (backoffice templates directly power chatbot responses)
   - Dual-mode preview (production + personal diff overlay)
   - Integrated admin workflows (maker-checker, audit, kill switch) alongside chatbot interaction
+- **Current POC state:** React 19 SPA with Vite 6. Bot Tech Benchmark and Lifestyle Discovery already make real LLM calls via serverless API routes (`api/hybrid.ts`, `api/rag.ts`, `api/wow-vision.ts`). Admin suite modules use mock/localStorage data.
 
 ### 2.4 Model Service Considerations
 
@@ -253,15 +254,15 @@ The platform uses a three-tier memory model:
 
 ### M2: Agent & Routing
 
-**Purpose:** Configure AI agents, route customer queries to the correct agent based on intent matching, and provide a dual-mode preview sandbox.
+**Purpose:** Configure AI agents, route customer queries to the correct agent based on intent matching, and provide a three-engine comparison benchmark sandbox.
 
 #### Submodules
 
 | ID | Submodule | Description | Phase |
 |----|-----------|-------------|-------|
-| M2.1 | Agent Configuration | View agents with metrics. Status toggle (active/inactive). Disable agent. Agent configuration (system prompt, model, temperature, max tokens, intent routing) is **TBD** — two possible routes: Route A (view-only with activation toggle, config managed by dev team via deployment) or Route B (fully configurable by Technical BAs through the platform). No create-agent UI. | 1 (config), 2 (live routing) |
+| M2.1 | Agent Configuration | Fully configurable by Technical BAs through the platform. View agents with metrics. Edit system prompt (4,000 char limit), model selector, temperature slider, max tokens. Intent routing editor (checkbox-based). Status toggle (active/inactive). No create-agent UI — agents are pre-provisioned. | 1 (config), 2 (live routing) |
 | M2.2 | Query Routing Engine | Embed query → vector similarity search (via Smart Search Service → Elasticsearch) → intent match → dispatch to GenAI / Template / Exclude path. Kill switch integration. Routing trace generation. | 2 |
-| M2.3 | Chatbot Preview | Dual-mode preview: **Production** (default) queries against live intent DB; **Personal Diff Overlay** overlays the current user's pending changes on top of production snapshot, computed on-the-fly from `PendingApproval` records (`submittedBy === currentUser`). No shared staging state — each maker sees only their own diffs. Mode override (Auto/Template/GenAI). Guardrail test mode. Routing trace display. | 2 |
+| M2.3 | Bot Tech Benchmark | Three-engine comparison tool demonstrating Traditional NLU, Hybrid (Traditional + GenAI), and Full GenAI RAG approaches side-by-side. Each engine has distinct routing, latency, and risk characteristics. The POC already makes real LLM calls via serverless API routes (`api/hybrid.ts`, `api/rag.ts`, `api/wow-vision.ts`). Includes Lifestyle Discovery sub-view with two parallel UX approaches (Vision Upload + Visual Picker) for image-based retirement tier assessment using a vision-capable LLM. In production, maps to the routing engine's response mode dispatch (template/genai/exclude). | 2 |
 
 #### Feature List
 
@@ -270,18 +271,28 @@ The platform uses a three-tier memory model:
 - Agent status toggle (active/inactive) with maker-checker
 - Disable agent with maker-checker approval
 - Per-agent metrics: sessions handled, error rate, average response time
-- **Note:** Agent configuration depth is TBD. Route A: view + activation toggle only (config via deployment). Route B: full configuration through platform UI. Both routes support status toggle with maker-checker.
+- Agent editing: name, description, category, system prompt (4,000 char limit), model ID (configurable per deployment), temperature (0.0-1.0), max tokens
 - Query embedding (embedding model) → cosine similarity via Smart Search Service (Elasticsearch) → intent match
 - Three-way dispatch: GenAI (invoke agent) / Template (fetch template) / Exclude (block response)
 - Kill switch check on every route (5-second cache for performance)
 - Routing trace: intent matched, confidence %, risk level, mode, agent, guardrail outcome
 - Streaming response support for GenAI path and chatbot preview
-- Dual-mode preview sandbox:
-  - **Production mode** (default): chat interface queries against live production intent DB
-  - **Personal Diff Overlay mode**: toggle "Preview My Pending Changes" overlays only the current user's unapproved `PendingApproval` records on top of production snapshot. Computed on-the-fly, never persisted. Each maker sees only their own pending diffs — no shared staging state.
-- Mode override (Auto/Template/GenAI) and guardrail test mode available in both preview modes
-- Preset quick-action test queries
-- v2 considerations: team staging view (checker previews all pending changes), named change sets, conflict detection across makers
+- Three-engine comparison sandbox:
+  - **Traditional (NLU):** TF-IDF similarity → template response (<50ms, deterministic)
+  - **Hybrid (Traditional + GenAI):** Simple → template, Complex → LLM with routing trace (~800ms)
+  - **Full GenAI (RAG):** Always LLM-powered, streaming, knowledge-grounded (1-4s)
+- Routing trace per message: intent matched, confidence %, response mode
+- Quick-action preset query chips
+- Hallucination cache demonstration (pre-cached failure scenarios)
+- Out-of-scope detection and low-confidence disambiguation
+- Lifestyle Discovery (two parallel UX approaches in side-by-side phone mockups):
+  - **Vision Upload:** User uploads a photo → vision LLM classifies lifestyle tier
+  - **Visual Picker:** User picks from curated image grid → tier determined by selections
+  - ~50 curated lifestyle images across 3 tiers (16 aspirational, 18 balanced, 16 essential)
+  - Vision LLM analysis → tier classification + reasoning
+  - Product recommendations per tier (Aspirational/Balanced/Essential)
+  - Image compression (max 1024x1024, JPEG quality 0.85) before API call
+  - Images preloaded into browser cache on module load
 
 > **AI Platform dependency:** Query embedding calls AI Platform's Model Services for vector generation. Model selection (open-source vs closed-source) is TBD — see Section 2.4.
 
@@ -295,7 +306,7 @@ The platform uses a three-tier memory model:
 | Vector similarity search | Smart Search Service (existing DS central service) queries IT's Elasticsearch | Dedicated vector service (Pinecone, Weaviate, etc.) | Smart Search Service + Elasticsearch (existing infra) |
 | Routing engine (dispatch logic) | Custom: embed → match → route → trace | — | Build |
 | Agent orchestration (GenAI path) | Custom agent invocation | Managed AI Agents (see vendor matrix) | Vendor + custom wrapper |
-| Chatbot preview sandbox | Custom React component + dual-mode preview API (production default + personal diff overlay via `PendingApproval` records) | — | Build |
+| Bot Tech Benchmark sandbox | Custom React component + three-engine comparison API | — | Build |
 | Routing trace generation | Custom middleware | — | Build |
 
 **Dependencies:** M1 (intents for routing), M3 (templates + documents for responses), M4 (guardrails for screening), M5 (maker-checker, audit)
@@ -501,6 +512,46 @@ The platform uses a three-tier memory model:
 
 ---
 
+### M7: Bot Tech Benchmark & Lifestyle Discovery
+
+**Purpose:** Demonstration and evaluation environment comparing chatbot engine architectures, plus multimodal AI lifestyle assessment.
+
+#### Submodules
+
+| ID | Submodule | Description | Phase |
+|----|-----------|-------------|-------|
+| M7.1 | Three-Engine Comparison | Side-by-side comparison of Traditional NLU, Hybrid, and Full GenAI RAG engines. Each demonstrates a different routing and response strategy with distinct latency/risk profiles. Maps directly to production routing modes. | 2 |
+| M7.2 | Lifestyle Discovery | Image-based retirement tier assessment using vision AI (multimodal LLM). Two parallel UX approaches: Vision Upload (user uploads a photo for AI classification) and Visual Picker (user selects from ~50 curated images across 3 tiers). AI classifies into Aspirational/Balanced/Essential tier → returns product recommendations. | 2 |
+
+#### Feature List
+
+- Three-engine comparison: Traditional NLU (<50ms), Hybrid (~800ms), Full GenAI RAG (1-4s streaming)
+- 5 core intents: CPF Life, Retirement Planning, Gap Analysis, Investment, Life Events
+- TF-IDF similarity engine for Traditional NLU path
+- Routing trace display: intent, confidence %, response mode
+- Hallucination cache for demonstration of failure modes
+- Out-of-scope detection and low-confidence disambiguation
+- Quick-action preset query chips
+- Lifestyle image pool (~50 curated images across 3 tiers: 16 aspirational, 18 balanced, 16 essential)
+- Two parallel UX approaches: Vision Upload (user photo → AI classification) and Visual Picker (curated grid selection)
+- Image compression (max 1024x1024, JPEG quality 0.85) before API call; images preloaded on module load
+- Vision AI analysis → tier classification + reasoning + advice
+- Product recommendations per tier (OCBC product catalog integration)
+
+#### Build vs Vendor
+
+| Capability | Build (Custom) | Vendor Option(s) | Recommendation |
+|-----------|---------------|-----------------|----------------|
+| Three-engine comparison UI | Custom React component | — | Build |
+| TF-IDF similarity engine | Custom (lightweight, no ML deps) | — | Build |
+| Routing trace display | Custom (reuses M2.2 trace format) | — | Build |
+| Vision AI (image analysis) | LLM vision API call | Claude Vision, GPT-4V, Gemini Vision | Vendor (multimodal LLM) |
+| Product recommendation mapping | Custom tier-to-product lookup | — | Build |
+
+**Dependencies:** M2 (routing engine for Hybrid/RAG paths), M4 (guardrails for screening), M1 (intents for routing)
+
+---
+
 ### Module Dependency Graph
 
 ```mermaid
@@ -511,6 +562,7 @@ graph TD
     M2["M2: Agent & Routing\n(Config · Routing Engine · Preview)"]
     M4["M4: Safety & Guardrails\n(Policy · Runtime · Kill Switch)"]
     M6["M6: Observability\n(Metrics · Cost · Dashboard)"]
+    M7["M7: Bot Tech Benchmark\n(3-Engine Comparison · Lifestyle Discovery)"]
 
     M5 --> M1 & M2 & M3 & M4
     M1 --> M2
@@ -518,6 +570,9 @@ graph TD
     M4 --> M2
     M2 --> M6
     M4 --> M6
+    M1 --> M7
+    M4 --> M7
+    M2 --> M7
 
     style M5 fill:#e3f2fd,stroke:#1565c0
     style M1 fill:#e8f5e9,stroke:#2e7d32
@@ -525,9 +580,10 @@ graph TD
     style M3 fill:#e8f5e9,stroke:#2e7d32
     style M4 fill:#fce4ec,stroke:#c62828
     style M6 fill:#f5f5f5,stroke:#616161
+    style M7 fill:#f5f5f5,stroke:#616161
 ```
 
-**Read as:** M5 (Governance) is a dependency of M1, M2, M3, M4 — every module uses maker-checker and audit. M1 (Intents) feeds M2 (Routing). M3 (Content) feeds M1 (template-linked intents) and M2 (knowledge documents for agents). M4 (Guardrails) feeds M2 (runtime screening).
+**Read as:** M5 (Governance) is a dependency of M1, M2, M3, M4 — every module uses maker-checker and audit. M1 (Intents) feeds M2 (Routing) and M7 (Benchmark). M3 (Content) feeds M1 (template-linked intents) and M2 (knowledge documents for agents). M4 (Guardrails) feeds M2 (runtime screening) and M7 (screening). M2 (Routing) feeds M7 (engine comparison).
 
 ---
 
@@ -639,6 +695,18 @@ All routes are prefixed with `/api/v1`. Authentication via Bearer JWT in the `Au
 | POST | `/route/stream` | Route customer query with streaming response | Service-to-service auth | M2.2 | 2 |
 | POST | `/preview/route?include_my_pending=true` | Route query in preview mode. Default (no param or `false`): queries production intent DB only. With `include_my_pending=true`: overlays the authenticated user's pending `PendingApproval` intent changes on top of production snapshot (computed on-the-fly, never persisted). | TBA, ADMIN, BA, DEV | M2.3 | 2 |
 | POST | `/preview/route/stream?include_my_pending=true` | Streaming preview route | TBA, ADMIN, BA, DEV | M2.3 | 2 |
+
+#### Benchmark Routes (Bot Tech Benchmark)
+
+| Method | Path | Purpose | Auth Roles | Module | Phase |
+|--------|------|---------|-----------|--------|-------|
+| POST | `/preview/benchmark` | Run query against all 3 engines simultaneously, return comparison results | TBA, MGMT, ADMIN, BA, DEV | M2.3 / M7 | 2 |
+
+#### Lifestyle Discovery Routes
+
+| Method | Path | Purpose | Auth Roles | Module | Phase |
+|--------|------|---------|-----------|--------|-------|
+| POST | `/lifestyle/assess` | Submit images for vision AI tier assessment. Accepts base64-encoded images, returns tier + reasoning + product recommendations | TBA, MGMT, ADMIN, BA, DEV | M7 | 2 |
 
 > **AI Platform integration:** The `/route` and `/preview/route` endpoints call AI Platform's Model Services for query embedding and agent invocation, and AI Platform's LLM Guardrails for injection/hallucination/PII screening. DS owns the orchestration logic; AI Platform owns the model and guardrail services.
 
@@ -855,7 +923,7 @@ Paginated, filterable query of the immutable audit log.
 | Parameter | Type | Description | Example |
 |-----------|------|-------------|---------|
 | `actionType` | string | Filter by action type | `intent.edit` |
-| `entityType` | string | Filter by entity type | `intent`, `agent`, `template`, `guardrail`, `system`, `approval` |
+| `entityType` | string | Filter by entity type | `intent`, `agent`, `template`, `guardrail`, `document`, `system`, `approval` |
 | `actorRole` | string | Filter by actor role | `TBA`, `MGMT`, `ADMIN`, `BA`, `DEV` |
 | `severity` | string | Filter by severity | `info`, `warning`, `critical` |
 | `dateFrom` | ISO 8601 | Start date (inclusive) | `2026-01-01T00:00:00Z` |
@@ -985,6 +1053,45 @@ Note: Kill switch remains **active** until approval completes.
 
 ---
 
+#### 4.2.7 Lifestyle Assessment — `POST /lifestyle/assess`
+
+Submits lifestyle images to vision AI for retirement tier classification.
+
+**Request:**
+```json
+{
+  "images": [
+    {
+      "data": "data:image/jpeg;base64,/9j/4AAQ...",
+      "mimeType": "image/jpeg"
+    }
+  ]
+}
+```
+
+**Response (200):**
+```json
+{
+  "tier": "balanced",
+  "reasoning": "The selected images suggest a preference for regional travel, family activities, and moderate dining — consistent with a balanced retirement lifestyle.",
+  "advice": "Based on your lifestyle preferences, a monthly retirement budget of SGD 4,000-8,000 would support your desired standard of living.",
+  "products": [
+    { "name": "OCBC RoboInvest", "url": "https://www.ocbc.com/roboinvest" },
+    { "name": "CPF Investment Scheme", "url": "https://www.ocbc.com/cpfis" },
+    { "name": "Supplementary Retirement Scheme", "url": "https://www.ocbc.com/srs" }
+  ]
+}
+```
+
+**Processing:**
+1. Client compresses images (max 1024x1024, quality 0.85)
+2. API validates image count (2-4 required)
+3. Images sent to managed LLM service (vision-capable model)
+4. LLM analyzes against 3 tier descriptions, returns structured JSON
+5. Response includes tier classification, reasoning, financial advice, and product links
+
+---
+
 ## 5. Data Model
 
 ### 5.1 Entity Relationship Diagram
@@ -1104,6 +1211,7 @@ erDiagram
         enum status "pending | approved | rejected"
         text review_note
         jsonb batch_items
+        jsonb payload
     }
 
     audit_log {
@@ -1112,7 +1220,7 @@ erDiagram
         string actor
         enum actor_role "TBA | MGMT | ADMIN | BA | DEV"
         enum action_type "AuditActionType"
-        enum entity_type "intent | agent | template | guardrail | system | approval"
+        enum entity_type "intent | agent | template | guardrail | document | system | approval"
         uuid entity_id
         string entity_name
         text description
@@ -1305,6 +1413,7 @@ Every write operation emits an audit event. This is implemented as shared middle
 - All template publishes and restores
 - All guardrail policy changes
 - All kill switch activations and deactivations
+- All document operations (reindex, delete, full reindex)
 
 **Audit event schema** (from `src/types.ts`):
 ```typescript
@@ -1313,8 +1422,8 @@ interface AuditEvent {
   timestamp: string;
   actor: string;              // email of the person
   actorRole: 'TBA' | 'MGMT' | 'ADMIN' | 'BA' | 'DEV';
-  actionType: AuditActionType; // 17 distinct types
-  entityType: 'intent' | 'agent' | 'template' | 'guardrail' | 'system' | 'approval';
+  actionType: AuditActionType; // 20 distinct types
+  entityType: 'intent' | 'agent' | 'template' | 'guardrail' | 'document' | 'system' | 'approval';
   entityId: string;
   entityName: string;
   description: string;
@@ -1332,7 +1441,7 @@ interface AuditEvent {
 
 ### 8.3 Maker-Checker Enforcement
 
-**12 action types requiring approval:**
+**15 action types requiring approval:**
 
 | Action Type | Entity | Severity |
 |------------|--------|----------|
@@ -1346,6 +1455,9 @@ interface AuditEvent {
 | `guardrail.policy_change` | Guardrail | warning |
 | `template.publish` | Template | warning |
 | `template.restore` | Template | warning |
+| `document.reindex` | Document | info |
+| `document.delete` | Document | warning |
+| `document.full_reindex` | Document | warning |
 | `system.kill_switch_activate` | System | critical |
 | `system.kill_switch_deactivate` | System | critical |
 

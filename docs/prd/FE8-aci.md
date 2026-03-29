@@ -7,12 +7,14 @@
 
 ## Overview
 
-The Admin Control Interface (ACI) is a new top-level tab in the admin suite. It consolidates four critical admin capabilities into one shell:
+The Admin Control Interface (ACI) is the **Change Control** tab in the admin suite. It provides the maker-checker approval queue:
 
-1. **Kill Switch** — always-visible header bar; hard override to disable all GenAI instantly
-2. **Maker-Checker Queue** — inline pending approvals list with diff preview, approve/reject
-3. **Template Management** (sub-view tab) — manage static response templates with versioning
-4. **Document Management** (sub-view tab) — manage knowledge documents and indexing pipeline
+1. **Maker-Checker Queue** — inline pending approvals list with action type badges, approve/reject flows
+
+**Note:** In the current implementation, the originally planned ACI consolidation has been split:
+- **Kill Switch controls** → moved to Observability dashboard (ExecutiveDashboard component)
+- **Template Management** → moved to Content Library tab (ContentLibrary > TemplateManagement)
+- **Document Management** → moved to Content Library tab (ContentLibrary > DocumentManagement)
 
 All data is mocked. No backend calls are made in this phase.
 
@@ -26,7 +28,7 @@ All data is mocked. No backend calls are made in this phase.
 | `src/components/TemplateManagement.tsx` | Template CRUD, edit modal, preview, version history |
 | `src/components/DocumentManagement.tsx` | Document list (cards), upload modal, indexing hub panel |
 
-`src/App.tsx` must be updated to add the `aci` tab and render `<AdminControlInterface />`.
+`src/App.tsx` renders `<AdminControlInterface />` as the `change-control` tab.
 
 ---
 
@@ -72,18 +74,45 @@ In this mock phase: no RBAC enforcement. All actions are available.
 - Section title: "Pending Approvals" + `ClipboardCheck` icon + count badge (amber)
 - Empty state: `CheckCircle` icon, "All clear — no pending approvals"
 - Each approval card shows:
-  - Action type badge (color-coded: template=amber, intent=blue, kill switch=red)
-  - What changes: entity name, brief before/after description
+  - Action type badge (color-coded by category):
+    - Intent: `bg-blue-100 text-blue-700` (toggle_status, edit, rollback, promote_batch)
+    - Agent: `bg-purple-100 text-purple-700` (config_change, status_change, kill_switch)
+    - Guardrail: `bg-orange-100 text-orange-700` (policy_change)
+    - Template: `bg-amber-100 text-amber-700` (publish, restore)
+    - Document: `bg-sky-100 text-sky-700` (reindex, delete, full_reindex)
+    - System: `bg-red-100 text-red-700` (kill_switch_activate, kill_switch_deactivate)
+  - Entity name, description, batch items (pills if batch operation)
+  - Detail box with before/after summary
   - Submitted by + submitted at timestamp
   - "Approve" (emerald, `Check` icon) + "Reject" (red outline, `X` icon)
 
+**15 approval action types:**
+| Category | Action Types |
+|----------|-------------|
+| Intent | toggle_status, edit, rollback, promote_batch |
+| Agent | config_change, status_change, kill_switch |
+| Guardrail | policy_change |
+| Template | publish, restore |
+| Document | reindex, delete, full_reindex |
+| System | kill_switch_activate, kill_switch_deactivate |
+
 **Approve flow:**
-1. Click Approve → inline comment input ("Add a note (optional)")
-2. Confirm button → removes card from queue, success toast
+1. Click Approve → inline comment input ("Add a review note (optional)")
+2. Confirm button → card animates out (opacity 0, x: 60 via `motion.div`), success toast
 
 **Reject flow:**
 1. Click Reject → inline mandatory reason textarea
-2. Confirm button (disabled until reason filled) → removes card, toast: "Approval rejected"
+2. Confirm button (disabled until reason filled) → card animates out (opacity 0, x: 60), toast: "Approval rejected"
+
+**Card exit animations:**
+- On decision (approve or reject), the card uses `motion.div` exit animation: `exit={{ opacity: 0, x: 60 }}` with `transition={{ duration: 0.3 }}`
+- Cards are wrapped in `AnimatePresence` for smooth removal from the list
+
+**Recent Decisions toggle:**
+- Toggle button at top of queue: "Show Recent Decisions"
+- When active, shows last 5 approved/rejected items below the pending queue
+- Each recent decision shows: action type badge, entity name, decision (Approved green / Rejected red badge), decided by, timestamp
+- Recent decisions are display-only (no further actions)
 
 **Mock data:** 3 pending approvals:
 - Template publish: "CPF_Life_Standard_Response" content update

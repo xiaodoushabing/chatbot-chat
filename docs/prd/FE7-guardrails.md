@@ -11,7 +11,7 @@
 
 Provide a DEV-primary (BA read) admin interface for managing the guardrail policy layer that sits between the routing engine and the LLM. The UI is provider-agnostic: it configures abstract policy types (blocked topics, denied words/phrases, sensitivity levels, exclusion response) that are translated to the active vendor's API at runtime.
 
-The current active provider is **AWS Bedrock Guardrails**. Switching providers requires DEV admin action, not UI self-service.
+The active provider is configurable (e.g., managed cloud guardrails, Azure Content Safety, or custom rule engine). Switching providers requires DEV admin action, not UI self-service.
 
 ---
 
@@ -39,7 +39,7 @@ Three sections rendered top-to-bottom in a `max-w-7xl` container with `p-8` padd
 
 Dark card (`bg-slate-900`) showing:
 
-- **Provider badge:** "AWS Bedrock Guardrails" with AWS-orange (`#FF9900`) pulsing dot
+- **Provider badge:** Active provider name with pulsing dot
 - **Status:** "Active" with emerald pulsing dot
 - **Version:** "guardrail-v2" in monospace
 - **Two stat chips:** "247 blocks this week" / "89 injection attempts blocked" (amber tinted)
@@ -50,7 +50,7 @@ Dark card (`bg-slate-900`) showing:
 Triggered by "Switch Provider" button. Uses the same `AnimatePresence` + `motion.div` backdrop + scale-up pattern as `ActiveIntents.tsx` edit modal.
 
 Three provider cards arranged in a grid:
-1. **AWS Bedrock Guardrails** — active; shows checkmark; description: "Managed guardrails via AWS Bedrock. Supports topic blocking, content filtering, grounding, and injection detection."
+1. **Managed Cloud Guardrails** — active; shows checkmark; description: "Managed guardrails service. Supports topic blocking, content filtering, grounding, and injection detection."
 2. **Azure Content Safety** — available (greyed); description: "Microsoft Azure's content moderation API. Supports harm categories and custom blocklists."
 3. **Custom Rule Engine** — available (greyed); description: "Bring-your-own rule set. Configure regex and keyword-based policy rules in-house."
 
@@ -119,12 +119,15 @@ Levels: `Off | Low | Medium | High | Strict`
   - High: "Aggressive detection. Recommended for public-facing banking chatbots. Default."
   - Strict: "Maximum sensitivity. May block edge-case legitimate queries."
 
-**2f. PII Detection (bonus)**
-- `Eye` icon + label "Mask PII in Responses"
+**2f. PII Masking**
+- `Eye` icon + label "PII Masking"
 - Toggle (on/off) — default: ON
 - Description: "Detects and masks NRIC numbers, account numbers, and phone numbers in AI-generated outputs."
-- ON state: emerald badge "Active"
+- ON state: emerald badge "Active" with pulsing dot
 - OFF state: slate badge "Disabled"
+- When ON: PII patterns (NRIC: S/T + 7 digits + letter, phone: 8-digit Singapore numbers, account numbers: 10+ digit sequences) are replaced with masked versions (e.g., `S****567A`, `****1234`)
+- Toggling PII masking requires maker-checker approval
+- Changes generate audit event: `guardrail.policy_change`
 
 ---
 
@@ -145,12 +148,37 @@ Full-width card with title "Test Guardrail Policy" + `FlaskConical` icon.
 1. 1.2s loading state (spinner in button)
 2. Result card appears below with `AnimatePresence`
 
-**Result logic (evaluated against current blocked topics + denied words state):**
+**Result logic (evaluated against current blocked topics + denied words + sensitivity levels):**
 - Input contains any current denied phrase or blocked topic keyword → red result card: "BLOCKED — Matched [type]: [matched term]"
-- Input contains "ignore", "jailbreak", "pretend", or "previous instructions" → amber result card: "FLAGGED — Prompt injection pattern detected"
+- Input contains "ignore", "jailbreak", "pretend", or "previous instructions" → amber result card: "FLAGGED — Prompt injection pattern detected" (sensitivity level affects detection threshold)
 - Otherwise → green result card: "PASSED — Query would proceed to routing engine"
 
-Result cards use `motion.div` animate in (opacity 0→1, y 8→0).
+**Result card details:**
+- BLOCKED (red): `bg-red-50 border-red-200`, `ShieldX` icon, shows matched rule and policy reference
+- FLAGGED (amber): `bg-amber-50 border-amber-200`, `AlertTriangle` icon, shows detection type and confidence
+- PASSED (green): `bg-emerald-50 border-emerald-200`, `CheckCircle` icon, shows "No policy violations detected"
+
+Result cards use `motion.div` animate in (opacity 0 to 1, y 8 to 0).
+
+### 5-Level Sensitivity Descriptions
+
+**Hallucination Detection levels:**
+| Level | Behavior |
+|-------|----------|
+| Off | Disabled. No grounding checks applied. |
+| Low | Flags only severe factual contradictions. Minimal false positives. |
+| Medium | Blocks responses that significantly contradict provided context. Recommended for financial advice. |
+| High | Strict grounding required. Blocks responses that cannot be fully attributed to provided context. |
+| Strict | Zero-tolerance. Any unverified claim is blocked. May increase false positives. |
+
+**Prompt Injection Shield levels:**
+| Level | Behavior |
+|-------|----------|
+| Off | Disabled. No injection detection applied. |
+| Low | Catches only obvious injection patterns (e.g., "ignore previous instructions"). |
+| Medium | Standard detection. Flags common jailbreak and override attempts. |
+| High | Aggressive detection. Recommended for public-facing banking chatbots. Default. |
+| Strict | Maximum sensitivity. May block edge-case legitimate queries that resemble injection patterns. |
 
 ---
 
@@ -174,7 +202,7 @@ Reuse the same toast pattern as `ActiveIntents.tsx`:
 
 ## Acceptance criteria
 
-- [ ] Provider summary card renders with mock stats and AWS-orange provider badge
+- [ ] Provider summary card renders with mock stats and provider badge
 - [ ] "Switch Provider" modal opens; selecting non-active provider shows contact-admin message
 - [ ] Blocked topics: add and remove tags updates state; list is reflected in test panel
 - [ ] Denied words: add and remove tags, red tint styling

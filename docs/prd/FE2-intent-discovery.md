@@ -70,17 +70,23 @@ Collapsible section in the left panel, below the "Recent Syncs" block.
 
 ### Contents
 - Section header: "Intent DB Snapshots" with `GitBranch` icon, toggle chevron
-- 3 mock snapshot entries:
-  - `v3 — Deployed 2026-03-20 by Sarah Chen — 6 intents` — LIVE badge (emerald)
-  - `v2 — Deployed 2026-03-10 by Admin — 5 intents`
-  - `v1 — Deployed 2026-02-28 by Admin — 4 intents`
+- 3 mock snapshot entries with expandable rows:
+
+| Version | Date | Author | Intents | Status |
+|---------|------|--------|---------|--------|
+| v3 | 2026-03-20 | Sarah Chen | 6 intents | LIVE (emerald badge) |
+| v2 | 2026-03-10 | Admin | 5 intents | Archived |
+| v1 | 2026-02-28 | Admin | 4 intents | Archived |
+
 - Each row: snapshot label, optional LIVE badge, "Restore" button (`RotateCcw` icon, slate)
+- Expandable rows: clicking a version shows the list of intents included in that snapshot
 - Clicking Restore: opens `showRestoreModal` with the chosen snapshot version
 
 ### Restore Confirmation Modal
 - Text: "Restore production to v[X]? This will overwrite the current live intent database. This action requires maker-checker approval."
 - Buttons: Cancel | "Submit Restore Request" (OCBC red)
-- On submit: toast "Restore request submitted for approval"
+- On submit: creates pending approval (`intent.rollback`), toast "Restore request submitted for approval"
+- Generates audit event with before (current version) and after (restored version) payloads
 
 ---
 

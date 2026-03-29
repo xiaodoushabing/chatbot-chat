@@ -389,17 +389,19 @@ CREATE TABLE IF NOT EXISTS audit_log (
   id             UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   actor_id       UUID        NOT NULL REFERENCES users(id),
   action_type    TEXT        NOT NULL,
-  -- Canonical action types (enforced at application layer, not DB enum, to allow
-  -- adding new types without a DDL migration):
-  -- intent.create, intent.edit, intent.delete, intent.promote, intent.rollback,
-  -- intent.approve (discovery), agent.config_change, guardrail.policy_change,
-  -- template.create, template.edit, template.publish, template.restore,
-  -- template.activate, template.deactivate,
-  -- document.add, document.remove, document.update, document.reindex,
-  -- kill_switch.activate, kill_switch.deactivate,
+  -- Canonical action types (20 types, enforced at application layer, not DB enum,
+  -- to allow adding new types without a DDL migration):
+  -- Intent (6): intent.create, intent.edit, intent.delete, intent.toggle_status,
+  --   intent.rollback, intent.promote
+  -- Agent (3): agent.config_change, agent.status_change, agent.kill_switch
+  -- Template (2): template.publish, template.restore
+  -- Document (3): document.reindex, document.delete, document.full_reindex
+  -- Guardrail (1): guardrail.policy_change
+  -- System (2): system.kill_switch_activate, system.kill_switch_deactivate
+  -- Approval (3): approval.submit, approval.approve, approval.reject
   -- approval.submit, approval.approve, approval.reject, approval.expire,
   -- user.login, user.logout, user.create, user.deactivate
-  entity_type    TEXT        NOT NULL,   -- 'intent', 'template', 'agent', 'document', etc.
+  entity_type    TEXT        NOT NULL,   -- 7 types: 'intent', 'agent', 'template', 'document', 'guardrail', 'system', 'approval'
   entity_id      TEXT        NOT NULL,   -- UUID or DynamoDB key of the affected record
   before_payload JSONB,                  -- NULL for create operations
   after_payload  JSONB,                  -- NULL for delete operations
@@ -431,8 +433,13 @@ CREATE TABLE IF NOT EXISTS pending_approvals (
   id           UUID              PRIMARY KEY DEFAULT gen_random_uuid(),
   action_type  TEXT              NOT NULL,
   -- Matches audit_log.action_type for the gated operation.
-  -- e.g. 'template.publish', 'intent.promote', 'guardrail.policy_change',
-  --      'agent.config_change', 'kill_switch.deactivate' (non-emergency re-enable)
+  -- 15 approval action types:
+  -- Intent: toggle_status, edit, rollback, promote_batch
+  -- Agent: config_change, status_change, kill_switch
+  -- Guardrail: policy_change
+  -- Template: publish, restore
+  -- Document: reindex, delete, full_reindex
+  -- System: kill_switch_activate, kill_switch_deactivate
   payload      JSONB             NOT NULL,
   -- Full serialized operation payload. On approval, the Approval Service
   -- deserializes this and re-executes it against the target service Lambda.

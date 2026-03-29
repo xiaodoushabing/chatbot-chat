@@ -2,8 +2,8 @@
 
 > A unified admin control interface for managing AI chatbot intents, agents, guardrails, and compliance.
 >
-> **Date:** 2026-03-27
-> **Version:** 1.0
+> **Date:** 2026-03-29
+> **Version:** 2.0
 > **Audience:** Senior Management (executive summary) | Product & Tech Leads (detailed walkthroughs)
 > **Related:** [Vendor-Agnostic Strategy](STRATEGY_VENDOR_AGNOSTIC.md) for architecture and compliance details
 
@@ -32,9 +32,9 @@ Every configuration change to a customer-facing AI chatbot in a regulated bank m
 
 ### Platform at a Glance
 
-- **9 functional modules** across 3 domains
+- **11 functional modules** across 3 domains
 - **5 user roles** with least-privilege access (1 maker, 3 reviewers/viewers, 1 admin)
-- **12 approval action types** requiring maker-checker sign-off
+- **15 approval action types** requiring maker-checker sign-off
 - **Full audit trail** of every system action
 
 ```mermaid
@@ -75,24 +75,24 @@ graph TD
 
 ## 2. Platform Modules
 
-The 9 modules are organized into three functional domains. Every write operation flows through the maker-checker approval system, and every action is recorded in the audit trail.
+The 11 modules are organized into three functional domains. Every write operation flows through the maker-checker approval system, and every action is recorded in the audit trail.
 
 ```mermaid
 graph LR
     subgraph Content["Content Management"]
-        AI_TAB["Active Intents"]
-        ID_TAB["Intent Discovery"]
+        AI_TAB["Active Topics"]
+        ID_TAB["Topic Discovery"]
         CL_TAB["Content Library\n(Templates + Documents)"]
     end
 
     subgraph Operations["AI Operations"]
         AG_TAB["Active Agents"]
         GR_TAB["Guardrails Config"]
-        CP_TAB["Chatbot Preview"]
+        CP_TAB["Lifestyle Discovery"]
     end
 
     subgraph Governance["Governance & Observability"]
-        ED_TAB["Executive Dashboard"]
+        ED_TAB["Observability"]
         AT_TAB["Audit Trail"]
         CC_TAB["Change Control"]
     end
@@ -118,15 +118,38 @@ graph LR
     style Governance fill:#e3f2fd,stroke:#1565c0
 ```
 
+### 2.5 Navigation & Layout
+
+The platform uses a **collapsible sidebar** (expanded: 288px, collapsed: 80px) with two navigation tiers:
+
+**Primary navigation** (always visible):
+- Lifestyle Discovery — AI-powered lifestyle profiling and product recommendations
+- Active Topics — manage production intents
+- Observability — dashboards, metrics, kill switch controls
+- Topic Discovery — AI-powered intent creation and promotion
+
+**Secondary navigation** (under expandable "More" section):
+- Active Agents — AI agent configuration
+- Content Library — templates and knowledge documents
+- Audit Trail — immutable compliance log
+- Change Control — maker-checker approval queue
+
+**Header indicators:**
+- **Kill switch status** — pulsing red badge when active, green "System Secure" when inactive
+- **System status** — "GenAI Disabled" (red) when kill switch active, "System Secure" (green) normally
+- Notification bell, settings icon, breadcrumb navigation
+
+This navigation hierarchy places the most-used operational views (benchmarking, intent management, monitoring, discovery) in primary position, with governance and configuration tools accessible under "More".
+
 ---
 
 ## 3. Module Walkthroughs
 
-### 3.1 Active Intents — *Manage existing intents*
+### 3.1 Active Topics — *Manage existing intents*
 
 **Primary users:** Technical BA (edit) | BA, DEV (view-only)
 
-An intent represents a customer question the chatbot can handle (e.g., "How do I retire at 65?"). This module manages **existing intents** — editing their configuration, monitoring their status, and maintaining per-intent version history. New intent creation and production promotion happen in Intent Discovery (Section 3.2).
+An intent represents a customer question the chatbot can handle (e.g., "How do I retire at 65?"). This module manages **existing intents** — editing their configuration, monitoring their status, and maintaining per-intent version history. New intent creation and production promotion happen in Topic Discovery (Section 3.2).
 
 **What users can do:**
 - Filter and search intents by name, risk level, response mode, and status
@@ -166,11 +189,11 @@ flowchart TD
     style F fill:#ffcdd2,stroke:#c62828
 ```
 
-> [Screenshot: Active Intents — intent list with environment badges, risk indicators, and filter panel]
+> [Screenshot: Active Topics — intent list with environment badges, risk indicators, and filter panel]
 
 ---
 
-### 3.2 Intent Discovery — *Create, discover, and promote intents*
+### 3.2 Topic Discovery — *Create, discover, and promote intents*
 
 **Primary users:** Technical BA (edit) | BA, DEV (view-only)
 
@@ -194,7 +217,7 @@ The primary workflow for adding new intents and promoting them to production. Su
 2. System generates intent diffs: "3 new intents detected, 2 modified, 1 deleted" with confidence scores
 3. Technical BA reviews each diff — edits utterances and responses inline (with AI-assisted suggestions)
 4. Technical BA accepts selected diffs → intents saved as pending changes
-5. Technical BA tests in Chatbot Preview using "Preview My Pending Changes" mode (overlays only this user's pending changes on top of production — other makers' pending changes are excluded)
+5. Technical BA tests in Bot Tech Benchmark using "Preview My Pending Changes" mode (overlays only this user's pending changes on top of production — other makers' pending changes are excluded)
 6. Technical BA submits batch promotion to production
 7. Checker approves; system creates immutable DB snapshot (Object Lock, 7-year retention)
 
@@ -209,7 +232,7 @@ flowchart TD
 
     B --> C[Review & Edit\nUtterances + Responses\nAI-assisted]
     C --> D[Save as\nPending Changes]
-    D --> E[Test in\nChatbot Preview]
+    D --> E[Test in\nBot Tech Benchmark]
     E --> F[Submit Batch\nPromotion]
     F --> G{Checker Decision}
     G -->|Approved| H[Production Updated\n+ DB Snapshot Created]
@@ -222,36 +245,40 @@ flowchart TD
     style Create fill:#f5f5f5,stroke:#9e9e9e
 ```
 
-> [Screenshot: Intent Discovery — diff review panel with confidence scores, AI suggestions, and DB snapshot history]
+> [Screenshot: Topic Discovery — diff review panel with confidence scores, AI suggestions, and DB snapshot history]
 
 ---
 
-### 3.3 Executive Dashboard — *Operational intelligence and monitoring*
+### 3.3 Observability — *Operational intelligence and monitoring*
 
 **Primary users:** All roles (read-only) | MGMT's primary view
 
-Real-time operational view of chatbot performance, cost, and health. Designed for management reporting and operational monitoring.
+Real-time operational view of chatbot performance, cost, and health. Designed for management reporting and operational monitoring — with direct kill switch controls for emergency response.
 
 **What users can do:**
-- Filter by time period (7 days / 30 days) and project domain (All Projects / Retirement Planner / Investment Advisor / Loan Eligibility / ...)
+- Filter by time period (7 days / 30 days) and project domain (Retirement Planning / Home Loans / Card Services / All)
+- View hero banner with trending insights (e.g., "340% spike in OCBC 360 queries") and actionable "Review Policy" buttons
 - View KPI cards: total query volume, customer satisfaction trend, trending topics
 - Review per-agent performance: sessions handled, fallback rate, latency, satisfaction sparklines
-- Analyze cost intelligence: per-agent cost, cost per 1,000 queries, month-over-month trend
+- Analyze cost intelligence: per-agent cost, cost per 1,000 queries, month-over-month trend, projected annual cost
+- View guardrails monitor: hallucinations detected (count + percentage), successful blocks, risk/injection attempts
 - Monitor intent distribution (pie chart) and guardrail metrics (queries screened, blocks, injection attempts)
+- Activate/deactivate the kill switch directly from the dashboard (with confirmation dialog — creates approval + audit event)
 - Check kill switch status at a glance
-- Export data as CSV
-- Navigate directly to Intent Discovery ("Generate New Intent" button) or Active Intents ("View Active Intents" button)
+- Export dashboard as PDF (via print dialog with optimized print CSS)
+- Navigate directly to Topic Discovery ("Generate New Intent" button) or Active Topics ("View Active Intents" button)
 
 **Key workflow:**
 
-1. Management opens dashboard → views KPI hero card (e.g., "340% spike in OCBC 360 queries")
-2. Selects project domain filter → narrows to Retirement Planner
+1. Management opens dashboard → views hero banner (e.g., "340% spike in OCBC 360 queries") → clicks "Review Policy"
+2. Selects project domain filter → narrows to Retirement Planning
 3. Drills into agent performance table → identifies high-fallback agent
-4. Reviews cost intelligence → confirms budget is on track
-5. Checks guardrail metrics → notes increase in blocked queries
-6. Exports data for monthly reporting
+4. Reviews cost projection → confirms monthly cost and projected annual cost are on track
+5. Checks guardrails monitor → notes increase in hallucination detections and blocked queries
+6. If anomaly is critical, activates kill switch directly from dashboard → confirmation dialog → approval submitted
+7. Exports dashboard as PDF for monthly reporting
 
-**Business value:** Gives management visibility into AI operations without requiring technical knowledge. Per-agent cost attribution prevents the "AI is too expensive, shut it down" reaction by showing exactly where costs originate.
+**Business value:** Gives management visibility into AI operations without requiring technical knowledge. Per-agent cost attribution prevents the "AI is too expensive, shut it down" reaction by showing exactly where costs originate. Kill switch controls on the dashboard allow immediate emergency response without navigating to Change Control.
 
 ```mermaid
 flowchart LR
@@ -260,138 +287,81 @@ flowchart LR
     C --> D[Analyze Cost\nIntelligence]
     D --> E[Check Guardrail\nHit Rates]
     E --> F[Export for\nReporting]
+    E --> G[Kill Switch\nControls]
 
     style B fill:#e3f2fd,stroke:#1565c0
+    style G fill:#ffcdd2,stroke:#c62828
 ```
 
-> [Screenshot: Executive Dashboard — KPI cards, agent performance table, cost intelligence]
+> [Screenshot: Observability — KPI cards, agent performance table, cost intelligence, kill switch controls]
 
 ---
 
-### 3.4 Chatbot Preview — *Test before you ship*
+### 3.4 Lifestyle Discovery — *AI-powered personalized retirement profiling*
 
-**Primary users:** Technical BA (test + preview pending changes) | BA, DEV (view-only)
+**Primary users:** All roles (evaluation/demo) | MGMT (use case validation) | Technical BA (configuration review)
 
-A dual-mode preview environment that runs against the **live production intent database** by default. Users can toggle a personal diff overlay to preview their own pending (unapproved) changes on top of production — without affecting other users or requiring a shared staging environment.
+An image-based lifestyle assessment tool that helps customers identify their retirement aspirations. Users engage with lifestyle imagery and AI classifies their preferences into a retirement spending profile, generating personalized product recommendations.
 
-**Two preview modes:**
+The specific classification approach (image classifier model, vision-capable LLM, or hybrid) is TBD based on accuracy requirements and vendor selection. The user experience presents two parallel approaches:
 
-| Mode | What it runs against | When to use |
-|------|---------------------|-------------|
-| **Production** (default) | Live production intent DB, agents, and guardrails | Verify current production behavior, reproduce customer issues, test guardrail rules |
-| **Preview My Pending Changes** (toggle) | Production + the current user's pending (unapproved) changes overlaid | Test your own changes before they are approved and promoted |
+- **Vision Upload:** User uploads a lifestyle photo → AI classifies their retirement profile with reasoning and personalized advice
+- **Visual Picker:** User browses and selects from a curated image pool → AI determines profile from selections with product recommendations
 
-The "Preview My Pending Changes" mode overlays **only the current user's** pending changes. Other makers' pending changes are excluded — each user sees a clean preview of what production would look like if their changes alone were approved. A banner indicates how many pending changes are being previewed (e.g., "Previewing 3 pending changes by you").
-
-This per-user overlay design avoids the staging concurrency problem where multiple makers editing a shared staging environment simultaneously would create a messy, unreliable preview.
+Both approaches produce: a tier classification, reasoning narrative, and product recommendations.
 
 **What users can do:**
-- Type test queries into a simulated chat interface
-- Use quick-action preset queries for common test scenarios
-- Toggle between Production and "Preview My Pending Changes" modes
-- Override response mode: Auto (normal routing), Template-only, or GenAI-only
-- Enable guardrail test mode to simulate injection detection and topic blocking
-- View detailed routing trace per message: intent matched, confidence %, risk level, response mode, agent invoked, guardrail outcome, kill switch status
-- Observe kill switch behavior (when active, all GenAI disabled)
+- Browse and interact with the lifestyle image picker interface
+- Upload a personal lifestyle photo for AI classification
+- View the AI-generated tier classification with reasoning
+- See product recommendations tailored to the classified lifestyle tier
+- Observe how the system handles edge cases and uncertain classifications
+
+**Kill switch behavior:** When the kill switch is active, the system falls back to the Visual Picker approach — removing the AI-powered Vision Upload path and presenting users with the manual picker only.
 
 **Key workflow:**
 
-1. Technical BA types test query: "How do I retire at 65?"
-2. System shows routing trace: Intent = `Retirement_Planning`, Confidence = 94%, Mode = GenAI, Agent = `Retirement_Planner`
-3. Technical BA toggles to Template mode → same query returns fixed template response
-4. Technical BA enables guardrail test mode → types injection attempt → system blocks it
-5. Technical BA verifies kill switch behavior → when kill switch is active, all queries fall back to templates
-6. Technical BA toggles "Preview My Pending Changes" → banner shows "Previewing 2 pending changes by you" → retests queries to validate pending intent edits behave as expected
+1. User opens Lifestyle Discovery
+2. Selects images from the Visual Picker that reflect their retirement aspirations, or uploads a personal photo
+3. AI analyzes selections → returns a lifestyle tier classification with reasoning
+4. User receives personalized product recommendations aligned to their retirement profile
+5. User can retry or explore alternative selections
 
-**Business value:** Running against production by default ensures the preview reflects real customer experience. The per-user pending changes overlay lets makers validate their own work without coordinating with other makers or polluting a shared staging environment. The routing trace provides explainability — essential for regulatory inquiries about how the chatbot handles specific queries.
+**Business value:** Demonstrates how AI can personalize financial product recommendations based on inferred customer preferences — a high-value cross-selling use case. The image-based interface is more engaging than traditional questionnaires and captures implicit lifestyle preferences that customers may not articulate directly.
 
-```mermaid
-sequenceDiagram
-    actor Tester as Technical BA
-    participant UI as Chat Interface
-    participant Toggle as Mode Toggle
-    participant Router as Routing Engine
-    participant Guard as Guardrails
-    participant Agent as AI Agent
-
-    Tester->>Toggle: Select mode:<br/>Production or Preview My Pending Changes
-    Toggle-->>UI: Load intent DB<br/>(production ± user's pending diffs)
-    Tester->>UI: Type test query
-    UI->>Router: Route query
-    Router->>Router: Match intent\n(confidence: 94%)
-    Router->>Guard: Pre-LLM screening
-    Guard-->>Router: PASSED
-    Router->>Agent: Invoke agent
-    Agent-->>Router: AI response
-    Router->>Guard: Post-LLM screening
-    Guard-->>Router: PASSED
-    Router->>UI: Response + routing trace
-    UI->>Tester: View response\n+ full trace details
-```
-
-> [Screenshot: Chatbot Preview — chat interface with routing trace expanded and pending changes banner]
+> [Screenshot: Lifestyle Discovery — image picker and Vision Upload side-by-side with tier classification result]
 
 ---
 
-### 3.5 Active Agents — *View / Configure (TBD) AI agent behavior*
+### 3.5 Active Agents — *Configure AI agent behavior*
 
 **Primary users:** Technical BA (edit) | ADMIN (edit + approve) | BA, DEV (view-only)
 
-Manages the AI agents that generate responses for GenAI-mode intents. Each agent has a system prompt, model configuration, and assigned intents.
+Manages the AI agents that generate responses for GenAI-mode intents. Each agent is a configured LLM instance with its own system prompt, model parameters, and assigned intents. Technical BAs have full control over agent behavior through the platform — no developer deployment required.
 
-The level of access to agent configuration is TBD. Two possible routes:
-
-#### Route A: View-Only (with activation toggle)
+Agents are pre-provisioned per domain (e.g., one agent per product area or customer journey), with the specific agent set determined by the bank's chatbot scope. The platform manages their configuration, not their creation.
 
 **What users can do:**
-- View all agents with status, category, session count, and performance metrics (error rate, avg response time)
-- Toggle agent status (active/inactive) — requires maker-checker approval
-- Disable an agent — requires maker-checker approval
-- Monitor per-agent metrics: sessions handled, error rate, average response time
-
-Agent configuration (system prompt, model parameters, intent routing) is **managed by the development team** and deployed via code/config pipelines. Technical BAs can activate/deactivate agents but cannot modify their behavior.
+- Search and filter agents by name, category, or description
+- Edit agent system prompt (up to 4,000 characters) — defines the agent's personality, knowledge boundaries, and response style
+- Select the AI model from configured options — trade-off between capability and cost/speed
+- Adjust temperature (0.0-1.0) — lower = more deterministic, higher = more creative
+- Set max tokens — controls response length
+- Edit intent routing via checkbox editor — select which intents this agent handles
+- Toggle agent status (Active/Inactive) — requires maker-checker approval
+- View per-agent performance metrics: sessions handled, fallback rate %, average latency (ms), customer satisfaction score
 
 **Key workflow:**
 
-1. Technical BA views agent list → identifies underperforming agent (high error rate)
-2. Technical BA toggles agent to inactive → submitted for approval
-3. Checker approves → agent deactivated, intents fall back to template responses
-4. Development team investigates and fixes the agent configuration via deployment
-5. Technical BA re-activates agent → submitted for approval → checker approves
+1. Technical BA notices Retirement_Planner has a 3.1% fallback rate in the Observability dashboard
+2. Opens Active Agents → selects Retirement_Planner → reviews system prompt
+3. Edits system prompt to better handle edge cases (e.g., CPF withdrawal at specific ages)
+4. Adjusts temperature from 0.7 to 0.6 for more consistent responses
+5. Submits config change for approval
+6. Checker approves → new config takes effect immediately
+7. Monitors performance metrics → fallback rate drops to 2.4%
 
-```mermaid
-flowchart TD
-    A[View Agent List\n+ Performance Metrics] --> B{Issue Detected?}
-    B -->|Yes| C[Toggle Agent\nInactive]
-    C --> D[Submit for\nApproval]
-    D --> E{Checker Decision}
-    E -->|Approved| F[Agent Deactivated\nFallback to Templates]
-    E -->|Rejected| G[Remains Active]
-    F --> H[Dev Team Fixes\nvia Deployment]
-    H --> I[Re-activate\nAgent]
-    B -->|No| J[Continue\nMonitoring]
-
-    style F fill:#ffcdd2,stroke:#c62828
-    style J fill:#c8e6c9,stroke:#2e7d32
-```
-
-#### Route B: Fully Configurable
-
-**What users can do:**
-- Everything in Route A, plus:
-- Edit agent configuration: name, description, category, system prompt, model selection, temperature, max tokens
-- Edit intent routing: select which intents are routed to this agent (checkbox list)
-
-Technical BAs have full control over agent behavior. Changes go through maker-checker approval before taking effect.
-
-**Key workflow:**
-
-1. Technical BA selects an existing agent to configure (e.g., "Retirement_Planner")
-2. Technical BA edits system prompt and tunes model parameters (temperature, max tokens)
-3. Technical BA updates intent routing — assigns or unassigns intents
-4. Technical BA submits configuration change for approval
-5. Checker approves → agent config updated
-6. Technical BA monitors performance metrics → adjusts if error rate is high
+**Business value:** Gives Technical BAs direct control over agent behavior without waiting for developer deployments. System prompt editing is the highest-leverage tuning mechanism — it can dramatically change response quality without model retraining. The per-agent performance metrics create a feedback loop: tune → deploy → measure → repeat.
 
 ```mermaid
 flowchart TD
@@ -399,17 +369,15 @@ flowchart TD
     B --> C[Update Intent\nRouting]
     C --> D[Submit for\nApproval]
     D --> E{Checker Decision}
-    E -->|Approved| F[Config Updated]
+    E -->|Approved| F[Config Updated\nImmediately]
     E -->|Rejected| G[Revise Config]
-    F --> H[Monitor Metrics\nError Rate · Response Time]
-    H -->|Issues| I[Adjust Config\n→ Re-approve]
+    F --> H[Monitor Performance\nSessions · Fallback · Latency]
+    H -->|Issues| I[Re-tune\n→ Re-approve]
 
     style F fill:#c8e6c9,stroke:#2e7d32
 ```
 
-**Business value:** Both routes separate agent availability from intent management. Route A is safer (agent behavior is code-controlled), while Route B gives Technical BAs faster iteration without waiting for developer deployments.
-
-> [Screenshot: Active Agents — agent list with metrics and configuration panel]
+> [Screenshot: Active Agents — agent list with inline config editor, intent routing checkboxes, and performance metrics]
 
 ---
 
@@ -421,56 +389,73 @@ Two-part module managing (a) response templates used for Template-mode intents, 
 
 #### Templates
 
-- Create and edit markdown templates with `{{variable}}` placeholders
+Templates are managed response texts linked to specific intents. The actual template set is determined by the bank's product and compliance requirements.
+
+**What users can do:**
+- Create and edit markdown templates with `{{variable}}` placeholders — variables are auto-extracted on save
+- Preview template with sample variable substitution: `{{user_name}}` → "Ahmad Razali", `{{cpf_balance}}` → "S$128,450"
+- View linked intents display — see which intents currently use this template
 - Link templates to specific intents
-- Preview template with sample variable substitution
-- Publish templates with version control (requires approval)
-- Restore prior template versions
+- View version history with expandable rows: version number, timestamp, actor, change description, and restore button
+- Publish templates via "Publish" button → confirmation → creates approval (actionType: `template.publish`)
+- Restore prior template versions — requires maker-checker approval
 
 #### Documents
 
-- Upload knowledge documents (PDF, DOCX, TXT, URL)
-- Assign domain tags (Retirement Planning, Home Loans, etc.)
-- Monitor indexing status: Pending → Indexed → or Failed/Stale
-- Trigger re-indexing for stale or failed documents
-- Bulk re-index operations
+Knowledge documents (PDF, DOCX, TXT, and URL sources) that feed the AI's retrieval-augmented generation. The document set grows as the bank's knowledge base expands.
+
+**What users can do:**
+- Upload knowledge documents via upload modal: drag-drop or file picker, file type selector, domain multi-select checkboxes
+- Assign domain tags: Retirement Planning, Home Loans, Card Services, Compliance
+- Monitor indexing status lifecycle: Pending (pulsing amber) → Indexed (emerald) | Failed (red) | Stale (gray)
+- View chunk count per document (e.g., 47 chunks for a 2,840 KB PDF)
+- View Indexing Hub sidebar: shows 5 recent indexing events with success/failure results
+- Trigger re-indexing for stale or failed documents — requires approval
+- Delete documents — requires approval
+- Bulk re-index operations — requires approval
 
 **Key workflow (Templates):**
 
 1. Technical BA drafts template: "Your projected payout is {{payout_amount}} starting at age {{retirement_age}}"
-2. Technical BA links template to intent "CPF_Payout_Inquiry"
-3. Technical BA submits for publish → Checker approves → template goes live
-4. When intent matches in Template mode, variables are substituted from context
+2. System auto-extracts variables: `payout_amount`, `retirement_age`
+3. Technical BA previews with sample data: "Your projected payout is S$1,850 starting at age 65"
+4. Technical BA links template to intent "CPF_Payout_Inquiry"
+5. Technical BA clicks "Publish" → confirmation dialog → approval created (actionType: `template.publish`)
+6. Checker approves → template goes live
+7. When intent matches in Template mode, variables are substituted from context
 
 **Key workflow (Documents):**
 
-1. Technical BA uploads updated product brochure PDF
-2. Technical BA assigns domain tag "Retirement Planning"
-3. System indexes document (chunks + embeds for AI retrieval)
-4. Status moves from Pending → Indexed
+1. Technical BA opens upload modal → drags updated product brochure PDF
+2. Selects file type "PDF" → checks domain tags "Retirement Planning"
+3. System indexes document: chunks content, generates embeddings → Indexing Hub sidebar shows progress
+4. Status moves from Pending (pulsing amber) → Indexed (emerald) — chunk count: 47 chunks
 5. AI agents can now reference this document in GenAI responses
+6. Months later, document shows "Stale" status → Technical BA triggers re-index → approval required
 
-**Business value:** Templates provide deterministic, safe responses for high-risk intents (guaranteed consistency). Documents keep the AI's knowledge base current without retraining.
+**Business value:** Templates provide deterministic, safe responses for high-risk intents (guaranteed consistency). The `{{variable}}` system enables personalization without AI risk — responses are fixed but context-aware. Documents keep the AI's knowledge base current without retraining, and the indexing status lifecycle ensures stale knowledge is flagged before it causes incorrect responses.
 
 ```mermaid
 flowchart LR
     subgraph Templates["Template Track"]
-        T1[Draft Template\nwith Variables] --> T2[Link to\nIntents]
-        T2 --> T3[Publish\nfor Approval]
-        T3 --> T4[Template\nGoes Live]
+        T1[Draft Template\nwith Variables] --> T2[Preview with\nSample Data]
+        T2 --> T3[Link to\nIntents]
+        T3 --> T4[Publish\nfor Approval]
+        T4 --> T5[Template\nGoes Live]
     end
 
     subgraph Documents["Document Track"]
-        D1[Upload\nDocument] --> D2[Assign Domain\nTags]
+        D1[Upload via\nDrag-Drop Modal] --> D2[Assign Domain\nTags]
         D2 --> D3[Auto-Index\nChunk + Embed]
         D3 --> D4[Available for\nAI Retrieval]
+        D4 -->|Stale| D5[Re-index\nfor Approval]
     end
 
     style Templates fill:#e8f5e9,stroke:#2e7d32
     style Documents fill:#e3f2fd,stroke:#1565c0
 ```
 
-> [Screenshot: Content Library — template editor with variable preview and document list with indexing status]
+> [Screenshot: Content Library — template editor with variable preview, version history, and document list with indexing status and Indexing Hub sidebar]
 
 ---
 
@@ -487,9 +472,8 @@ Configures the safety layer that screens all AI interactions. Prevents the chatb
 - Adjust sensitivity levels for hallucination detection: Off / Low / Medium / High / Strict
 - Adjust sensitivity levels for prompt injection detection: Off / Low / Medium / High / Strict
 - Toggle PII masking on/off
-- Test queries against guardrail rules and see pass/block/flag results
-- View guardrail stats: queries screened, blocks this week
-- Trigger full re-index of knowledge documents (for stale/failed documents)
+- Test queries against guardrail rules and see pass/block/flag results with detailed explanations
+- **Note:** Guardrails Config is currently accessed as an embedded panel within the Observability dashboard, not as a standalone tab
 
 **Key workflow:**
 
@@ -528,7 +512,7 @@ A read-only, immutable log of every action taken in the platform. Cannot be modi
 
 **What users can do:**
 - View chronological log of all system actions
-- Filter by: action type, entity type (intent/agent/template/guardrail/system/approval), actor role (TBA/MGMT/ADMIN/BA/DEV), severity (info/warning/critical)
+- Filter by: action type, entity type (intent/agent/template/guardrail/document/system/approval), actor role (TBA/MGMT/ADMIN/BA/DEV), severity (info/warning/critical)
 - Search by actor name, entity name, or description
 - Set date range for targeted investigation
 - Expand events to view before/after state diffs (for configuration changes)
@@ -562,16 +546,16 @@ flowchart LR
 
 **Primary users:** Technical BA (approve/reject) | MGMT (approve/reject) | ADMIN (approve/reject + kill switch)
 
-The central approval hub. All maker-checker items across the entire platform flow here. Also houses the global kill switch for emergency AI shutdown.
+The central approval hub. All maker-checker items across the entire platform flow here.
 
 **What users can do:**
 - View pending approval queue (all actions awaiting checker decision)
-- Review change details: what changed, who submitted, when, and why
+- Review change details: what changed, who submitted, when, and why (with action type badges color-coded by category)
 - Approve pending actions with optional review note
 - Reject pending actions with mandatory rejection reason
-- Submit kill switch activation / deactivation (requires maker-checker approval before taking effect)
 - View recent decisions (last 5 approved/rejected items)
-- Monitor kill switch status bar (red alert when active)
+
+**Note:** Kill switch activation/deactivation controls are in the **Observability** dashboard, not Change Control. Kill switch approval requests do appear in the Change Control queue for checker sign-off.
 
 **Key workflow (Approval):**
 
@@ -615,7 +599,7 @@ flowchart TD
     style K fill:#c8e6c9,stroke:#2e7d32
 ```
 
-> [Screenshot: Change Control — approval queue with kill switch status bar]
+> [Screenshot: Change Control — pending approval queue with action type badges and approve/reject flows]
 
 ---
 
@@ -673,6 +657,7 @@ Every write operation in the platform follows the **"never alone" principle** (M
 | **Agents** | Config change, Status change, Kill switch |
 | **Guardrails** | Policy change |
 | **Templates** | Publish, Restore |
+| **Documents** | Reindex, Delete, Full reindex |
 | **System** | Kill switch activation, Kill switch deactivation |
 
 ```mermaid
@@ -712,26 +697,27 @@ The kill switch is the platform's "break glass" mechanism. **Both activation and
 - **State persists** — kill switch state survives page refreshes and session changes
 
 **Where the kill switch appears:**
-- **Executive Dashboard** — status indicator (visible to all roles)
-- **Change Control** — activation/deactivation controls (TBA, ADMIN submit; TBA/MGMT/ADMIN approve)
-- **Chatbot Preview** — routing trace shows kill switch state per query
+- **Observability** — activation/deactivation controls with confirmation dialog (creates approval + audit event)
+- **Change Control** — kill switch approval requests appear in the queue for checker sign-off
+- **Top header** — pulsing red "Kill Switch Active" badge when enabled; green "System Secure" indicator when disabled
+- **Lifestyle Discovery** — falls back to Visual Picker only (Vision Upload disabled) when kill switch is active
 
 ---
 
 ## 6. How Tabs Connect — End-to-End Lifecycle
 
-The 9 modules form a complete lifecycle for chatbot content management, from knowledge discovery through production deployment and ongoing monitoring:
+The 11 modules form a complete lifecycle for chatbot content management, from knowledge discovery through production deployment and ongoing monitoring:
 
 ```mermaid
 graph LR
-    ID["Intent\nDiscovery"] -->|"discovered\nintents"| AI["Active\nIntents"]
+    ID["Topic\nDiscovery"] -->|"discovered\nintents"| AI["Active\nTopics"]
     AI -->|"intent\nrouting"| AG["Active\nAgents"]
     CL["Content\nLibrary"] -->|"templates"| AI
     CL -->|"knowledge\ndocs"| AG
-    GR["Guardrails\nConfig"] -->|"safety\npolicies"| CP["Chatbot\nPreview"]
+    GR["Guardrails\nConfig"] -->|"safety\npolicies"| CP["Bot Tech\nBenchmark"]
     AG -->|"agent\nconfig"| CP
     AI -->|"live\nintents"| CP
-    CP -->|"metrics"| ED["Executive\nDashboard"]
+    CP -->|"metrics"| ED["Observability"]
 
     AI -. "writes" .-> CC["Change\nControl"]
     AG -. "writes" .-> CC
@@ -752,14 +738,14 @@ graph LR
 
 **The lifecycle in narrative form:**
 
-1. **Discover & Create** — Upload knowledge documents → AI identifies new/changed intents → create manually or accept AI suggestions → promote to production (Intent Discovery)
-2. **Manage** — View, edit, filter, and maintain existing intents — adjust response modes, review per-intent history, restore versions (Active Intents)
+1. **Discover & Create** — Upload knowledge documents → AI identifies new/changed intents → create manually or accept AI suggestions → promote to production (Topic Discovery)
+2. **Manage** — View, edit, filter, and maintain existing intents — adjust response modes, review per-intent history, restore versions (Active Topics)
 3. **Support** — Create response templates and upload knowledge documents for AI retrieval (Content Library)
 4. **Configure** — Set up AI agents with system prompts and route intents to them (Active Agents)
 5. **Protect** — Define guardrail policies: blocked topics, denied phrases, sensitivity levels (Guardrails Config)
-6. **Test** — Preview the full routing pipeline against production, with optional per-user pending changes overlay (Chatbot Preview)
+6. **Discover Lifestyle Preferences** — Use AI-powered image-based assessment to classify customer lifestyle tier and generate personalized product recommendations (Lifestyle Discovery)
 7. **Approve** — Review and approve all changes through maker-checker workflow (Change Control)
-8. **Monitor** — Track query volume, agent performance, cost, and guardrail hit rates (Executive Dashboard)
+8. **Monitor** — Track query volume, agent performance, cost, guardrail hit rates, and kill switch controls (Observability)
 9. **Audit** — Every action is permanently recorded for compliance and investigation (Audit Trail)
 
 ---

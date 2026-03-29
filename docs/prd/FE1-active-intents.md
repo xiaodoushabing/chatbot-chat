@@ -56,13 +56,14 @@ When `exclude`, show a `Ban` icon badge ("No AI") beside the selector.
 
 ### 4a. Generate Utterances
 - Button: `✨ Generate utterances` (Sparkles icon, OCBC red) — next to utterances section header
-- On click: set `isGeneratingUtterances: true` for 1500ms, then append 3 "suggested" utterances (objects with `{ text, suggested: true }`)
-- Suggested items: dashed border, amber-tinted background, accept (click to keep, converts to regular) or dismiss (× removes)
+- On click: set `isGeneratingUtterances: true` for 500ms simulated delay, then append 3 "suggested" utterances (objects with `{ text, suggested: true }`)
+- Suggested items: dashed border, amber-tinted background, accept (click to keep, converts to regular) or dismiss (x removes)
 - Mock: generate 3 phrasings based on the current intent name
+- Loading state shows pulsing Sparkles icon with "Generating..." text
 
 ### 4b. Draft Response
 - Button: `✨ Draft response` (Sparkles icon, OCBC red) — next to Response label
-- On click: set `isDraftingResponse: true` for 1500ms, then fill textarea with mock RAG draft
+- On click: set `isDraftingResponse: true` for 500ms simulated delay, then fill textarea with mock RAG draft
 - Show "Revert" link to restore original response
 - Mock: `"Based on our knowledge base: " + current response + " [AI-drafted — please review before saving]"`
 
@@ -117,16 +118,20 @@ pendingApproval?: boolean
 
 ## Mock Data Plan
 
-| Intent | Mode | Env | Notes |
-|--------|------|-----|-------|
-| OCBC_360_Salary_Credit | genai | production | existing |
-| Home_Loan_Repayment_Impact | genai | production | existing, high risk |
-| OCBC_Life_Goals_Retirement | genai | production | existing |
-| Account_Balance_Query | genai | production | existing |
-| Card_Replacement | genai | production | existing |
-| International_Transfer | genai | production | existing, high risk |
-| Investment_Product_Inquiry | exclude | production | **new** — demonstrates exclude mode |
-| CPF_Retirement_Advisory | genai | staging | **new** — demonstrates staging + promote flow |
+| Intent | Mode | Env | Risk | Notes |
+|--------|------|-----|------|-------|
+| OCBC_360_Salary_Credit | genai | production | Low | existing |
+| Home_Loan_Repayment_Impact | genai | production | High | existing, high risk |
+| OCBC_Life_Goals_Retirement | genai | production | Low | existing |
+| Account_Balance_Query | genai | production | Low | existing |
+| International_Transfer | genai | production | High | existing, high risk |
+| Investment_Product_Inquiry | exclude | production | High | demonstrates exclude mode |
+| CPF_Retirement_Advisory | genai | staging | Low | demonstrates staging + promote flow |
+
+**Response Mode Color Coding:**
+- GenAI → emerald (`bg-emerald-600 text-white`) — AI-generated responses
+- Template → amber (`bg-amber-500 text-white`) — pre-approved static responses
+- Exclude → slate (`bg-slate-500 text-white`) — blocked topics, no response generated
 
 ---
 
