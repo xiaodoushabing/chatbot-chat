@@ -1,5 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 
+export const config = { runtime: 'edge' };
+
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 const WOW_VISION_PROMPT = `You are a retirement lifestyle advisor at OCBC Bank Singapore. Your role is to help customers understand how their lifestyle aspirations connect to their retirement financial plan.
@@ -12,17 +14,27 @@ Analyse this image and classify the retirement lifestyle tier it represents into
 Respond with ONLY valid JSON in this exact format (no markdown, no extra text):
 {"tier":"aspirational","reasoning":"2 sentences: describe specifically what you see in the image and why it maps to this retirement tier.","advice":"2–3 sentences of specific OCBC retirement advice for this tier. For aspirational: mention OCBC Premier Banking, Wealth Management, or overseas investment. For balanced: mention OCBC RoboInvest, CPF Investment Scheme (CPFIS), or SRS contributions. For essential: mention OCBC 360 Account, CPF voluntary top-ups, or Life Goals savings plan. Always reference CPF LIFE as Singapore's foundation retirement income scheme."}`;
 
-export default async function handler(req: any, res: any) {
-  if (req.method === 'OPTIONS') {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-    return res.status(204).end();
+export default async function handler(request: Request) {
+  if (request.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+      },
+    });
   }
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-  if (!process.env.ANTHROPIC_API_KEY) return res.status(500).json({ error: 'ANTHROPIC_API_KEY is not configured' });
 
-  const { image, mimeType } = req.body;
+  if (request.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 });
+  }
+
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return new Response(JSON.stringify({ error: 'ANTHROPIC_API_KEY is not configured' }), { status: 500 });
+  }
+
+  const { image, mimeType } = await request.json();
 
   try {
     const base64Data = image.includes(',') ? image.split(',')[1] : image;
@@ -35,7 +47,7 @@ export default async function handler(req: any, res: any) {
       : rawMime === 'image/jpg' ? 'image/jpeg' : 'image/jpeg';
 
     const response = await client.messages.create({
-      model: 'claude-haiku-4-5-20251001',
+      model: 'claude-haiku-4-5',
       max_tokens: 512,
       messages: [{
         role: 'user',
@@ -53,9 +65,14 @@ export default async function handler(req: any, res: any) {
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error('No JSON in response');
     const result = JSON.parse(jsonMatch[0]);
-    return res.status(200).json(result);
+    return new Response(JSON.stringify(result), {
+      headers: { 'Content-Type': 'application/json' },
+    });
   } catch (err: any) {
     console.error('[wow-vision] error:', err?.message ?? err);
-    return res.status(500).json({ error: err?.message ?? 'Vision analysis failed. Please try again.' });
+    return new Response(
+      JSON.stringify({ error: err?.message ?? 'Vision analysis failed. Please try again.' }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } },
+    );
   }
 }

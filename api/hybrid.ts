@@ -1,5 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 
+export const config = { runtime: 'edge' };
+
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 const RETIREMENT_KNOWLEDGE_BASE = `
@@ -147,41 +149,65 @@ Guidelines:
 - Ask one follow-up question when more context would help personalise the answer
 - Always relate advice back to the customer's retirement outcomes`;
 
-export default async function handler(req: any, res: any) {
-  if (req.method === 'OPTIONS') {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-    return res.status(204).end();
-  }
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-  if (!process.env.ANTHROPIC_API_KEY) return res.status(500).json({ error: 'ANTHROPIC_API_KEY is not configured' });
-
-  const { message } = req.body;
-
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
-
-  try {
-    const stream = client.messages.stream({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 400,
-      system: SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: message }],
+export default async function handler(request: Request) {
+  if (request.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+      },
     });
-    for await (const event of stream) {
-      if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
-        res.write(`data: ${JSON.stringify({ type: 'delta', text: event.delta.text })}\n\n`);
-      }
-    }
-    res.write(`data: ${JSON.stringify({ type: 'end' })}\n\n`);
-  } catch (err: any) {
-    const errorMsg = err?.status === 429
-      ? "I'm experiencing high demand right now. Please try again in a moment."
-      : "I'm sorry, I encountered an error. Please try again.";
-    res.write(`data: ${JSON.stringify({ type: 'delta', text: errorMsg })}\n\n`);
-    res.write(`data: ${JSON.stringify({ type: 'end' })}\n\n`);
   }
-  res.end();
+
+  if (request.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 });
+  }
+
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return new Response(JSON.stringify({ error: 'ANTHROPIC_API_KEY is not configured' }), { status: 500 });
+  }
+
+  const { message } = await request.json();
+
+  const encoder = new TextEncoder();
+
+  const stream = client.messages.stream({
+    model: 'claude-haiku-4-5',
+    max_tokens: 400,
+    system: SYSTEM_PROMPT,
+    messages: [{ role: 'user', content: message }],
+  });
+
+  const readable = new ReadableStream({
+    async start(controller) {
+      try {
+        for await (const event of stream) {
+          if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+            const payload = JSON.stringify({ type: 'delta', text: event.delta.text });
+            controller.enqueue(encoder.encode(`data: ${payload}\n\n`));
+          }
+        }
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'end' })}\n\n`));
+      } catch (err: any) {
+        console.error('[hybrid] error:', err?.message ?? err);
+        const errorMsg = err?.status === 429
+          ? "I'm experiencing high demand right now. Please try again in a moment."
+          : "I'm sorry, I encountered an error. Please try again.";
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'delta', text: errorMsg })}\n\n`));
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'end' })}\n\n`));
+      } finally {
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(readable, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive',
+    },
+  });
 }
