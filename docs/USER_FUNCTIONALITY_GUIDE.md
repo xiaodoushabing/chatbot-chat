@@ -343,7 +343,7 @@ Agents are pre-provisioned per domain (e.g., one agent per product area or custo
 
 **What users can do:**
 - Search and filter agents by name, category, or description
-- Edit agent system prompt (up to 4,000 characters) — defines the agent's personality, knowledge boundaries, and response style
+- Edit agent system prompt (up to 4,000 (TBD) characters) — defines the agent's personality, knowledge boundaries, and response style
 - Select the AI model from configured options — trade-off between capability and cost/speed
 - Adjust temperature (0.0-1.0) — lower = more deterministic, higher = more creative
 - Set max tokens — controls response length
@@ -393,7 +393,7 @@ Templates are managed response texts linked to specific intents. The actual temp
 
 **What users can do:**
 - Create and edit markdown templates with `{{variable}}` placeholders — variables are auto-extracted on save
-- Preview template with sample variable substitution: `{{user_name}}` → "Ahmad Razali", `{{cpf_balance}}` → "S$128,450"
+- Preview template with sample variable substitution: `{{user_name}}` → "John Doe", `{{cpf_balance}}` → "S$120,000"
 - View linked intents display — see which intents currently use this template
 - Link templates to specific intents
 - View version history with expandable rows: version number, timestamp, actor, change description, and restore button
@@ -409,7 +409,7 @@ Knowledge documents (PDF, DOCX, TXT, and URL sources) that feed the AI's retriev
 - Assign domain tags: Retirement Planning, Home Loans, Card Services, Compliance
 - Monitor indexing status lifecycle: Pending (pulsing amber) → Indexed (emerald) | Failed (red) | Stale (gray)
 - View chunk count per document (e.g., 47 chunks for a 2,840 KB PDF)
-- View Indexing Hub sidebar: shows 5 recent indexing events with success/failure results
+- View Indexing Hub sidebar: shows recent indexing events with success/failure results
 - Trigger re-indexing for stale or failed documents — requires approval
 - Delete documents — requires approval
 - Bulk re-index operations — requires approval
@@ -516,7 +516,7 @@ A read-only, immutable log of every action taken in the platform. Cannot be modi
 - Search by actor name, entity name, or description
 - Set date range for targeted investigation
 - Expand events to view before/after state diffs (for configuration changes)
-- Paginate through results (15 per page)
+- Paginate through results
 - Export filtered results as CSV for compliance reporting
 
 **Key workflow:**
@@ -553,7 +553,7 @@ The central approval hub. All maker-checker items across the entire platform flo
 - Review change details: what changed, who submitted, when, and why (with action type badges color-coded by category)
 - Approve pending actions with optional review note
 - Reject pending actions with mandatory rejection reason
-- View recent decisions (last 5 approved/rejected items)
+- View recent decisions (e.g., last 5 approved/rejected items)
 
 **Note:** Kill switch activation/deactivation controls are in the **Observability** dashboard, not Change Control. Kill switch approval requests do appear in the Change Control queue for checker sign-off.
 
@@ -706,34 +706,45 @@ The kill switch is the platform's "break glass" mechanism. **Both activation and
 
 ## 6. How Tabs Connect — End-to-End Lifecycle
 
-The 11 modules form a complete lifecycle for chatbot content management, from knowledge discovery through production deployment and ongoing monitoring:
+The platform's 8 operational modules form a complete lifecycle for chatbot content management, from knowledge discovery through production deployment and ongoing monitoring:
 
 ```mermaid
 graph LR
-    ID["Topic\nDiscovery"] -->|"discovered\nintents"| AI["Active\nTopics"]
-    AI -->|"intent\nrouting"| AG["Active\nAgents"]
-    CL["Content\nLibrary"] -->|"templates"| AI
-    CL -->|"knowledge\ndocs"| AG
-    GR["Guardrails\nConfig"] -->|"safety\npolicies"| CP["Bot Tech\nBenchmark"]
-    AG -->|"agent\nconfig"| CP
-    AI -->|"live\nintents"| CP
-    CP -->|"metrics"| ED["Observability"]
+    subgraph Content["Content Management"]
+        ID["Topic\nDiscovery"] -->|"discovered\nintents"| AI["Active\nTopics"]
+        CL["Content\nLibrary"] -->|"templates"| AI
+        CL -->|"knowledge\ndocs"| AG
+    end
 
-    AI -. "writes" .-> CC["Change\nControl"]
+    subgraph Operations["AI Operations"]
+        AI -->|"intent\nrouting"| AG["Active\nAgents"]
+        GR["Guardrails\nConfig"]
+    end
+
+    subgraph Governance["Governance"]
+        CC["Change\nControl"] -. "every\naction" .-> AT["Audit\nTrail"]
+        ED["Observability"]
+    end
+
+    LD["Lifestyle\nDiscovery\n(standalone)"]
+
+    AG -->|"metrics"| ED
+    GR -->|"safety\npolicies"| ED
+
+    AI -. "writes" .-> CC
     AG -. "writes" .-> CC
     GR -. "writes" .-> CC
     CL -. "writes" .-> CC
-    CC -. "every\naction" .-> AT["Audit\nTrail"]
 
     style ID fill:#e8f5e9,stroke:#2e7d32
     style AI fill:#e8f5e9,stroke:#2e7d32
     style CL fill:#e8f5e9,stroke:#2e7d32
     style AG fill:#fff3e0,stroke:#ef6c00
     style GR fill:#fff3e0,stroke:#ef6c00
-    style CP fill:#fff3e0,stroke:#ef6c00
     style ED fill:#e3f2fd,stroke:#1565c0
     style AT fill:#e3f2fd,stroke:#1565c0
     style CC fill:#e3f2fd,stroke:#1565c0
+    style LD fill:#f5f5f5,stroke:#9e9e9e
 ```
 
 **The lifecycle in narrative form:**
@@ -743,10 +754,11 @@ graph LR
 3. **Support** — Create response templates and upload knowledge documents for AI retrieval (Content Library)
 4. **Configure** — Set up AI agents with system prompts and route intents to them (Active Agents)
 5. **Protect** — Define guardrail policies: blocked topics, denied phrases, sensitivity levels (Guardrails Config)
-6. **Discover Lifestyle Preferences** — Use AI-powered image-based assessment to classify customer lifestyle tier and generate personalized product recommendations (Lifestyle Discovery)
-7. **Approve** — Review and approve all changes through maker-checker workflow (Change Control)
-8. **Monitor** — Track query volume, agent performance, cost, guardrail hit rates, and kill switch controls (Observability)
-9. **Audit** — Every action is permanently recorded for compliance and investigation (Audit Trail)
+6. **Approve** — Every write from steps 1–5 routes through maker-checker review before taking effect (Change Control)
+7. **Monitor** — Track query volume, agent performance, cost, guardrail hit rates, and kill switch controls (Observability)
+8. **Audit** — Every action is permanently recorded for compliance and investigation (Audit Trail)
+
+> **Lifestyle Discovery** is a standalone AI profiling tool that operates independently of the above lifecycle. It is used to demonstrate and validate image-based lifestyle classification for personalized product recommendations — not part of the chatbot configuration pipeline.
 
 ---
 
