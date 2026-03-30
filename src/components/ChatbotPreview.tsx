@@ -1094,7 +1094,7 @@ export default function ChatbotPreview({ sidebarOpen = true, onSubViewChange }: 
             </div>
 
             {/* Ask a question */}
-            <form onSubmit={handleSend} className="flex flex-col gap-3 bg-white rounded-2xl border border-slate-200 shadow-sm p-5 w-[26rem] shrink-0">
+            <form onSubmit={handleSend} className="flex flex-col gap-3 bg-white rounded-2xl border border-slate-200 shadow-sm p-5 w-[23.5rem] shrink-0">
               <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Ask a question</span>
               <textarea
                 value={input}
@@ -1132,7 +1132,7 @@ export default function ChatbotPreview({ sidebarOpen = true, onSubViewChange }: 
           </div>
 
           {/* Right column: query chips + ask a question — height matches phone frame */}
-          <div className="w-[26rem] shrink-0 sticky top-6 flex flex-col gap-3 h-[541px]">
+          <div className="w-[23.5rem] shrink-0 sticky top-6 flex flex-col gap-3 h-[541px]">
             {/* Query chips */}
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-3 flex flex-col gap-2.5 overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
               <div className="flex flex-col gap-1">
