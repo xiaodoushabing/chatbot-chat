@@ -1188,84 +1188,86 @@ export default function LifestyleDiscovery() {
         </div>
       </div>
 
-      {/* Expandable: Visual Picker */}
-      <div className="px-6">
-        <button
-          onClick={() => setShowPicker(v => !v)}
-          className="w-full flex items-center justify-between px-5 py-3 bg-white border border-slate-200 rounded-2xl hover:border-slate-300 transition-all shadow-sm"
-        >
-          <div className="flex items-center gap-3">
-            <span className="text-sm font-bold text-slate-800">Visual Picker</span>
-            <span className="text-xs text-slate-400">Pick photos that speak to you — AI infers your lifestyle from vibes alone.</span>
-          </div>
-          {showPicker ? <ChevronUp size={18} className="text-slate-400" /> : <ChevronDown size={18} className="text-slate-400" />}
-        </button>
-        <AnimatePresence>
-          {showPicker && (
-            <motion.div
-              key="picker-expand"
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.25, ease: 'easeInOut' }}
-              className="overflow-hidden"
+      {/* Appendix expandables */}
+      <div className="px-6 pt-4 border-t border-slate-100 mt-2">
+        <p className="text-[11px] font-medium text-slate-400 uppercase tracking-widest mb-3">Appendix — other approaches</p>
+        <div className="flex flex-col gap-2">
+          {/* Visual Picker */}
+          <div>
+            <button
+              onClick={() => setShowPicker(v => !v)}
+              className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-700 transition-colors py-1"
             >
-              <div className="flex items-end gap-4 justify-center pt-6">
-                <ImagePickerPhone key={`picker-${resetKey}`} />
-                <TechCard
-                  title="Visual Picker"
-                  subtitle="Pick photos that speak to you — AI infers your lifestyle from vibes alone."
-                  pros={['Effortless — no uploads needed', 'Fun & engaging discovery flow', 'No privacy concerns']}
-                  cons={['Relies on curated image pool', 'Less personalised', 'User may not find their vibe']}
-                  tags={[
-                    { text: 'Zero-friction', style: 'bg-green-50 text-green-700 border-green-200' },
-                    { text: 'Guided', style: 'bg-blue-50 text-blue-700 border-blue-200' },
-                  ]}
-                />
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+              <ChevronDown size={14} className={cn('transition-transform', showPicker && 'rotate-180')} />
+              <span>Visual Picker</span>
+              <span className="text-xs text-slate-300">— curated image selection</span>
+            </button>
+            <AnimatePresence>
+              {showPicker && (
+                <motion.div
+                  key="picker-expand"
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2, ease: 'easeInOut' }}
+                  className="overflow-hidden"
+                >
+                  <div className="flex items-end gap-4 justify-center py-5">
+                    <ImagePickerPhone key={`picker-${resetKey}`} />
+                    <TechCard
+                      title="Visual Picker"
+                      subtitle="Pick photos that speak to you — AI infers your lifestyle from vibes alone."
+                      pros={['Effortless — no uploads needed', 'Fun & engaging discovery flow', 'No privacy concerns']}
+                      cons={['Relies on curated image pool', 'Less personalised', 'User may not find their vibe']}
+                      tags={[
+                        { text: 'Zero-friction', style: 'bg-green-50 text-green-700 border-green-200' },
+                        { text: 'Guided', style: 'bg-blue-50 text-blue-700 border-blue-200' },
+                      ]}
+                    />
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
 
-      {/* Expandable: Hybrid Visual */}
-      <div className="px-6">
-        <button
-          onClick={() => setShowHybrid(v => !v)}
-          className="w-full flex items-center justify-between px-5 py-3 bg-white border border-slate-200 rounded-2xl hover:border-slate-300 transition-all shadow-sm"
-        >
-          <div className="flex items-center gap-3">
-            <span className="text-sm font-bold text-slate-800">Hybrid Visual</span>
-            <span className="text-xs text-slate-400">Browse curated images and upload your own — the best of both worlds.</span>
-          </div>
-          {showHybrid ? <ChevronUp size={18} className="text-slate-400" /> : <ChevronDown size={18} className="text-slate-400" />}
-        </button>
-        <AnimatePresence>
-          {showHybrid && (
-            <motion.div
-              key="hybrid-expand"
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.25, ease: 'easeInOut' }}
-              className="overflow-hidden"
+          {/* Hybrid Visual */}
+          <div>
+            <button
+              onClick={() => setShowHybrid(v => !v)}
+              className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-700 transition-colors py-1"
             >
-              <div className="flex items-end gap-4 justify-center pt-6">
-                <HybridVisualPhone key={`hybrid-${resetKey}`} />
-                <TechCard
-                  title="Hybrid Visual"
-                  subtitle="Browse curated images and upload your own — the best of both worlds."
-                  pros={['Maximum flexibility — browse OR upload', 'Caters to both passive and active users', 'Most comprehensive lifestyle signal']}
-                  cons={['More complex UI — potentially overwhelming', 'Higher development/maintenance cost', 'Users may skip upload if curated images suffice']}
-                  tags={[
-                    { text: 'Hybrid', style: 'bg-orange-50 text-orange-700 border-orange-200' },
-                    { text: 'Flexible', style: 'bg-teal-50 text-teal-700 border-teal-200' },
-                  ]}
-                />
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+              <ChevronDown size={14} className={cn('transition-transform', showHybrid && 'rotate-180')} />
+              <span>Hybrid Visual</span>
+              <span className="text-xs text-slate-300">— curated images + photo upload</span>
+            </button>
+            <AnimatePresence>
+              {showHybrid && (
+                <motion.div
+                  key="hybrid-expand"
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2, ease: 'easeInOut' }}
+                  className="overflow-hidden"
+                >
+                  <div className="flex items-end gap-4 justify-center py-5">
+                    <HybridVisualPhone key={`hybrid-${resetKey}`} />
+                    <TechCard
+                      title="Hybrid Visual"
+                      subtitle="Browse curated images and upload your own — the best of both worlds."
+                      pros={['Maximum flexibility — browse OR upload', 'Caters to both passive and active users', 'Most comprehensive lifestyle signal']}
+                      cons={['More complex UI — potentially overwhelming', 'Higher development/maintenance cost', 'Users may skip upload if curated images suffice']}
+                      tags={[
+                        { text: 'Hybrid', style: 'bg-orange-50 text-orange-700 border-orange-200' },
+                        { text: 'Flexible', style: 'bg-teal-50 text-teal-700 border-teal-200' },
+                      ]}
+                    />
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
       </div>
     </div>
   );
