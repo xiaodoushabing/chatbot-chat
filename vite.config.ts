@@ -129,9 +129,14 @@ export default defineConfig(async ({mode}) => {
   const plugins: PluginOption[] = [react(), tailwindcss()];
 
   if (mode === 'development') {
-    const { default: Anthropic } = await import('@anthropic-ai/sdk');
-    const { RAG_SYSTEM_PROMPT, RAG_SYSTEM_PROMPT_GENAI } = await import('./chatbot_demo/src/lib/knowledge-base');
-    plugins.push(ragApiPlugin(env.ANTHROPIC_API_KEY, Anthropic, RAG_SYSTEM_PROMPT_GENAI, RAG_SYSTEM_PROMPT));
+    try {
+      const { default: Anthropic } = await import('@anthropic-ai/sdk');
+      const knowledgeBasePath = './chatbot_demo/src/lib/knowledge-base';
+      const { RAG_SYSTEM_PROMPT, RAG_SYSTEM_PROMPT_GENAI } = await import(/* @vite-ignore */ knowledgeBasePath);
+      plugins.push(ragApiPlugin(env.ANTHROPIC_API_KEY, Anthropic, RAG_SYSTEM_PROMPT_GENAI, RAG_SYSTEM_PROMPT));
+    } catch {
+      console.warn('chatbot_demo not found — skipping local RAG API plugin');
+    }
   }
 
   return {

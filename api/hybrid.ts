@@ -180,34 +180,41 @@ export default async function handler(request: Request) {
     : SYSTEM_PROMPT;
 
   const encoder = new TextEncoder();
-
-  const stream = client.messages.stream({
-    model: 'claude-haiku-4-5',
+  const streamParams = {
+    model: 'claude-haiku-4-5' as const,
     max_tokens: 400,
     system: systemPrompt,
-    messages: [{ role: 'user', content: message }],
-  });
+    messages: [{ role: 'user' as const, content: message }],
+  };
 
   const readable = new ReadableStream({
     async start(controller) {
-      try {
-        for await (const event of stream) {
-          if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
-            const payload = JSON.stringify({ type: 'delta', text: event.delta.text });
-            controller.enqueue(encoder.encode(`data: ${payload}\n\n`));
+      async function tryStream(attemptsLeft: number): Promise<void> {
+        try {
+          const stream = client.messages.stream(streamParams);
+          for await (const event of stream) {
+            if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+              const payload = JSON.stringify({ type: 'delta', text: event.delta.text });
+              controller.enqueue(encoder.encode(`data: ${payload}\n\n`));
+            }
           }
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'end' })}\n\n`));
+        } catch (err: any) {
+          if (err?.status === 401 && attemptsLeft > 0) {
+            console.warn('[hybrid] 401 transient — retrying in 500ms');
+            await new Promise(r => setTimeout(r, 500));
+            return tryStream(attemptsLeft - 1);
+          }
+          console.error('[hybrid] error:', err?.message ?? err);
+          const errorMsg = err?.status === 429
+            ? "I'm experiencing high demand right now. Please try again in a moment."
+            : "I'm sorry, I encountered an error. Please try again.";
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'delta', text: errorMsg })}\n\n`));
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'end' })}\n\n`));
         }
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'end' })}\n\n`));
-      } catch (err: any) {
-        console.error('[hybrid] error:', err?.message ?? err);
-        const errorMsg = err?.status === 429
-          ? "I'm experiencing high demand right now. Please try again in a moment."
-          : "I'm sorry, I encountered an error. Please try again.";
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'delta', text: errorMsg })}\n\n`));
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'end' })}\n\n`));
-      } finally {
-        controller.close();
       }
+      await tryStream(1);
+      controller.close();
     },
   });
 

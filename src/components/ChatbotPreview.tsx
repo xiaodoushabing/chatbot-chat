@@ -600,7 +600,7 @@ function PhoneColumn({ engine, state, showTraces, onButtonClick }: {
   return (
     <div className="flex flex-col items-center gap-3">
       {/* Phone frame */}
-      <div className="relative w-[300px] h-[570px] bg-black rounded-[44px] p-[3px] shadow-2xl">
+      <div className="relative w-[300px] h-[541px] bg-black rounded-[44px] p-[3px] shadow-2xl">
         <div className="w-full h-full bg-[#F2F2F7] rounded-[42px] overflow-hidden flex flex-col">
           {/* Dynamic island */}
           <div className="flex justify-center pt-3 pb-1 shrink-0">
@@ -1132,9 +1132,9 @@ export default function ChatbotPreview({ sidebarOpen = true, onSubViewChange }: 
           </div>
 
           {/* Right column: query chips + ask a question — height matches phone frame */}
-          <div className="w-[26rem] shrink-0 sticky top-6 flex flex-col gap-3 h-[570px]">
+          <div className="w-[26rem] shrink-0 sticky top-6 flex flex-col gap-3 h-[541px]">
             {/* Query chips */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 flex flex-col gap-4 overflow-y-auto flex-1" style={{ scrollbarWidth: 'none' }}>
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 flex flex-col gap-4 overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
               <div className="flex flex-col gap-1.5">
                 <span className="text-xs font-bold text-teal-600 uppercase tracking-widest">Simple</span>
                 {SIMPLE_QUERIES.map(q => (
@@ -1174,22 +1174,23 @@ export default function ChatbotPreview({ sidebarOpen = true, onSubViewChange }: 
             </div>
 
             {/* Ask a question */}
-            <form onSubmit={handleSend} className="flex items-center gap-2 bg-white rounded-2xl border border-slate-200 shadow-sm p-3">
-              <input
-                type="text"
+            <form onSubmit={handleSend} className="flex flex-col gap-2 bg-white rounded-2xl border border-slate-200 shadow-sm p-3 flex-1 min-h-0">
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-widest shrink-0">Ask a question</span>
+              <textarea
                 value={input}
                 onChange={e => setInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(e); } }}
                 disabled={isAnySending}
                 placeholder="Ask a question..."
-                className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#E3000F] transition-all disabled:opacity-50 min-w-0"
+                className="flex-1 min-h-0 w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#E3000F] transition-all disabled:opacity-50 resize-none"
               />
               <button
                 type="submit"
                 disabled={isAnySending || !input.trim()}
-                className="bg-[#E3000F] text-white px-4 py-2 rounded-xl hover:bg-red-700 transition-all shadow-md shadow-red-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 font-bold text-sm shrink-0"
+                className="w-full bg-[#E3000F] text-white py-2 rounded-xl hover:bg-red-700 transition-all shadow-md shadow-red-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 font-bold text-sm shrink-0"
               >
                 <Send size={13} />
-                Send
+                Send to all
               </button>
             </form>
           </div>
