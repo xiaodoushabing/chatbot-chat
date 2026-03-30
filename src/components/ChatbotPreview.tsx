@@ -428,15 +428,69 @@ function simulateHybrid(input: string): HybridResult {
 
 // ─── Markdown renderer ────────────────────────────────────────────────────────
 
+function isTableLine(line: string): boolean {
+  const t = line.trim();
+  return t.startsWith('|') && t.endsWith('|') && (t.match(/\|/g) ?? []).length >= 2;
+}
+
+function parseTableRow(line: string): string[] {
+  return line.split('|').filter((_, idx, arr) => idx > 0 && idx < arr.length - 1).map(c => c.trim());
+}
+
 function renderMarkdown(text: string): React.ReactNode {
-  return text.split('\n').map((line, i) => {
+  const lines = text.split('\n');
+  const nodes: React.ReactNode[] = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+
+    if (isTableLine(line)) {
+      const tableLines: string[] = [];
+      while (i < lines.length && isTableLine(lines[i])) {
+        tableLines.push(lines[i]);
+        i++;
+      }
+      const isSeparator = (l: string) => /^\|[\s|:-]+\|$/.test(l.trim());
+      const headers = parseTableRow(tableLines[0]);
+      const dataRows = tableLines.slice(1).filter(l => !isSeparator(l)).map(parseTableRow);
+      nodes.push(
+        <div key={`table-${i}`} className="overflow-x-auto my-1">
+          <table className="text-xs border-collapse w-full">
+            <thead>
+              <tr>
+                {headers.map((h, hi) => (
+                  <th key={hi} className="border border-gray-300 px-2 py-1 bg-gray-50 font-semibold text-left whitespace-nowrap">
+                    {renderInline(h)}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {dataRows.map((row, ri) => (
+                <tr key={ri} className={ri % 2 === 1 ? 'bg-gray-50' : ''}>
+                  {row.map((cell, ci) => (
+                    <td key={ci} className="border border-gray-300 px-2 py-1">{renderInline(cell)}</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+      continue;
+    }
+
     const orderedMatch = line.match(/^(\d+)\.\s+(.*)/);
-    if (orderedMatch) return <p key={i} className="ml-2"><span className="font-semibold">{orderedMatch[1]}.</span> {renderInline(orderedMatch[2])}</p>;
+    if (orderedMatch) { nodes.push(<p key={i} className="ml-2"><span className="font-semibold">{orderedMatch[1]}.</span> {renderInline(orderedMatch[2])}</p>); i++; continue; }
     const unorderedMatch = line.match(/^[-*]\s+(.*)/);
-    if (unorderedMatch) return <p key={i} className="ml-2 before:content-['•'] before:mr-1">{renderInline(unorderedMatch[1])}</p>;
-    if (line.trim() === '') return <div key={i} className="h-1" />;
-    return <p key={i}>{renderInline(line)}</p>;
-  });
+    if (unorderedMatch) { nodes.push(<p key={i} className="ml-2 before:content-['•'] before:mr-1">{renderInline(unorderedMatch[1])}</p>); i++; continue; }
+    if (line.trim() === '') { nodes.push(<div key={i} className="h-1" />); i++; continue; }
+    nodes.push(<p key={i}>{renderInline(line)}</p>);
+    i++;
+  }
+
+  return nodes;
 }
 
 function renderInline(text: string): React.ReactNode {

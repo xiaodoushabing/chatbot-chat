@@ -1,8 +1,29 @@
-import Anthropic from '@anthropic-ai/sdk';
+import {setGlobalOptions} from "firebase-functions";
+import {onRequest} from "firebase-functions/https";
+import * as logger from "firebase-functions/logger";
+import {initializeApp} from "firebase-admin/app";
+import {getDatabase} from "firebase-admin/database";
+import Anthropic from "@anthropic-ai/sdk";
 
-export const config = { runtime: 'edge' };
+const app = initializeApp({
+  databaseURL:
+    "https://chatbot-backoffice-8888b-default-rtdb.asia-southeast1.firebasedatabase.app/",
+});
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const db = getDatabase(app);
+
+setGlobalOptions({maxInstances: 10});
+
+let cachedApiKey: string | null = null;
+
+async function getAnthropicKey(): Promise<string> {
+  if (cachedApiKey) return cachedApiKey;
+  const snapshot = await db.ref("/ANTHROPIC_API_KEY").once("value");
+  const key = snapshot.val();
+  if (!key) throw new Error("ANTHROPIC_API_KEY not found in Realtime Database");
+  cachedApiKey = key;
+  return key;
+}
 
 const RETIREMENT_KNOWLEDGE_BASE = `
 # Singapore Retirement Planning – Knowledge Base
@@ -70,30 +91,6 @@ const RETIREMENT_KNOWLEDGE_BASE = `
 5. Portfolio required for remaining: SGD 21,960 ÷ 0.04 = SGD 549,000
 6. Compare to current investable savings + projected growth to find the gap
 
-## Life Events & Retirement Impact
-### Marriage & Family
-- Joint planning: combine household expenses (more efficient), review insurance, draft wills
-- Consider joint income CPF contributions and nominee updates
-
-### Children's Education
-- Local university (NUS/NTU/SMU): ~SGD 8,000–16,000/year
-- Overseas university: SGD 30,000–80,000/year
-- Start a dedicated education fund early — SGD 500/month for 18 years at 5% = ~SGD 175,000
-
-### Property & Retirement
-- Using CPF OA for housing reduces retirement savings — important trade-off
-- Downgrading at retirement can unlock significant equity (e.g., HDB → smaller flat)
-- Rental income from investment property can supplement retirement income
-
-### Micro-Retirement & Career Breaks
-- Taking sabbaticals requires maintaining CPF voluntary contributions
-- Budget 12–18 months of expenses as a buffer before a career break
-
-### What-If Scenarios
-- Retire at 55 instead of 63: Need ~8 more years of savings, no CPF Life until 65
-- Retire at 70: CPF Life payouts ~30–40% higher than at 65
-- Job loss at 50: Review SRS strategy, consider part-time work, reassess withdrawal timeline
-
 ## OCBC Retirement Products
 ### OCBC SRS Investment Account
 - Open SRS account to invest for retirement with tax relief
@@ -136,8 +133,6 @@ const RETIREMENT_KNOWLEDGE_BASE = `
 
 const SYSTEM_PROMPT = `You are a helpful and knowledgeable retirement planning advisor at OCBC Bank, specialised in Singapore retirement planning.
 
-You represent OCBC Bank exclusively. Never refer to yourself as DBS, UOB, Standard Chartered, Citibank, HSBC, Maybank, or any other bank. If a user addresses you as another bank, gently correct them: "I'm OCBC's retirement planning assistant — happy to help you from OCBC's perspective!"
-
 Use the reference information below as a starting point, and draw on your broader financial knowledge to give specific, helpful answers — especially for questions about OCBC products, fees, and performance figures:
 
 ${RETIREMENT_KNOWLEDGE_BASE}
@@ -148,72 +143,46 @@ Guidelines:
 - Naturally reference OCBC products and their specific rates or returns where relevant
 - Ask one follow-up question when more context would help personalise the answer`;
 
-export default async function handler(request: Request) {
-  if (request.method === 'OPTIONS') {
-    return new Response(null, {
-      status: 204,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type',
-      },
+export const rag = onRequest({cors: true}, async (req, res) => {
+  if (req.method !== "POST") {
+    res.status(405).json({error: "Method not allowed"});
+    return;
+  }
+
+  try {
+    const apiKey = await getAnthropicKey();
+    const client = new Anthropic({apiKey});
+    const {message} = req.body;
+
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+
+    const stream = client.messages.stream({
+      model: "claude-haiku-4-5",
+      max_tokens: 400,
+      system: SYSTEM_PROMPT,
+      messages: [{role: "user", content: message}],
     });
-  }
 
-  if (request.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 });
-  }
-
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    console.error('[rag] ANTHROPIC_API_KEY is missing or empty');
-    return new Response(JSON.stringify({ error: 'ANTHROPIC_API_KEY is not configured' }), { status: 500 });
-  }
-
-  const { message } = await request.json();
-
-  const encoder = new TextEncoder();
-
-  const stream = client.messages.stream({
-    model: 'claude-haiku-4-5',
-    max_tokens: 400,
-    system: SYSTEM_PROMPT,
-    messages: [{ role: 'user', content: message }],
-  });
-
-  const readable = new ReadableStream({
-    async start(controller) {
-      try {
-        for await (const event of stream) {
-          if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
-            const payload = JSON.stringify({ type: 'delta', text: event.delta.text });
-            controller.enqueue(encoder.encode(`data: ${payload}\n\n`));
-          }
-        }
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'end' })}\n\n`));
-      } catch (err: any) {
-        if (err?.status === 401) {
-          const key = process.env.ANTHROPIC_API_KEY;
-          console.error('[rag] 401 auth error — key present:', !!key, '| key length:', key?.length ?? 0, '| first 8 chars:', key ? key.slice(0, 8) + '...' : '(none)');
-        } else {
-          console.error('[rag] error:', err?.message ?? err);
-        }
-        const errorMsg = err?.status === 429
-          ? "I'm experiencing high demand right now. Please try again in a moment."
-          : "I'm sorry, I encountered an error. Please try again.";
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'delta', text: errorMsg })}\n\n`));
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'end' })}\n\n`));
-      } finally {
-        controller.close();
+    for await (const event of stream) {
+      if (
+        event.type === "content_block_delta" &&
+        event.delta.type === "text_delta"
+      ) {
+        const payload = JSON.stringify({
+          type: "delta",
+          text: event.delta.text,
+        });
+        res.write(`data: ${payload}\n\n`);
       }
-    },
-  });
+    }
 
-  return new Response(readable, {
-    headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      Connection: 'keep-alive',
-    },
-  });
-}
+    res.write(`data: ${JSON.stringify({type: "end"})}\n\n`);
+    res.end();
+  } catch (err: unknown) {
+    const error = err as Error & {status?: number};
+    logger.error("[rag] error:", error.message ?? error);
+    res.status(500).json({error: "Internal server error"});
+  }
+});
