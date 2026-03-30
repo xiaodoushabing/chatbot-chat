@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { RefreshCw, Camera, Shuffle, Sparkles, CheckCircle2, ImageIcon, RotateCcw } from 'lucide-react';
+import { RefreshCw, Camera, Shuffle, Sparkles, CheckCircle2, ImageIcon, RotateCcw, MessageCircle, Send, Upload } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -8,7 +8,7 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-type LifestyleTier = 'aspirational' | 'balanced' | 'essential';
+type LifestyleTier = 'enhanced' | 'comfortable' | 'basic';
 
 interface TierResult {
   tier: LifestyleTier;
@@ -32,8 +32,8 @@ const TIER_CONFIG: Record<LifestyleTier, {
   products: { name: string; url: string }[];
   desc: string;
 }> = {
-  aspirational: {
-    label: 'Aspirational',
+  enhanced: {
+    label: 'Enhanced',
     color: 'text-amber-700',
     border: 'border-amber-200',
     badge: 'bg-amber-100 text-amber-800 border border-amber-300',
@@ -44,8 +44,8 @@ const TIER_CONFIG: Record<LifestyleTier, {
     ],
     desc: 'Luxury travel, fine dining & premium experiences',
   },
-  balanced: {
-    label: 'Balanced',
+  comfortable: {
+    label: 'Comfortable',
     color: 'text-blue-700',
     border: 'border-blue-200',
     badge: 'bg-blue-100 text-blue-800 border border-blue-300',
@@ -56,8 +56,8 @@ const TIER_CONFIG: Record<LifestyleTier, {
     ],
     desc: 'Family-oriented, moderate lifestyle & travel',
   },
-  essential: {
-    label: 'Essential',
+  basic: {
+    label: 'Basic',
     color: 'text-green-700',
     border: 'border-green-200',
     badge: 'bg-green-100 text-green-800 border border-green-300',
@@ -74,59 +74,59 @@ const TIER_CONFIG: Record<LifestyleTier, {
 
 const _I = '/lifestyle-images/';
 const ALL_IMAGES: PickerImage[] = [
-  // Aspirational — luxury, premium
-  { id: 'asp1', url: `${_I}asp1.jpg`, tier: 'aspirational' },
-  { id: 'asp4', url: `${_I}asp4.jpg`, tier: 'aspirational' },
-  { id: 'asp5', url: `${_I}asp5.jpg`, tier: 'aspirational' },
-  { id: 'asp6', url: `${_I}asp6.jpg`, tier: 'aspirational' },
-  { id: 'asp7', url: `${_I}asp7.jpg`, tier: 'aspirational' },
-  { id: 'g_8rfx', url: `${_I}Gemini_Generated_Image_8rfxn18rfxn18rfx.jpg`, tier: 'aspirational' },
-  { id: 'g_fbak', url: `${_I}Gemini_Generated_Image_fbak99fbak99fbak.jpg`, tier: 'aspirational' },
-  { id: 'g_x0y6', url: `${_I}Gemini_Generated_Image_x0y6ekx0y6ekx0y6.jpg`, tier: 'aspirational' },
-  { id: 'g_xlpf', url: `${_I}Gemini_Generated_Image_xlpftxxlpftxxlpf.jpg`, tier: 'aspirational' },
-  { id: 'u_iwood', url: `${_I}iwood-R5v8Xtc0ecg-unsplash.jpg`, tier: 'aspirational' },
-  { id: 'u_kyle', url: `${_I}kyle-head-PW8K-W-Kni0-unsplash.jpg`, tier: 'aspirational' },
-  { id: 'u_neom', url: `${_I}neom-HXW26Gw8bk4-unsplash.jpg`, tier: 'aspirational' },
-  { id: 'u_valeriia', url: `${_I}valeriia-bugaiova-_pPHgeHz1uk-unsplash.jpg`, tier: 'aspirational' },
-  { id: 'u_nils', url: `${_I}nils-nedel-ONpGBpns3cs-unsplash.jpg`, tier: 'aspirational' },
-  { id: 'u_elena', url: `${_I}elena-mozhvilo-zGppw6GUA40-unsplash.jpg`, tier: 'aspirational' },
-  { id: 'u_aleksandr', url: `${_I}aleksandr-popov-hTv8aaPziOQ-unsplash.jpg`, tier: 'aspirational' },
-  // Balanced — family, travel, hobbies
-  { id: 'bal2', url: `${_I}bal2.jpg`, tier: 'balanced' },
-  { id: 'bal3', url: `${_I}bal3.jpg`, tier: 'balanced' },
-  { id: 'bal4', url: `${_I}bal4.jpg`, tier: 'balanced' },
-  { id: 'bal5', url: `${_I}bal5.jpg`, tier: 'balanced' },
-  { id: 'bal6', url: `${_I}bal6.jpg`, tier: 'balanced' },
-  { id: 'bal7', url: `${_I}bal7.jpg`, tier: 'balanced' },
-  { id: 'bal8', url: `${_I}bal8.jpg`, tier: 'balanced' },
-  { id: 'g_g3oc', url: `${_I}Gemini_Generated_Image_g3oc9ig3oc9ig3oc.jpg`, tier: 'balanced' },
-  { id: 'g_ny97', url: `${_I}Gemini_Generated_Image_ny976eny976eny97.jpg`, tier: 'balanced' },
-  { id: 'u_aaron', url: `${_I}aaron-burden-cEukkv42O40-unsplash.jpg`, tier: 'balanced' },
-  { id: 'u_charlotte', url: `${_I}charlotte-noelle-98WPMlTl5xo-unsplash.jpg`, tier: 'balanced' },
-  { id: 'u_benjamin', url: `${_I}benjamin-davies-mqN-EV9rNlY-unsplash.jpg`, tier: 'balanced' },
-  { id: 'u_jacqueline', url: `${_I}jacqueline-martinez-5Yx2DKLE6Xw-unsplash.jpg`, tier: 'balanced' },
-  { id: 'u_hans', url: `${_I}hans-jurgen-mager-qQWV91TTBrE-unsplash.jpg`, tier: 'balanced' },
-  { id: 'u_kalen', url: `${_I}kalen-emsley-kGSapVfg8Kw-unsplash.jpg`, tier: 'balanced' },
-  { id: 'u_sagar', url: `${_I}sagar-patil-8UcNYpynFLU-unsplash.jpg`, tier: 'balanced' },
-  { id: 'u_library', url: `${_I}library-of-congress-7LdGlMX1exM-unsplash.jpg`, tier: 'balanced' },
-  { id: 'u_thomas', url: `${_I}thomas-ashlock-RAjND0B3HDw-unsplash.jpg`, tier: 'balanced' },
-  // Essential — wellness, nature, minimalist
-  { id: 'ess1', url: `${_I}ess1.jpg`, tier: 'essential' },
-  { id: 'ess2', url: `${_I}ess2.jpg`, tier: 'essential' },
-  { id: 'ess3', url: `${_I}ess3.jpg`, tier: 'essential' },
-  { id: 'ess4', url: `${_I}ess4.jpg`, tier: 'essential' },
-  { id: 'ess5', url: `${_I}ess5.jpg`, tier: 'essential' },
-  { id: 'ess6', url: `${_I}ess6.jpg`, tier: 'essential' },
-  { id: 'g_23qi', url: `${_I}Gemini_Generated_Image_23qiyt23qiyt23qi.jpg`, tier: 'essential' },
-  { id: 'g_7cdy', url: `${_I}Gemini_Generated_Image_7cdyd77cdyd77cdy.jpg`, tier: 'essential' },
-  { id: 'u_anna', url: `${_I}anna-kolosyuk-D5nh6mCW52c-unsplash.jpg`, tier: 'essential' },
-  { id: 'u_andrew', url: `${_I}andrew-neel-cckf4TsHAuw-unsplash.jpg`, tier: 'essential' },
-  { id: 'u_harli', url: `${_I}harli-marten-M9jrKDXOQoU-unsplash.jpg`, tier: 'essential' },
-  { id: 'u_marc', url: `${_I}marc-najera-SwK6MSxTLDE-unsplash.jpg`, tier: 'essential' },
-  { id: 'u_mo', url: `${_I}mo-jiaming-JXQDFY_W2OM-unsplash.jpg`, tier: 'essential' },
-  { id: 'u_jon', url: `${_I}jon-eckert-IoIbdFdGCnQ-unsplash.jpg`, tier: 'essential' },
-  { id: 'u_or', url: `${_I}or-hakim-S2Eql9vHN3o-unsplash.jpg`, tier: 'essential' },
-  { id: 'u_zakaria', url: `${_I}zakaria-ahada-VGR_ReUCqNw-unsplash.jpg`, tier: 'essential' },
+  // Enhanced — luxury, premium
+  { id: 'asp1', url: `${_I}asp1.jpg`, tier: 'enhanced' },
+  { id: 'asp4', url: `${_I}asp4.jpg`, tier: 'enhanced' },
+  { id: 'asp5', url: `${_I}asp5.jpg`, tier: 'enhanced' },
+  { id: 'asp6', url: `${_I}asp6.jpg`, tier: 'enhanced' },
+  { id: 'asp7', url: `${_I}asp7.jpg`, tier: 'enhanced' },
+  { id: 'g_8rfx', url: `${_I}Gemini_Generated_Image_8rfxn18rfxn18rfx.jpg`, tier: 'enhanced' },
+  { id: 'g_fbak', url: `${_I}Gemini_Generated_Image_fbak99fbak99fbak.jpg`, tier: 'enhanced' },
+  { id: 'g_x0y6', url: `${_I}Gemini_Generated_Image_x0y6ekx0y6ekx0y6.jpg`, tier: 'enhanced' },
+  { id: 'g_xlpf', url: `${_I}Gemini_Generated_Image_xlpftxxlpftxxlpf.jpg`, tier: 'enhanced' },
+  { id: 'u_iwood', url: `${_I}iwood-R5v8Xtc0ecg-unsplash.jpg`, tier: 'enhanced' },
+  { id: 'u_kyle', url: `${_I}kyle-head-PW8K-W-Kni0-unsplash.jpg`, tier: 'enhanced' },
+  { id: 'u_neom', url: `${_I}neom-HXW26Gw8bk4-unsplash.jpg`, tier: 'enhanced' },
+  { id: 'u_valeriia', url: `${_I}valeriia-bugaiova-_pPHgeHz1uk-unsplash.jpg`, tier: 'enhanced' },
+  { id: 'u_nils', url: `${_I}nils-nedel-ONpGBpns3cs-unsplash.jpg`, tier: 'enhanced' },
+  { id: 'u_elena', url: `${_I}elena-mozhvilo-zGppw6GUA40-unsplash.jpg`, tier: 'enhanced' },
+  { id: 'u_aleksandr', url: `${_I}aleksandr-popov-hTv8aaPziOQ-unsplash.jpg`, tier: 'enhanced' },
+  // Comfortable — family, travel, hobbies
+  { id: 'bal2', url: `${_I}bal2.jpg`, tier: 'comfortable' },
+  { id: 'bal3', url: `${_I}bal3.jpg`, tier: 'comfortable' },
+  { id: 'bal4', url: `${_I}bal4.jpg`, tier: 'comfortable' },
+  { id: 'bal5', url: `${_I}bal5.jpg`, tier: 'comfortable' },
+  { id: 'bal6', url: `${_I}bal6.jpg`, tier: 'comfortable' },
+  { id: 'bal7', url: `${_I}bal7.jpg`, tier: 'comfortable' },
+  { id: 'bal8', url: `${_I}bal8.jpg`, tier: 'comfortable' },
+  { id: 'g_g3oc', url: `${_I}Gemini_Generated_Image_g3oc9ig3oc9ig3oc.jpg`, tier: 'comfortable' },
+  { id: 'g_ny97', url: `${_I}Gemini_Generated_Image_ny976eny976eny97.jpg`, tier: 'comfortable' },
+  { id: 'u_aaron', url: `${_I}aaron-burden-cEukkv42O40-unsplash.jpg`, tier: 'comfortable' },
+  { id: 'u_charlotte', url: `${_I}charlotte-noelle-98WPMlTl5xo-unsplash.jpg`, tier: 'comfortable' },
+  { id: 'u_benjamin', url: `${_I}benjamin-davies-mqN-EV9rNlY-unsplash.jpg`, tier: 'comfortable' },
+  { id: 'u_jacqueline', url: `${_I}jacqueline-martinez-5Yx2DKLE6Xw-unsplash.jpg`, tier: 'comfortable' },
+  { id: 'u_hans', url: `${_I}hans-jurgen-mager-qQWV91TTBrE-unsplash.jpg`, tier: 'comfortable' },
+  { id: 'u_kalen', url: `${_I}kalen-emsley-kGSapVfg8Kw-unsplash.jpg`, tier: 'comfortable' },
+  { id: 'u_sagar', url: `${_I}sagar-patil-8UcNYpynFLU-unsplash.jpg`, tier: 'comfortable' },
+  { id: 'u_library', url: `${_I}library-of-congress-7LdGlMX1exM-unsplash.jpg`, tier: 'comfortable' },
+  { id: 'u_thomas', url: `${_I}thomas-ashlock-RAjND0B3HDw-unsplash.jpg`, tier: 'comfortable' },
+  // Basic — wellness, nature, minimalist
+  { id: 'ess1', url: `${_I}ess1.jpg`, tier: 'basic' },
+  { id: 'ess2', url: `${_I}ess2.jpg`, tier: 'basic' },
+  { id: 'ess3', url: `${_I}ess3.jpg`, tier: 'basic' },
+  { id: 'ess4', url: `${_I}ess4.jpg`, tier: 'basic' },
+  { id: 'ess5', url: `${_I}ess5.jpg`, tier: 'basic' },
+  { id: 'ess6', url: `${_I}ess6.jpg`, tier: 'basic' },
+  { id: 'g_23qi', url: `${_I}Gemini_Generated_Image_23qiyt23qiyt23qi.jpg`, tier: 'basic' },
+  { id: 'g_7cdy', url: `${_I}Gemini_Generated_Image_7cdyd77cdyd77cdy.jpg`, tier: 'basic' },
+  { id: 'u_anna', url: `${_I}anna-kolosyuk-D5nh6mCW52c-unsplash.jpg`, tier: 'basic' },
+  { id: 'u_andrew', url: `${_I}andrew-neel-cckf4TsHAuw-unsplash.jpg`, tier: 'basic' },
+  { id: 'u_harli', url: `${_I}harli-marten-M9jrKDXOQoU-unsplash.jpg`, tier: 'basic' },
+  { id: 'u_marc', url: `${_I}marc-najera-SwK6MSxTLDE-unsplash.jpg`, tier: 'basic' },
+  { id: 'u_mo', url: `${_I}mo-jiaming-JXQDFY_W2OM-unsplash.jpg`, tier: 'basic' },
+  { id: 'u_jon', url: `${_I}jon-eckert-IoIbdFdGCnQ-unsplash.jpg`, tier: 'basic' },
+  { id: 'u_or', url: `${_I}or-hakim-S2Eql9vHN3o-unsplash.jpg`, tier: 'basic' },
+  { id: 'u_zakaria', url: `${_I}zakaria-ahada-VGR_ReUCqNw-unsplash.jpg`, tier: 'basic' },
 ];
 
 // Preload all images into browser cache on module load
@@ -178,11 +178,11 @@ function getPickerSet(seen: Set<string> = new Set()): PickerImage[] {
     if (pool.length < 2) pool = ALL_IMAGES.filter(i => i.tier === tier);
     return shuffleArray(pool).slice(0, 2);
   };
-  return shuffleArray([...pick('aspirational'), ...pick('balanced'), ...pick('essential')]);
+  return shuffleArray([...pick('enhanced'), ...pick('comfortable'), ...pick('basic')]);
 }
 
 function getMajorityTier(selected: PickerImage[]): LifestyleTier {
-  const counts: Record<LifestyleTier, number> = { aspirational: 0, balanced: 0, essential: 0 };
+  const counts: Record<LifestyleTier, number> = { enhanced: 0, comfortable: 0, basic: 0 };
   for (const img of selected) counts[img.tier]++;
   return (Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0]) as LifestyleTier;
 }
@@ -348,7 +348,183 @@ function AnalysingBubble() {
   );
 }
 
-// ─── Left phone: AI Vision Upload ──────────────────────────────────────────────
+// ─── Chat phone: multi-turn conversational lifestyle discovery ───────────────────
+
+const CHAT_TIER_KEYWORDS: Record<LifestyleTier, string[]> = {
+  enhanced: [
+    'luxury', 'fine dining', 'premium', 'first class', 'business class', 'yacht', 'designer',
+    'michelin', 'champagne', 'penthouse', 'villa', 'resort', 'spa', 'golf', 'wine', 'art gallery',
+    'couture', 'private', 'exclusive', 'high-end', 'upscale', 'gourmet', 'cruise', 'chauffeur',
+    'concierge', 'bespoke', 'platinum', 'vip', 'mansion', 'caviar', 'lobster',
+  ],
+  comfortable: [
+    'family', 'travel', 'hobby', 'hobbies', 'children', 'kids', 'holiday', 'regional', 'dining out',
+    'cooking', 'garden', 'gardening', 'pets', 'camping', 'photography', 'sports', 'fitness', 'gym',
+    'road trip', 'explore', 'weekend', 'vacation', 'restaurant', 'movie', 'concert', 'music',
+    'cycling', 'swimming', 'hiking', 'beach', 'picnic', 'barbecue', 'friends',
+  ],
+  basic: [
+    'simple', 'nature', 'wellness', 'minimalist', 'yoga', 'meditation', 'walking', 'reading',
+    'community', 'local', 'peaceful', 'quiet', 'park', 'volunteer', 'morning', 'tea', 'sunrise',
+    'modest', 'frugal', 'budget', 'home', 'library', 'temple', 'tai chi', 'calm',
+    'slow', 'mindful', 'sustainable', 'organic', 'baking', 'knitting', 'chess',
+  ],
+};
+
+function scoreTiers(text: string): Record<LifestyleTier, number> {
+  const lower = text.toLowerCase();
+  const scores: Record<LifestyleTier, number> = { enhanced: 0, comfortable: 0, basic: 0 };
+  for (const [tier, keywords] of Object.entries(CHAT_TIER_KEYWORDS) as [LifestyleTier, string[]][]) {
+    for (const kw of keywords) {
+      if (lower.includes(kw)) scores[tier]++;
+    }
+  }
+  return scores;
+}
+
+// Conversation flow: bot asks questions, accumulates keyword signals, then gives result
+const CHAT_QUESTIONS = [
+  "What does a perfect weekend look like for you?",
+  "When you travel, what kind of experience do you look for?",
+  "How do you like to unwind after a long day?",
+];
+
+interface ChatMsg { role: 'user' | 'bot'; text: string; }
+
+function ChatPhone() {
+  const [messages, setMessages] = useState<ChatMsg[]>([]);
+  const [input, setInput] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+  const [questionIndex, setQuestionIndex] = useState(0);
+  const [allUserText, setAllUserText] = useState('');
+  const [result, setResult] = useState<TierResult | null>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    setTimeout(() => { if (bodyRef.current) bodyRef.current.scrollTop = bodyRef.current.scrollHeight; }, 50);
+  };
+
+  const addBotMessage = (text: string) => {
+    setMessages(prev => [...prev, { role: 'bot', text }]);
+    scrollToBottom();
+  };
+
+  const handleSend = () => {
+    const text = input.trim();
+    if (!text || isTyping || result) return;
+    setInput('');
+    const accumulated = allUserText + ' ' + text;
+    setAllUserText(accumulated);
+    setMessages(prev => [...prev, { role: 'user', text }]);
+    setIsTyping(true);
+    scrollToBottom();
+
+    const nextQ = questionIndex + 1;
+
+    setTimeout(() => {
+      if (nextQ < CHAT_QUESTIONS.length) {
+        // Ask the next question
+        addBotMessage(CHAT_QUESTIONS[nextQ]);
+        setQuestionIndex(nextQ);
+      } else {
+        // All questions answered — produce result
+        const scores = scoreTiers(accumulated);
+        const sorted = (Object.entries(scores) as [LifestyleTier, number][]).sort((a, b) => b[1] - a[1]);
+        const tier = sorted[0][1] === 0 ? 'comfortable' : sorted[0][0];
+        const cfg = TIER_CONFIG[tier];
+        setResult({
+          tier,
+          reasoning: `Based on our conversation, your retirement style leans ${tier}. ${cfg.desc}.`,
+          advice: `We recommend building your retirement plan around ${cfg.products[0].name} and ${cfg.products[1].name} to support your ${tier} lifestyle goals. Our advisors can help you map out a personalised CPF and investment strategy.`,
+        });
+        scrollToBottom();
+      }
+      setIsTyping(false);
+    }, 800);
+  };
+
+  const chatFooter = (
+    <form
+      onSubmit={e => { e.preventDefault(); handleSend(); }}
+      className="shrink-0 bg-white border-t border-slate-200 px-3 py-2.5 flex items-center gap-2"
+    >
+      <input
+        type="text"
+        value={input}
+        onChange={e => setInput(e.target.value)}
+        disabled={isTyping || !!result}
+        placeholder="Type your reply..."
+        className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#E3000F] transition-all disabled:opacity-50"
+      />
+      <button
+        type="submit"
+        disabled={isTyping || !input.trim() || !!result}
+        className="w-9 h-9 bg-[#E3000F] rounded-full flex items-center justify-center shrink-0 hover:bg-red-700 transition-colors disabled:opacity-40 shadow-sm"
+      >
+        <Send size={15} className="text-white" />
+      </button>
+    </form>
+  );
+
+  return (
+    <PhoneShell headerLabel="Chat" footer={chatFooter}>
+      <div ref={bodyRef} className="flex flex-col pb-3">
+        <WelcomeBubble message={`Hi! I'd love to learn about your ideal retirement. ${CHAT_QUESTIONS[0]}`} />
+
+        {messages.map((msg, i) => (
+          msg.role === 'user' ? (
+            <motion.div key={i} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+              className="flex justify-end px-3 py-1.5">
+              <div className="bg-[#E3000F] rounded-2xl rounded-br-sm px-3 py-2 max-w-[210px] shadow-sm">
+                <p className="text-sm text-white leading-relaxed">{msg.text}</p>
+              </div>
+            </motion.div>
+          ) : (
+            <motion.div key={i} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+              className="flex items-end gap-2 px-3 py-1.5">
+              <div className="w-6 h-6 bg-slate-700 rounded-full flex items-center justify-center shrink-0">
+                <MessageCircle size={11} className="text-white" />
+              </div>
+              <div className="bg-white rounded-2xl rounded-bl-sm px-3 py-2 shadow-sm max-w-[210px]">
+                <p className="text-sm text-slate-700 leading-relaxed">{msg.text}</p>
+              </div>
+            </motion.div>
+          )
+        ))}
+
+        <AnimatePresence>
+          {isTyping && (
+            <motion.div key="typing" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+              className="flex items-end gap-2 px-3 py-1.5">
+              <div className="w-6 h-6 bg-slate-700 rounded-full flex items-center justify-center shrink-0">
+                <MessageCircle size={11} className="text-white" />
+              </div>
+              <div className="bg-white rounded-2xl rounded-bl-sm px-3 py-2 shadow-sm">
+                <div className="flex gap-1">
+                  {[0, 1, 2].map(i => (
+                    <motion.div key={i} className="w-1.5 h-1.5 rounded-full bg-slate-400"
+                      animate={{ opacity: [0.3, 1, 0.3] }}
+                      transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }} />
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <AnimatePresence>
+          {result && (
+            <motion.div key="result" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
+              <TierResultCard result={result} />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </PhoneShell>
+  );
+}
+
+// ─── Upload phone: AI Vision Upload ──────────────────────────────────────────────
 
 function VisionUploadPhone() {
   const [preview, setPreview] = useState<string | null>(null);
@@ -683,6 +859,267 @@ function ImagePickerPhone() {
   );
 }
 
+// ─── Hybrid Visual phone: picker + upload combined ───────────────────────────────
+
+function HybridVisualPhone() {
+  // Image picker state
+  const [seenIds, setSeenIds] = useState<Set<string>>(() => new Set());
+  const [pickerSet, setPickerSet] = useState(() => getPickerSet());
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [submittedImages, setSubmittedImages] = useState<PickerImage[]>([]);
+  const [refreshesLeft, setRefreshesLeft] = useState(MAX_REFRESHES);
+
+  // Upload state
+  const [uploadPreview, setUploadPreview] = useState<string | null>(null);
+  const [uploadLoading, setUploadLoading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Shared result
+  const [result, setResult] = useState<TierResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    setTimeout(() => { if (bodyRef.current) bodyRef.current.scrollTop = bodyRef.current.scrollHeight; }, 50);
+  };
+
+  useEffect(() => {
+    setSeenIds(prev => {
+      const next = new Set(prev);
+      pickerSet.forEach(img => next.add(img.id));
+      return next;
+    });
+  }, []);
+
+  const toggleSelect = (id: string) => {
+    if (result) return;
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const handleRefresh = () => {
+    if (refreshesLeft === 0) return;
+    const newSet = getPickerSet(seenIds);
+    Promise.all(
+      newSet.map(img => new Promise<void>(resolve => {
+        const el = new Image();
+        el.onload = () => resolve();
+        el.onerror = () => resolve();
+        el.src = img.url;
+      }))
+    ).then(() => {
+      setSeenIds(prev => {
+        const next = new Set(prev);
+        newSet.forEach(img => next.add(img.id));
+        return next;
+      });
+      setPickerSet(newSet);
+      setSelected(new Set());
+      setRefreshesLeft(r => r - 1);
+    });
+  };
+
+  const handleFile = (file: File) => {
+    setError(null);
+    const reader = new FileReader();
+    reader.onload = async e => {
+      const raw = e.target?.result as string;
+      let dataUrl = raw;
+      let mime = 'image/jpeg';
+      try {
+        const compressed = await compressImage(raw, file.type || 'image/jpeg');
+        dataUrl = compressed.dataUrl;
+        mime = compressed.mimeType;
+      } catch { /* use raw */ }
+      setUploadPreview(dataUrl);
+
+      // If images are also selected, call vision API for the upload
+      setUploadLoading(true);
+      scrollToBottom();
+      try {
+        const res = await fetch('/api/wow-vision', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ image: dataUrl, mimeType: mime }),
+        });
+        if (!res.ok) throw new Error('API error');
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        const selectedImages = pickerSet.filter(img => selected.has(img.id));
+        setSubmittedImages(selectedImages);
+        const visionResult = data as TierResult;
+        if (selectedImages.length > 0) {
+          visionResult.reasoning = `${visionResult.reasoning} We also noted your ${selectedImages.length} curated image selection${selectedImages.length > 1 ? 's' : ''} to refine this profile.`;
+        }
+        setResult(visionResult);
+      } catch (err: any) {
+        setError(err.message || 'Analysis failed. Please try again.');
+      } finally {
+        setUploadLoading(false);
+        scrollToBottom();
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleDiscover = () => {
+    if (selected.size === 0) return;
+    const selectedImages = pickerSet.filter(img => selected.has(img.id));
+    setSubmittedImages(selectedImages);
+    const tier = getMajorityTier(selectedImages);
+    const cfg = TIER_CONFIG[tier];
+    setResult({
+      tier,
+      reasoning: `Based on ${selected.size} image${selected.size > 1 ? 's' : ''} you selected, your retirement style leans ${tier}. ${cfg.desc}.`,
+      advice: `We recommend building your retirement plan around ${cfg.products[0].name} and ${cfg.products[1].name} to support your ${tier} lifestyle goals. Our advisors can help you map out a personalised CPF and investment strategy.`,
+    });
+    scrollToBottom();
+  };
+
+  const cols: PickerImage[][] = [[], []];
+  pickerSet.forEach((img, i) => cols[i % 2].push(img));
+  const heights = ['h-24', 'h-20', 'h-28', 'h-20', 'h-24', 'h-28'];
+
+  return (
+    <PhoneShell headerLabel="Hybrid Visual">
+      <div ref={bodyRef} className="flex flex-col h-full">
+        <WelcomeBubble message="Browse and tap images that match your lifestyle, or upload your own photo. I'll combine everything to find your retirement profile." />
+        {!result ? (
+          <>
+            <div className="flex items-center justify-between px-3 pt-2 pb-1">
+              <p className="text-xs text-slate-500 font-medium">Select images or upload a photo</p>
+              <button
+                onClick={handleRefresh}
+                disabled={refreshesLeft === 0}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#E3000F] hover:bg-red-700 disabled:opacity-35 disabled:cursor-not-allowed transition-colors shadow-sm"
+                title={refreshesLeft === 0 ? 'No refreshes left' : `${refreshesLeft} refresh${refreshesLeft !== 1 ? 'es' : ''} left`}
+              >
+                <RefreshCw size={13} className="text-white" />
+                <span className="text-xs font-bold text-white">{refreshesLeft}</span>
+              </button>
+            </div>
+            {/* Masonry grid */}
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={pickerSet.map(i => i.id).join('-')}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+                className="flex gap-0.5 px-0.5 flex-1 min-h-0"
+              >
+                {cols.map((col, ci) => (
+                  <div key={ci} className="flex flex-col gap-0.5 flex-1">
+                    {col.map((img, ri) => {
+                      const hClass = heights[ci === 0 ? ri : ri + 3] ?? 'h-24';
+                      const isSelected = selected.has(img.id);
+                      return (
+                        <motion.button
+                          key={img.id}
+                          initial={{ opacity: 0, scale: 0.92 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ duration: 0.15, ease: 'easeOut' }}
+                          onClick={() => toggleSelect(img.id)}
+                          className={cn(
+                            'relative overflow-hidden rounded-lg transition-all',
+                            hClass,
+                            isSelected ? 'ring-2 ring-[#E3000F] ring-offset-0' : 'opacity-90 hover:opacity-100'
+                          )}
+                        >
+                          <img src={img.url} alt="" className="w-full h-full object-cover" />
+                          {isSelected && (
+                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                              className="absolute inset-0 bg-[#E3000F]/20 flex items-center justify-center">
+                              <CheckCircle2 size={18} className="text-white drop-shadow" />
+                            </motion.div>
+                          )}
+                        </motion.button>
+                      );
+                    })}
+                  </div>
+                ))}
+              </motion.div>
+            </AnimatePresence>
+
+            {/* Uploaded preview */}
+            {uploadPreview && (
+              <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+                className="flex justify-end px-3 py-2">
+                <div className="rounded-2xl rounded-br-sm overflow-hidden max-w-[120px] shadow-sm">
+                  <img src={uploadPreview} alt="Your upload" className="w-full h-auto max-h-[100px] object-cover block" />
+                </div>
+              </motion.div>
+            )}
+
+            <AnimatePresence>
+              {uploadLoading && (
+                <motion.div key="analysing" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+                  <AnalysingBubble />
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {error && (
+              <div className="mx-3 my-1 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
+                <p className="text-sm text-red-600">{error}</p>
+              </div>
+            )}
+
+            {/* Action footer */}
+            <div className="p-3 bg-white shrink-0 flex gap-2 items-center">
+              <button
+                onClick={handleDiscover}
+                disabled={selected.size === 0 || uploadLoading}
+                className="flex-1 bg-[#E3000F] text-white py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-red-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed shadow-sm shadow-red-100"
+              >
+                <Shuffle size={14} />
+                Discover
+                {selected.size > 0 && <span className="bg-white/20 rounded-full px-1.5 py-0.5 text-[10px]">{selected.size}</span>}
+              </button>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadLoading}
+                className="w-11 h-11 bg-[#E3000F] rounded-full flex items-center justify-center shrink-0 hover:bg-red-700 transition-colors disabled:opacity-50 shadow-md"
+              >
+                <Upload size={18} className="text-white" />
+              </button>
+              <input ref={fileInputRef} type="file" accept="image/*" className="hidden"
+                onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ''; }} />
+            </div>
+          </>
+        ) : (
+          <>
+            {submittedImages.length > 0 && (
+              <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+                className="flex justify-end px-3 pt-3 pb-1">
+                <div className="flex flex-wrap gap-1 justify-end max-w-[200px]">
+                  {submittedImages.map(img => (
+                    <div key={img.id} className="w-16 h-16 rounded-xl overflow-hidden shadow-sm shrink-0">
+                      <img src={img.url} alt="" className="w-full h-full object-cover" />
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+            {uploadPreview && (
+              <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+                className="flex justify-end px-3 py-1">
+                <div className="rounded-2xl rounded-br-sm overflow-hidden max-w-[120px] shadow-sm">
+                  <img src={uploadPreview} alt="Your upload" className="w-full h-auto max-h-[100px] object-cover block" />
+                </div>
+              </motion.div>
+            )}
+            <TierResultCard result={result!} />
+          </>
+        )}
+      </div>
+    </PhoneShell>
+  );
+}
+
 // ─── Main component ────────────────────────────────────────────────────────────
 
 export default function LifestyleDiscovery() {
@@ -696,7 +1133,7 @@ export default function LifestyleDiscovery() {
         <div>
           <h2 className="text-3xl font-bold text-slate-900">Lifestyle Discovery</h2>
           <p className="text-slate-500 mt-2 text-base max-w-2xl">
-            Compare two approaches to understanding a customer's retirement lifestyle — letting them upload a personal photo for AI analysis, versus guiding them through a curated visual selection.
+            Compare four approaches to understanding a customer's retirement lifestyle — from text-based chat to visual pickers, photo uploads, and hybrid combinations.
           </p>
         </div>
         <button
@@ -704,14 +1141,44 @@ export default function LifestyleDiscovery() {
           className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-200 hover:border-slate-300 text-sm font-bold text-slate-600 transition-all"
         >
           <RotateCcw size={14} />
-          Reset Chat
+          Reset All
         </button>
       </div>
 
-      {/* Phones + info cards */}
-      <div className="flex gap-6 justify-center flex-wrap xl:flex-nowrap px-6">
-        {/* Left group: Vision Upload phone + card */}
-        <div className="flex items-end gap-4">
+      {/* 2x2 grid of phones + tech cards to the right */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-x-6 gap-y-16 px-6">
+        {/* Top-left: Chat */}
+        <div className="flex items-end gap-4 justify-center xl:justify-end">
+          <ChatPhone key={`chat-${resetKey}`} />
+          <TechCard
+            title="Chat"
+            subtitle="Text-based conversation to discover lifestyle tier through keyword matching."
+            pros={['Already widely-adopted solution', 'No additional infra needed']}
+            cons={['Users must articulate preferences verbally', 'Less intuitive — relies on ability to describe lifestyle', 'Limited for users who "know it when they see it"']}
+            tags={[
+              { text: 'Conversational', style: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
+              { text: 'Text-based', style: 'bg-slate-100 text-slate-700 border-slate-200' },
+            ]}
+          />
+        </div>
+
+        {/* Top-right: Visual Picker */}
+        <div className="flex items-end gap-4 justify-center xl:justify-start">
+          <ImagePickerPhone key={`picker-${resetKey}`} />
+          <TechCard
+            title="Visual Picker"
+            subtitle="Pick photos that speak to you — AI infers your lifestyle from vibes alone."
+            pros={['Effortless — no uploads needed', 'Fun & engaging discovery flow', 'No privacy concerns']}
+            cons={['Relies on curated image pool', 'Less personalised', 'User may not find their vibe']}
+            tags={[
+              { text: 'Zero-friction', style: 'bg-green-50 text-green-700 border-green-200' },
+              { text: 'Guided', style: 'bg-blue-50 text-blue-700 border-blue-200' },
+            ]}
+          />
+        </div>
+
+        {/* Bottom-left: Upload & Analyse */}
+        <div className="flex items-end gap-4 justify-center xl:justify-end">
           <VisionUploadPhone key={`vision-${resetKey}`} />
           <TechCard
             title="Upload & Analyse"
@@ -725,17 +1192,17 @@ export default function LifestyleDiscovery() {
           />
         </div>
 
-        {/* Right group: Image Picker phone + card */}
-        <div className="flex items-end gap-4">
-          <ImagePickerPhone key={`picker-${resetKey}`} />
+        {/* Bottom-right: Hybrid Visual */}
+        <div className="flex items-end gap-4 justify-center xl:justify-start">
+          <HybridVisualPhone key={`hybrid-${resetKey}`} />
           <TechCard
-            title="Visual Picker"
-            subtitle="Pick photos that speak to you — AI infers your lifestyle from vibes alone."
-            pros={['Effortless — no uploads needed', 'Fun & engaging discovery flow', 'No privacy concerns']}
-            cons={['Relies on curated image pool', 'Less personalised', 'User may not find their vibe']}
+            title="Hybrid Visual"
+            subtitle="Browse curated images and upload your own — the best of both worlds."
+            pros={['Maximum flexibility — browse OR upload', 'Caters to both passive and active users', 'Most comprehensive lifestyle signal']}
+            cons={['More complex UI — potentially overwhelming', 'Higher development/maintenance cost', 'Users may skip upload if curated images suffice']}
             tags={[
-              { text: 'Zero-friction', style: 'bg-green-50 text-green-700 border-green-200' },
-              { text: 'Guided', style: 'bg-blue-50 text-blue-700 border-blue-200' },
+              { text: 'Hybrid', style: 'bg-orange-50 text-orange-700 border-orange-200' },
+              { text: 'Flexible', style: 'bg-teal-50 text-teal-700 border-teal-200' },
             ]}
           />
         </div>
