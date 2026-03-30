@@ -1133,6 +1133,7 @@ function HybridVisualPhone() {
 export default function LifestyleDiscovery() {
   const [resetKey, setResetKey] = useState(0);
   const handleReset = () => setResetKey(k => k + 1);
+  const [showAppendix, setShowAppendix] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
   const [showHybrid, setShowHybrid] = useState(false);
 
@@ -1190,8 +1191,24 @@ export default function LifestyleDiscovery() {
 
       {/* Appendix expandables */}
       <div className="px-6 pt-4 border-t border-slate-100 mt-2">
-        <p className="text-[11px] font-medium text-slate-400 uppercase tracking-widest mb-3">Appendix — other approaches</p>
-        <div className="flex flex-col gap-2">
+        <button
+          onClick={() => setShowAppendix(v => !v)}
+          className="flex items-center gap-2 text-[11px] font-medium text-slate-400 uppercase tracking-widest hover:text-slate-600 transition-colors mb-1"
+        >
+          <ChevronDown size={12} className={cn('transition-transform', showAppendix && 'rotate-180')} />
+          Appendix
+        </button>
+        <AnimatePresence>
+        {showAppendix && (
+        <motion.div
+          key="appendix-expand"
+          initial={{ height: 0, opacity: 0 }}
+          animate={{ height: 'auto', opacity: 1 }}
+          exit={{ height: 0, opacity: 0 }}
+          transition={{ duration: 0.2, ease: 'easeInOut' }}
+          className="overflow-hidden"
+        >
+        <div className="flex flex-col gap-2 mt-2">
           {/* Visual Picker */}
           <div>
             <button
@@ -1268,6 +1285,9 @@ export default function LifestyleDiscovery() {
             </AnimatePresence>
           </div>
         </div>
+        </motion.div>
+        )}
+        </AnimatePresence>
       </div>
     </div>
   );
