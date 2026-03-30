@@ -42,7 +42,7 @@ const TIER_CONFIG: Record<LifestyleTier, {
       { name: 'Wealth Advisory', url: 'https://www.ocbc.com/premier-banking/why-join-us' },
       { name: 'Overseas Investment Fund', url: 'https://www.ocbc.com/personal-banking/investments' },
     ],
-    desc: 'Luxury travel, fine dining & premium experiences',
+    desc: 'Global travel, luxury experiences & world exploration',
   },
   comfortable: {
     label: 'Comfortable',
@@ -54,7 +54,7 @@ const TIER_CONFIG: Record<LifestyleTier, {
       { name: 'CPF Investment Scheme', url: 'https://www.cpf.gov.sg/member/growing-your-savings/earning-higher-returns/investing-your-cpf-savings/cpf-investment-scheme-options' },
       { name: 'SRS Account', url: 'https://www.ocbc.com/personal-banking/investments/supplementary-retirement-scheme-account' },
     ],
-    desc: 'Family-oriented, moderate lifestyle & travel',
+    desc: 'Creative pursuits, learning & outdoor adventure in Asia',
   },
   basic: {
     label: 'Basic',
@@ -66,7 +66,7 @@ const TIER_CONFIG: Record<LifestyleTier, {
       { name: 'CPF Voluntary Top-ups', url: 'https://www.cpf.gov.sg/member/growing-your-savings/saving-more-with-cpf/top-up-to-enjoy-higher-retirement-payouts' },
       { name: 'Life Goals Savings', url: 'https://www.ocbc.com/personal-banking/start-planning' },
     ],
-    desc: 'Minimalist, wellness & nature-focused living',
+    desc: 'Community, family & simple wellness living',
   },
 };
 
@@ -354,20 +354,28 @@ const CHAT_TIER_KEYWORDS: Record<LifestyleTier, string[]> = {
   enhanced: [
     'luxury', 'fine dining', 'premium', 'first class', 'business class', 'yacht', 'designer',
     'michelin', 'champagne', 'penthouse', 'villa', 'resort', 'spa', 'golf', 'wine', 'art gallery',
-    'couture', 'private', 'exclusive', 'high-end', 'upscale', 'gourmet', 'cruise', 'chauffeur',
+    'couture', 'private', 'exclusive', 'high-end', 'gourmet', 'cruise', 'chauffeur',
     'concierge', 'bespoke', 'platinum', 'vip', 'mansion', 'caviar', 'lobster',
+    'long trip', 'expedition', 'europe', 'iconic', 'world exploration', 'extended travel',
+    'premium at sea', 'luxury village', 'upscale', 'overseas', 'luxury retirement',
+    'nature expedition', 'iconic destination',
   ],
   comfortable: [
-    'family', 'travel', 'hobby', 'hobbies', 'children', 'kids', 'holiday', 'regional', 'dining out',
+    'travel', 'hobby', 'hobbies', 'children', 'kids', 'holiday', 'regional', 'dining out',
     'cooking', 'garden', 'gardening', 'pets', 'camping', 'photography', 'sports', 'fitness', 'gym',
     'road trip', 'explore', 'weekend', 'vacation', 'restaurant', 'movie', 'concert', 'music',
     'cycling', 'swimming', 'hiking', 'beach', 'picnic', 'barbecue', 'friends',
+    'yoga retreat', 'workshop', 'workshops', 'creative', 'skill', 'learning', 'trekking',
+    'mountain', 'small group', 'outdoor adventure', 'nature in asia', 'asia', 'occasional travel',
+    'scenery', 'cooking class', 'continuous learning', 'outdoor',
   ],
   basic: [
     'simple', 'nature', 'wellness', 'minimalist', 'yoga', 'meditation', 'walking', 'reading',
     'community', 'local', 'peaceful', 'quiet', 'park', 'volunteer', 'morning', 'tea', 'sunrise',
     'modest', 'frugal', 'budget', 'home', 'library', 'temple', 'tai chi', 'calm',
     'slow', 'mindful', 'sustainable', 'organic', 'baking', 'knitting', 'chess',
+    'family', 'family bonding', 'home gathering', 'cosy dining', 'homely', 'gathering',
+    'routine', 'community activity', 'service', 'volunteering', 'purposeful', 'day-to-day',
   ],
 };
 
