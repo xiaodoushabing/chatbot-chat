@@ -276,19 +276,19 @@ function TechCard({
   return (
     <div className="w-[240px] flex flex-col gap-2">
       <div>
-        <p className={cn('font-bold text-slate-800', largeTitle ? 'text-[18px]' : 'text-sm')}>{title}</p>
-        <p className="text-xs text-slate-500 mt-0.5 leading-snug min-h-[28px]">{subtitle}</p>
+        <p className={cn('font-bold text-slate-800', largeTitle ? 'text-[22px]' : 'text-[1.05rem]')}>{title}</p>
+        <p className="text-[0.9rem] text-slate-500 mt-0.5 leading-snug min-h-[28px]">{subtitle}</p>
       </div>
       <div className="flex flex-wrap gap-1">
         {tags.map(t => (
-          <span key={t.text} className={cn('text-[0.65rem] px-2 py-0.5 rounded-full font-semibold border', t.style)}>
+          <span key={t.text} className={cn('text-[0.78rem] px-2 py-0.5 rounded-full font-semibold border', t.style)}>
             {t.text}
           </span>
         ))}
       </div>
       <div className="flex flex-col gap-0.5">
-        {pros.map(p => <p key={p} className="text-xs text-slate-600 flex gap-1"><span className="text-green-500 shrink-0">+</span>{p}</p>)}
-        {cons.map(c => <p key={c} className="text-xs text-slate-500 flex gap-1"><span className="text-red-400 shrink-0">−</span>{c}</p>)}
+        {pros.map(p => <p key={p} className="text-[0.9rem] text-slate-600 flex gap-1"><span className="text-green-500 shrink-0">+</span>{p}</p>)}
+        {cons.map(c => <p key={c} className="text-[0.9rem] text-slate-500 flex gap-1"><span className="text-red-400 shrink-0">−</span>{c}</p>)}
       </div>
     </div>
   );

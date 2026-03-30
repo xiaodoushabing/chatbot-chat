@@ -669,15 +669,15 @@ function PhoneColumn({ engine, state, showTraces, onButtonClick }: {
       {/* Engine info card */}
       <div className="w-[300px] flex flex-col gap-2">
         <div>
-          <p className={cn('text-sm font-bold', info.color)}>{info.label}</p>
-          <p className="text-xs text-slate-500 mt-0.5 leading-snug">{info.desc}</p>
+          <p className={cn('text-[1.05rem] font-bold', info.color)}>{info.label}</p>
+          <p className="text-[0.9rem] text-slate-500 mt-0.5 leading-snug">{info.desc}</p>
         </div>
         <div className="flex flex-wrap gap-1">
-          {info.tags.map(t => <span key={t.text} className={cn('text-[0.65rem] px-2 py-0.5 rounded-full font-semibold border', t.style)}>{t.text}</span>)}
+          {info.tags.map(t => <span key={t.text} className={cn('text-[0.78rem] px-2 py-0.5 rounded-full font-semibold border', t.style)}>{t.text}</span>)}
         </div>
         <div className="flex flex-col gap-0.5">
-          {info.pros.map(p => <p key={p} className="text-xs text-slate-600 flex gap-1"><span className="text-green-500 shrink-0">+</span>{p}</p>)}
-          {info.cons.map(c => <p key={c} className="text-xs text-slate-500 flex gap-1"><span className="text-red-400 shrink-0">−</span>{c}</p>)}
+          {info.pros.map(p => <p key={p} className="text-[0.9rem] text-slate-600 flex gap-1"><span className="text-green-500 shrink-0">+</span>{p}</p>)}
+          {info.cons.map(c => <p key={c} className="text-[0.9rem] text-slate-500 flex gap-1"><span className="text-red-400 shrink-0">−</span>{c}</p>)}
         </div>
       </div>
     </div>
