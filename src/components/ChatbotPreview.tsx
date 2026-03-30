@@ -481,10 +481,17 @@ function renderMarkdown(text: string): React.ReactNode {
       continue;
     }
 
+    const h3Match = line.match(/^###\s+(.*)/);
+    if (h3Match) { nodes.push(<p key={i} className="font-semibold text-gray-800 mt-1">{renderInline(h3Match[1])}</p>); i++; continue; }
+    const h2Match = line.match(/^##\s+(.*)/);
+    if (h2Match) { nodes.push(<p key={i} className="font-bold text-gray-900 mt-1.5">{renderInline(h2Match[1])}</p>); i++; continue; }
+    const h1Match = line.match(/^#\s+(.*)/);
+    if (h1Match) { nodes.push(<p key={i} className="font-bold text-gray-900 mt-1.5">{renderInline(h1Match[1])}</p>); i++; continue; }
     const orderedMatch = line.match(/^(\d+)\.\s+(.*)/);
     if (orderedMatch) { nodes.push(<p key={i} className="ml-2"><span className="font-semibold">{orderedMatch[1]}.</span> {renderInline(orderedMatch[2])}</p>); i++; continue; }
     const unorderedMatch = line.match(/^[-*]\s+(.*)/);
     if (unorderedMatch) { nodes.push(<p key={i} className="ml-2 before:content-['•'] before:mr-1">{renderInline(unorderedMatch[1])}</p>); i++; continue; }
+    if (/^---+$/.test(line.trim())) { nodes.push(<hr key={i} className="border-gray-200 my-1" />); i++; continue; }
     if (line.trim() === '') { nodes.push(<div key={i} className="h-1" />); i++; continue; }
     nodes.push(<p key={i}>{renderInline(line)}</p>);
     i++;
@@ -494,11 +501,11 @@ function renderMarkdown(text: string): React.ReactNode {
 }
 
 function renderInline(text: string): React.ReactNode {
-  return text.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
-    part.startsWith('**') && part.endsWith('**')
-      ? <strong key={i}>{part.slice(2, -2)}</strong>
-      : part
-  );
+  return text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g).map((part, i) => {
+    if (part.startsWith('**') && part.endsWith('**')) return <strong key={i}>{part.slice(2, -2)}</strong>;
+    if (part.startsWith('`') && part.endsWith('`')) return <code key={i} className="bg-gray-100 text-gray-700 px-1 rounded text-[0.7rem] font-mono">{part.slice(1, -1)}</code>;
+    return part;
+  });
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
