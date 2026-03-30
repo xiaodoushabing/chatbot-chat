@@ -801,7 +801,7 @@ export default function App() {
               {activeTab === 'change-control' && <AdminControlInterface approvals={pendingApprovals} onApprovalDecision={processApproval} onAddApproval={addApproval} onAddAuditEvent={addAuditEvent} />}
               {activeTab === 'content-library' && <ContentLibrary onAddApproval={addApproval} onAddAuditEvent={addAuditEvent} pendingApprovals={pendingApprovals} onSubViewChange={setSubViewLabel} />}
               {activeTab === 'preview' && (
-                <div className="p-6">
+                <div className="p-4">
                   <ChatbotPreview sidebarOpen={isSidebarOpen} onSubViewChange={setSubViewLabel} />
                 </div>
               )}

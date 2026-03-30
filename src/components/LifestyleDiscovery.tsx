@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { RefreshCw, Camera, Shuffle, Sparkles, CheckCircle2, ImageIcon, RotateCcw, MessageCircle, Send, Upload, ChevronDown, ChevronUp } from 'lucide-react';
+import { RefreshCw, Camera, Shuffle, Sparkles, CheckCircle2, ImageIcon, RotateCcw, MessageCircle, Send, Upload, ChevronDown, ChevronUp, Bot } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -264,17 +264,19 @@ function TechCard({
   pros,
   cons,
   tags,
+  largeTitle = false,
 }: {
   title: string;
   subtitle: string;
   pros: string[];
   cons: string[];
   tags: { text: string; style: string }[];
+  largeTitle?: boolean;
 }) {
   return (
     <div className="w-[240px] flex flex-col gap-2">
       <div>
-        <p className="text-sm font-bold text-slate-800">{title}</p>
+        <p className={cn('font-bold text-slate-800', largeTitle ? 'text-[18px]' : 'text-sm')}>{title}</p>
         <p className="text-xs text-slate-500 mt-0.5 leading-snug min-h-[28px]">{subtitle}</p>
       </div>
       <div className="flex flex-wrap gap-1">
@@ -1130,7 +1132,7 @@ function HybridVisualPhone() {
 
 // ─── Main component ────────────────────────────────────────────────────────────
 
-export default function LifestyleDiscovery() {
+export default function LifestyleDiscovery({ activeSubView, setActiveSubView }: { activeSubView: string; setActiveSubView: (v: 'chatbot-approaches' | 'lifestyle-discovery') => void }) {
   const [resetKey, setResetKey] = useState(0);
   const handleReset = () => setResetKey(k => k + 1);
   const [showAppendix, setShowAppendix] = useState(false);
@@ -1138,30 +1140,61 @@ export default function LifestyleDiscovery() {
   const [showHybrid, setShowHybrid] = useState(false);
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h2 className="text-3xl font-bold text-slate-900">Lifestyle Discovery</h2>
           <p className="text-slate-500 mt-2 text-base max-w-2xl">
-            Compare four approaches to understanding a customer's retirement lifestyle — from text-based chat to visual pickers, photo uploads, and hybrid combinations.
+            Compare four approaches to understanding a customer's retirement lifestyle.
           </p>
         </div>
-        <button
-          onClick={handleReset}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-200 hover:border-slate-300 text-sm font-bold text-slate-600 transition-all"
-        >
-          <RotateCcw size={14} />
-          Reset All
-        </button>
+        <div className="flex items-center gap-3 flex-wrap">
+          <button
+            onClick={handleReset}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-200 hover:border-slate-300 text-sm font-bold text-slate-600 transition-all"
+          >
+            <RotateCcw size={14} />
+            Reset All
+          </button>
+
+          {/* Sub-tab toggle */}
+          <div className="flex gap-1 bg-slate-100 p-1 rounded-xl">
+            <button
+              onClick={() => setActiveSubView('chatbot-approaches')}
+              className={cn(
+                'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all',
+                activeSubView === 'chatbot-approaches'
+                  ? 'bg-white text-slate-900 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700'
+              )}
+            >
+              <Bot size={16} />
+              Chatbot Approaches
+            </button>
+            <button
+              onClick={() => setActiveSubView('lifestyle-discovery')}
+              className={cn(
+                'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all',
+                activeSubView === 'lifestyle-discovery'
+                  ? 'bg-white text-slate-900 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700'
+              )}
+            >
+              <Sparkles size={16} />
+              Lifestyle Discovery
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Main row: Chat + Upload & Analyse side-by-side */}
-      <div className="flex gap-6 justify-center flex-wrap xl:flex-nowrap px-6">
+      <div className="flex gap-6 justify-center flex-wrap xl:flex-nowrap">
         {/* Chat */}
         <div className="flex items-end gap-4">
           <ChatPhone key={`chat-${resetKey}`} />
           <TechCard
+            largeTitle
             title="Chat"
             subtitle="Text-based conversation to discover lifestyle tier through keyword matching."
             pros={['Already widely-adopted solution', 'No additional infra needed']}
@@ -1177,6 +1210,7 @@ export default function LifestyleDiscovery() {
         <div className="flex items-end gap-4">
           <VisionUploadPhone key={`vision-${resetKey}`} />
           <TechCard
+            largeTitle
             title="Upload & Analyse"
             subtitle="AI vision reads your real lifestyle photo to classify your retirement tier."
             pros={['Highly personalised from real photo', 'Surprise & delight factor', 'Works with any lifestyle image']}
@@ -1190,7 +1224,7 @@ export default function LifestyleDiscovery() {
       </div>
 
       {/* Appendix expandables */}
-      <div className="px-6 pt-4 border-t border-slate-100 mt-2">
+      <div className="pt-3 border-t border-slate-100">
         <button
           onClick={() => setShowAppendix(v => !v)}
           className="flex items-center gap-2 text-[11px] font-medium text-slate-400 uppercase tracking-widest hover:text-slate-600 transition-colors mb-1"

@@ -967,37 +967,9 @@ export default function ChatbotPreview({ sidebarOpen = true, onSubViewChange }: 
 
   return (
     <div className="flex flex-col gap-4">
-      {/* ── Sub-tab toggle ── */}
-      <div className="flex gap-1 bg-slate-100 p-1 rounded-xl w-fit">
-        <button
-          onClick={() => setActiveSubView('chatbot-approaches')}
-          className={cn(
-            'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all',
-            activeSubView === 'chatbot-approaches'
-              ? 'bg-white text-slate-900 shadow-sm'
-              : 'text-slate-500 hover:text-slate-700'
-          )}
-        >
-          <Bot size={16} />
-          Chatbot Approaches
-        </button>
-        <button
-          onClick={() => setActiveSubView('lifestyle-discovery')}
-          className={cn(
-            'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all',
-            activeSubView === 'lifestyle-discovery'
-              ? 'bg-white text-slate-900 shadow-sm'
-              : 'text-slate-500 hover:text-slate-700'
-          )}
-        >
-          <Sparkles size={16} />
-          Lifestyle Discovery
-        </button>
-      </div>
-
       {activeSubView === 'lifestyle-discovery' && (
         <motion.div key="lifestyle-discovery" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.15 }}>
-          <LifestyleDiscovery />
+          <LifestyleDiscovery activeSubView={activeSubView} setActiveSubView={setActiveSubView} />
         </motion.div>
       )}
 
@@ -1007,7 +979,7 @@ export default function ChatbotPreview({ sidebarOpen = true, onSubViewChange }: 
         <div>
           <h2 className="text-3xl font-bold text-slate-900">Bot Tech Benchmark</h2>
           <p className="text-slate-500 mt-2 text-base max-w-2xl">
-            Compare Traditional NLU, Hybrid, and Full GenAI chatbots side-by-side. Send the same query to all three and observe latency, routing, and hallucination risk.
+            Compare Traditional NLU, Hybrid, and Full GenAI chatbots side-by-side.
           </p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
@@ -1031,6 +1003,34 @@ export default function ChatbotPreview({ sidebarOpen = true, onSubViewChange }: 
             <RotateCcw size={14} />
             Reset Chat
           </button>
+
+          {/* Sub-tab toggle */}
+          <div className="flex gap-1 bg-slate-100 p-1 rounded-xl">
+            <button
+              onClick={() => setActiveSubView('chatbot-approaches')}
+              className={cn(
+                'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all',
+                activeSubView === 'chatbot-approaches'
+                  ? 'bg-white text-slate-900 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700'
+              )}
+            >
+              <Bot size={16} />
+              Chatbot Approaches
+            </button>
+            <button
+              onClick={() => setActiveSubView('lifestyle-discovery')}
+              className={cn(
+                'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all',
+                activeSubView === 'lifestyle-discovery'
+                  ? 'bg-white text-slate-900 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700'
+              )}
+            >
+              <Sparkles size={16} />
+              Lifestyle Discovery
+            </button>
+          </div>
         </div>
       </div>
 
@@ -1094,7 +1094,7 @@ export default function ChatbotPreview({ sidebarOpen = true, onSubViewChange }: 
             </div>
 
             {/* Ask a question */}
-            <form onSubmit={handleSend} className="flex flex-col gap-3 bg-white rounded-2xl border border-slate-200 shadow-sm p-5 w-[21.6rem] shrink-0">
+            <form onSubmit={handleSend} className="flex flex-col gap-3 bg-white rounded-2xl border border-slate-200 shadow-sm p-5 w-[26rem] shrink-0">
               <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Ask a question</span>
               <textarea
                 value={input}
@@ -1116,84 +1116,83 @@ export default function ChatbotPreview({ sidebarOpen = true, onSubViewChange }: 
           </div>
         </div>
       ) : (
-        /* Sidebar collapsed: phones left/center, chips right, input bottom */
-        <div className="flex flex-col gap-5">
-          <div className="flex gap-5 items-start">
-            {/* 3 phones */}
-            <div className="flex gap-9 items-start flex-1 justify-center flex-wrap xl:flex-nowrap">
-              {(['nlu', 'hybrid', 'rag'] as Engine[]).map(engine => (
-                <PhoneColumn
-                  key={engine}
-                  engine={engine}
-                  state={{ nlu: nluState, hybrid: hybridState, rag: ragState }[engine]}
-                  showTraces={showTraces}
-                  onButtonClick={sendMessage}
-                />
-              ))}
-            </div>
-
-            {/* Right sidebar: query chips (sticky, match phone height) */}
-            <div className="w-[21.6rem] shrink-0 sticky top-6">
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 flex flex-col gap-5 h-[570px] overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
-                <div className="flex flex-col gap-1.5">
-                  <span className="text-xs font-bold text-teal-600 uppercase tracking-widest">Simple</span>
-                  {SIMPLE_QUERIES.map(q => (
-                    <button key={q} onClick={() => sendMessage(q)} disabled={isAnySending}
-                      className="text-left text-sm text-teal-800 bg-teal-50 hover:bg-teal-100 border border-teal-300 rounded-xl px-3 py-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed leading-snug">
-                      {q}
-                    </button>
-                  ))}
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <span className="text-xs font-bold text-indigo-500 uppercase tracking-widest">Complex</span>
-                  {COMPLEX_QUERIES.map(q => (
-                    <button key={q} onClick={() => sendMessage(q)} disabled={isAnySending}
-                      className="text-left text-sm text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-300 rounded-xl px-3 py-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed leading-snug">
-                      {q}
-                    </button>
-                  ))}
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <span className="text-xs font-bold text-amber-600 uppercase tracking-widest">Edge: Hybrid ✓ · GenAI hallucinates ✗</span>
-                  {EDGE_1.map(q => (
-                    <button key={q} onClick={() => sendMessage(q)} disabled={isAnySending}
-                      className="text-left text-sm text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded-xl px-3 py-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed leading-snug">
-                      {q}
-                    </button>
-                  ))}
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <span className="text-xs font-bold text-rose-500 uppercase tracking-widest">Edge: Both Hybrid & GenAI hallucinate ✗</span>
-                  {EDGE_2.map(q => (
-                    <button key={q} onClick={() => sendMessage(q)} disabled={isAnySending}
-                      className="text-left text-sm text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-300 rounded-xl px-3 py-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed leading-snug">
-                      {q}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
+        /* Sidebar collapsed: phones left/center, right column: chips + input */
+        <div className="flex gap-5 items-start">
+          {/* 3 phones */}
+          <div className="flex gap-9 items-start flex-1 justify-center flex-wrap xl:flex-nowrap">
+            {(['nlu', 'hybrid', 'rag'] as Engine[]).map(engine => (
+              <PhoneColumn
+                key={engine}
+                engine={engine}
+                state={{ nlu: nluState, hybrid: hybridState, rag: ragState }[engine]}
+                showTraces={showTraces}
+                onButtonClick={sendMessage}
+              />
+            ))}
           </div>
 
-          {/* Bottom: ask a question (full width) */}
-          <form onSubmit={handleSend} className="flex items-center gap-3 bg-white rounded-2xl border border-slate-200 shadow-sm p-3">
-            <input
-              type="text"
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              disabled={isAnySending}
-              placeholder="Ask a question..."
-              className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#E3000F] transition-all disabled:opacity-50"
-            />
-            <button
-              type="submit"
-              disabled={isAnySending || !input.trim()}
-              className="bg-[#E3000F] text-white px-5 py-2 rounded-xl hover:bg-red-700 transition-all shadow-md shadow-red-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2 font-bold text-sm shrink-0"
-            >
-              <Send size={14} />
-              Send to all
-            </button>
-          </form>
+          {/* Right column: query chips + ask a question — height matches phone frame */}
+          <div className="w-[26rem] shrink-0 sticky top-6 flex flex-col gap-3 h-[570px]">
+            {/* Query chips */}
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 flex flex-col gap-4 overflow-y-auto flex-1" style={{ scrollbarWidth: 'none' }}>
+              <div className="flex flex-col gap-1.5">
+                <span className="text-xs font-bold text-teal-600 uppercase tracking-widest">Simple</span>
+                {SIMPLE_QUERIES.map(q => (
+                  <button key={q} onClick={() => sendMessage(q)} disabled={isAnySending}
+                    className="text-left text-sm text-teal-800 bg-teal-50 hover:bg-teal-100 border border-teal-300 rounded-xl px-3 py-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed leading-snug">
+                    {q}
+                  </button>
+                ))}
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <span className="text-xs font-bold text-indigo-500 uppercase tracking-widest">Complex</span>
+                {COMPLEX_QUERIES.map(q => (
+                  <button key={q} onClick={() => sendMessage(q)} disabled={isAnySending}
+                    className="text-left text-sm text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-300 rounded-xl px-3 py-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed leading-snug">
+                    {q}
+                  </button>
+                ))}
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <span className="text-xs font-bold text-amber-600 uppercase tracking-widest">Edge: Hybrid ✓ · GenAI hallucinates ✗</span>
+                {EDGE_1.map(q => (
+                  <button key={q} onClick={() => sendMessage(q)} disabled={isAnySending}
+                    className="text-left text-sm text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded-xl px-3 py-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed leading-snug">
+                    {q}
+                  </button>
+                ))}
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <span className="text-xs font-bold text-rose-500 uppercase tracking-widest">Edge: Both Hybrid & GenAI hallucinate ✗</span>
+                {EDGE_2.map(q => (
+                  <button key={q} onClick={() => sendMessage(q)} disabled={isAnySending}
+                    className="text-left text-sm text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-300 rounded-xl px-3 py-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed leading-snug">
+                    {q}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Ask a question */}
+            <form onSubmit={handleSend} className="flex items-center gap-2 bg-white rounded-2xl border border-slate-200 shadow-sm p-3">
+              <input
+                type="text"
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                disabled={isAnySending}
+                placeholder="Ask a question..."
+                className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#E3000F] transition-all disabled:opacity-50 min-w-0"
+              />
+              <button
+                type="submit"
+                disabled={isAnySending || !input.trim()}
+                className="bg-[#E3000F] text-white px-4 py-2 rounded-xl hover:bg-red-700 transition-all shadow-md shadow-red-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 font-bold text-sm shrink-0"
+              >
+                <Send size={13} />
+                Send
+              </button>
+            </form>
+          </div>
         </div>
       )}
       </>)}
