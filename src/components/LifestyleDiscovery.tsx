@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { RefreshCw, Camera, Shuffle, Sparkles, CheckCircle2, ImageIcon, RotateCcw, MessageCircle, Send, Upload } from 'lucide-react';
+import { RefreshCw, Camera, Shuffle, Sparkles, CheckCircle2, ImageIcon, RotateCcw, MessageCircle, Send, Upload, ChevronDown, ChevronUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -1133,6 +1133,8 @@ function HybridVisualPhone() {
 export default function LifestyleDiscovery() {
   const [resetKey, setResetKey] = useState(0);
   const handleReset = () => setResetKey(k => k + 1);
+  const [showPicker, setShowPicker] = useState(false);
+  const [showHybrid, setShowHybrid] = useState(false);
 
   return (
     <div className="flex flex-col gap-6">
@@ -1153,10 +1155,10 @@ export default function LifestyleDiscovery() {
         </button>
       </div>
 
-      {/* 2x2 grid of phones + tech cards to the right */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-x-6 gap-y-16 px-6">
-        {/* Top-left: Chat */}
-        <div className="flex items-end gap-4 justify-center xl:justify-end">
+      {/* Main row: Chat + Upload & Analyse side-by-side */}
+      <div className="flex gap-6 justify-center flex-wrap xl:flex-nowrap px-6">
+        {/* Chat */}
+        <div className="flex items-end gap-4">
           <ChatPhone key={`chat-${resetKey}`} />
           <TechCard
             title="Chat"
@@ -1170,23 +1172,8 @@ export default function LifestyleDiscovery() {
           />
         </div>
 
-        {/* Top-right: Visual Picker */}
-        <div className="flex items-end gap-4 justify-center xl:justify-start">
-          <ImagePickerPhone key={`picker-${resetKey}`} />
-          <TechCard
-            title="Visual Picker"
-            subtitle="Pick photos that speak to you — AI infers your lifestyle from vibes alone."
-            pros={['Effortless — no uploads needed', 'Fun & engaging discovery flow', 'No privacy concerns']}
-            cons={['Relies on curated image pool', 'Less personalised', 'User may not find their vibe']}
-            tags={[
-              { text: 'Zero-friction', style: 'bg-green-50 text-green-700 border-green-200' },
-              { text: 'Guided', style: 'bg-blue-50 text-blue-700 border-blue-200' },
-            ]}
-          />
-        </div>
-
-        {/* Bottom-left: Upload & Analyse */}
-        <div className="flex items-end gap-4 justify-center xl:justify-end">
+        {/* Upload & Analyse */}
+        <div className="flex items-end gap-4">
           <VisionUploadPhone key={`vision-${resetKey}`} />
           <TechCard
             title="Upload & Analyse"
@@ -1199,21 +1186,86 @@ export default function LifestyleDiscovery() {
             ]}
           />
         </div>
+      </div>
 
-        {/* Bottom-right: Hybrid Visual */}
-        <div className="flex items-end gap-4 justify-center xl:justify-start">
-          <HybridVisualPhone key={`hybrid-${resetKey}`} />
-          <TechCard
-            title="Hybrid Visual"
-            subtitle="Browse curated images and upload your own — the best of both worlds."
-            pros={['Maximum flexibility — browse OR upload', 'Caters to both passive and active users', 'Most comprehensive lifestyle signal']}
-            cons={['More complex UI — potentially overwhelming', 'Higher development/maintenance cost', 'Users may skip upload if curated images suffice']}
-            tags={[
-              { text: 'Hybrid', style: 'bg-orange-50 text-orange-700 border-orange-200' },
-              { text: 'Flexible', style: 'bg-teal-50 text-teal-700 border-teal-200' },
-            ]}
-          />
-        </div>
+      {/* Expandable: Visual Picker */}
+      <div className="px-6">
+        <button
+          onClick={() => setShowPicker(v => !v)}
+          className="w-full flex items-center justify-between px-5 py-3 bg-white border border-slate-200 rounded-2xl hover:border-slate-300 transition-all shadow-sm"
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-bold text-slate-800">Visual Picker</span>
+            <span className="text-xs text-slate-400">Pick photos that speak to you — AI infers your lifestyle from vibes alone.</span>
+          </div>
+          {showPicker ? <ChevronUp size={18} className="text-slate-400" /> : <ChevronDown size={18} className="text-slate-400" />}
+        </button>
+        <AnimatePresence>
+          {showPicker && (
+            <motion.div
+              key="picker-expand"
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.25, ease: 'easeInOut' }}
+              className="overflow-hidden"
+            >
+              <div className="flex items-end gap-4 justify-center pt-6">
+                <ImagePickerPhone key={`picker-${resetKey}`} />
+                <TechCard
+                  title="Visual Picker"
+                  subtitle="Pick photos that speak to you — AI infers your lifestyle from vibes alone."
+                  pros={['Effortless — no uploads needed', 'Fun & engaging discovery flow', 'No privacy concerns']}
+                  cons={['Relies on curated image pool', 'Less personalised', 'User may not find their vibe']}
+                  tags={[
+                    { text: 'Zero-friction', style: 'bg-green-50 text-green-700 border-green-200' },
+                    { text: 'Guided', style: 'bg-blue-50 text-blue-700 border-blue-200' },
+                  ]}
+                />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Expandable: Hybrid Visual */}
+      <div className="px-6">
+        <button
+          onClick={() => setShowHybrid(v => !v)}
+          className="w-full flex items-center justify-between px-5 py-3 bg-white border border-slate-200 rounded-2xl hover:border-slate-300 transition-all shadow-sm"
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-bold text-slate-800">Hybrid Visual</span>
+            <span className="text-xs text-slate-400">Browse curated images and upload your own — the best of both worlds.</span>
+          </div>
+          {showHybrid ? <ChevronUp size={18} className="text-slate-400" /> : <ChevronDown size={18} className="text-slate-400" />}
+        </button>
+        <AnimatePresence>
+          {showHybrid && (
+            <motion.div
+              key="hybrid-expand"
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.25, ease: 'easeInOut' }}
+              className="overflow-hidden"
+            >
+              <div className="flex items-end gap-4 justify-center pt-6">
+                <HybridVisualPhone key={`hybrid-${resetKey}`} />
+                <TechCard
+                  title="Hybrid Visual"
+                  subtitle="Browse curated images and upload your own — the best of both worlds."
+                  pros={['Maximum flexibility — browse OR upload', 'Caters to both passive and active users', 'Most comprehensive lifestyle signal']}
+                  cons={['More complex UI — potentially overwhelming', 'Higher development/maintenance cost', 'Users may skip upload if curated images suffice']}
+                  tags={[
+                    { text: 'Hybrid', style: 'bg-orange-50 text-orange-700 border-orange-200' },
+                    { text: 'Flexible', style: 'bg-teal-50 text-teal-700 border-teal-200' },
+                  ]}
+                />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
