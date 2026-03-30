@@ -167,11 +167,12 @@ export default async function handler(request: Request) {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 });
   }
 
-  if (!process.env.ANTHROPIC_API_KEY) {
+  const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
+  if (!apiKey) {
     return new Response(JSON.stringify({ error: 'ANTHROPIC_API_KEY is not configured' }), { status: 500 });
   }
 
-  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  const client = new Anthropic({ apiKey });
 
   const { message, intentName } = await request.json();
 
@@ -213,7 +214,7 @@ export default async function handler(request: Request) {
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'end' })}\n\n`));
         }
       }
-      await tryStream(1);
+      await tryStream(2);
       controller.close();
     },
   });

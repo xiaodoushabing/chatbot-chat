@@ -1134,39 +1134,39 @@ export default function ChatbotPreview({ sidebarOpen = true, onSubViewChange }: 
           {/* Right column: query chips + ask a question — height matches phone frame */}
           <div className="w-[26rem] shrink-0 sticky top-6 flex flex-col gap-3 h-[541px]">
             {/* Query chips */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 flex flex-col gap-4 overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
-              <div className="flex flex-col gap-1.5">
-                <span className="text-xs font-bold text-teal-600 uppercase tracking-widest">Simple</span>
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-3 flex flex-col gap-2.5 overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
+              <div className="flex flex-col gap-1">
+                <span className="text-[10px] font-bold text-teal-600 uppercase tracking-widest">Simple</span>
                 {SIMPLE_QUERIES.map(q => (
                   <button key={q} onClick={() => sendMessage(q)} disabled={isAnySending}
-                    className="text-left text-sm text-teal-800 bg-teal-50 hover:bg-teal-100 border border-teal-300 rounded-xl px-3 py-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed leading-snug">
+                    className="text-left text-xs text-teal-800 bg-teal-50 hover:bg-teal-100 border border-teal-300 rounded-xl px-2.5 py-1 transition-colors disabled:opacity-40 disabled:cursor-not-allowed leading-snug">
                     {q}
                   </button>
                 ))}
               </div>
-              <div className="flex flex-col gap-1.5">
-                <span className="text-xs font-bold text-indigo-500 uppercase tracking-widest">Complex</span>
+              <div className="flex flex-col gap-1">
+                <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest">Complex</span>
                 {COMPLEX_QUERIES.map(q => (
                   <button key={q} onClick={() => sendMessage(q)} disabled={isAnySending}
-                    className="text-left text-sm text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-300 rounded-xl px-3 py-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed leading-snug">
+                    className="text-left text-xs text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-300 rounded-xl px-2.5 py-1 transition-colors disabled:opacity-40 disabled:cursor-not-allowed leading-snug">
                     {q}
                   </button>
                 ))}
               </div>
-              <div className="flex flex-col gap-1.5">
-                <span className="text-xs font-bold text-amber-600 uppercase tracking-widest">Edge: Hybrid ✓ · GenAI hallucinates ✗</span>
+              <div className="flex flex-col gap-1">
+                <span className="text-[10px] font-bold text-amber-600 uppercase tracking-widest">Edge: Hybrid ✓ · GenAI hallucinates ✗</span>
                 {EDGE_1.map(q => (
                   <button key={q} onClick={() => sendMessage(q)} disabled={isAnySending}
-                    className="text-left text-sm text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded-xl px-3 py-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed leading-snug">
+                    className="text-left text-xs text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded-xl px-2.5 py-1 transition-colors disabled:opacity-40 disabled:cursor-not-allowed leading-snug">
                     {q}
                   </button>
                 ))}
               </div>
-              <div className="flex flex-col gap-1.5">
-                <span className="text-xs font-bold text-rose-500 uppercase tracking-widest">Edge: Both Hybrid & GenAI hallucinate ✗</span>
+              <div className="flex flex-col gap-1">
+                <span className="text-[10px] font-bold text-rose-500 uppercase tracking-widest">Edge: Both Hybrid & GenAI hallucinate ✗</span>
                 {EDGE_2.map(q => (
                   <button key={q} onClick={() => sendMessage(q)} disabled={isAnySending}
-                    className="text-left text-sm text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-300 rounded-xl px-3 py-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed leading-snug">
+                    className="text-left text-xs text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-300 rounded-xl px-2.5 py-1 transition-colors disabled:opacity-40 disabled:cursor-not-allowed leading-snug">
                     {q}
                   </button>
                 ))}

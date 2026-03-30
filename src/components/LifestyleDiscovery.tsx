@@ -208,7 +208,7 @@ function PhoneShell({ headerLabel, children, footer }: {
   footer?: React.ReactNode;
 }) {
   return (
-    <div className="relative w-[300px] bg-black rounded-[44px] p-[3px] shadow-2xl" style={{ height: 570 }}>
+    <div className="relative w-[300px] bg-black rounded-[44px] p-[3px] shadow-2xl" style={{ height: 541 }}>
       <div className="w-full h-full bg-[#F2F2F7] rounded-[42px] overflow-hidden flex flex-col">
         {/* Dynamic island */}
         <div className="flex justify-center pt-3 pb-1 shrink-0">
