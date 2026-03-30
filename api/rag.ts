@@ -162,7 +162,9 @@ export default async function handler(request: Request) {
     return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 });
   }
 
-  if (!process.env.ANTHROPIC_API_KEY) {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    console.error('[rag] ANTHROPIC_API_KEY is missing or empty');
     return new Response(JSON.stringify({ error: 'ANTHROPIC_API_KEY is not configured' }), { status: 500 });
   }
 
@@ -188,7 +190,12 @@ export default async function handler(request: Request) {
         }
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'end' })}\n\n`));
       } catch (err: any) {
-        console.error('[rag] error:', err?.message ?? err);
+        if (err?.status === 401) {
+          const key = process.env.ANTHROPIC_API_KEY;
+          console.error('[rag] 401 auth error — key present:', !!key, '| key length:', key?.length ?? 0, '| first 8 chars:', key ? key.slice(0, 8) + '...' : '(none)');
+        } else {
+          console.error('[rag] error:', err?.message ?? err);
+        }
         const errorMsg = err?.status === 429
           ? "I'm experiencing high demand right now. Please try again in a moment."
           : "I'm sorry, I encountered an error. Please try again.";
