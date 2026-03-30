@@ -807,7 +807,7 @@ export default function ChatbotPreview({ sidebarOpen = true, onSubViewChange }: 
             method: 'POST',
             signal: hybridAbort.signal,
             headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ message: trimmed }),
+            body: JSON.stringify({ message: trimmed, intentName: hybridClassResult.intent.name }),
           });
           if (!res.ok || !res.body) throw new Error(`Hybrid error ${res.status}`);
           const reader = res.body.getReader();
@@ -904,7 +904,12 @@ export default function ChatbotPreview({ sidebarOpen = true, onSubViewChange }: 
             method: 'POST',
             signal: ragAbort.signal,
             headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ message: trimmed }),
+            body: JSON.stringify({
+              message: trimmed,
+              history: ragState.messages
+                .filter(m => m.content && !m.isStreaming)
+                .map(m => ({ role: m.role === 'bot' ? 'assistant' : 'user', content: m.content })),
+            }),
           });
 
           if (!res.ok || !res.body) throw new Error(`RAG error ${res.status}`);

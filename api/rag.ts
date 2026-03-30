@@ -172,7 +172,14 @@ export default async function handler(request: Request) {
     return new Response(JSON.stringify({ error: 'ANTHROPIC_API_KEY is not configured' }), { status: 500 });
   }
 
-  const { message } = await request.json();
+  const { message, history } = await request.json();
+
+  const priorMessages = Array.isArray(history)
+    ? history.slice(-6).map((m: { role: string; content: string }) => ({
+        role: m.role as 'user' | 'assistant',
+        content: m.content,
+      }))
+    : [];
 
   const encoder = new TextEncoder();
 
@@ -180,7 +187,7 @@ export default async function handler(request: Request) {
     model: 'claude-haiku-4-5',
     max_tokens: 400,
     system: SYSTEM_PROMPT,
-    messages: [{ role: 'user', content: message }],
+    messages: [...priorMessages, { role: 'user', content: message }],
   });
 
   const readable = new ReadableStream({

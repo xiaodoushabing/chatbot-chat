@@ -173,14 +173,18 @@ export default async function handler(request: Request) {
     return new Response(JSON.stringify({ error: 'ANTHROPIC_API_KEY is not configured' }), { status: 500 });
   }
 
-  const { message } = await request.json();
+  const { message, intentName } = await request.json();
+
+  const systemPrompt = intentName
+    ? `${SYSTEM_PROMPT}\n\nThe user's question has been classified as relating to: ${intentName}. Focus your response on this topic.`
+    : SYSTEM_PROMPT;
 
   const encoder = new TextEncoder();
 
   const stream = client.messages.stream({
     model: 'claude-haiku-4-5',
     max_tokens: 400,
-    system: SYSTEM_PROMPT,
+    system: systemPrompt,
     messages: [{ role: 'user', content: message }],
   });
 
