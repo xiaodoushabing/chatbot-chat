@@ -2,8 +2,6 @@ import Anthropic from '@anthropic-ai/sdk';
 
 export const config = { runtime: 'edge' };
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-
 const RETIREMENT_KNOWLEDGE_BASE = `
 # Singapore Retirement Planning – Knowledge Base
 
@@ -171,6 +169,8 @@ export default async function handler(request: Request) {
     console.error('[rag] ANTHROPIC_API_KEY is missing or empty');
     return new Response(JSON.stringify({ error: 'ANTHROPIC_API_KEY is not configured' }), { status: 500 });
   }
+
+  const client = new Anthropic({ apiKey });
 
   const { message, history } = await request.json();
 
