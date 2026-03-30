@@ -406,8 +406,17 @@ export default function ExecutiveDashboard({ onNavigate, killSwitchActive, onUpd
   const [showDeactivateSubmit, setShowDeactivateSubmit] = useState(false);
   const [showCostIntelligence, setShowCostIntelligence] = useState(false);
   const [showGuardrailConfig, setShowGuardrailConfig] = useState(false);
+  const [showTisoConfirm, setShowTisoConfirm] = useState(false);
   const [timeRange, setTimeRange] = useState<'7d' | '30d'>('7d');
   const guardrailConfigRef = useRef<HTMLDivElement>(null);
+  const detailedAnalyticsRef = useRef<HTMLDivElement>(null);
+
+  const scrollToDetailedAnalytics = () => {
+    setShowDetailedAnalytics(true);
+    setTimeout(() => {
+      detailedAnalyticsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 50);
+  };
 
   const queryData = timeRange === '7d' ? QUERY_DATA : QUERY_DATA_30D;
   const intentData = timeRange === '7d' ? INTENT_DATA : INTENT_DATA_30D;
@@ -689,7 +698,7 @@ export default function ExecutiveDashboard({ onNavigate, killSwitchActive, onUpd
             <button className="flex items-center gap-2 px-6 py-3 bg-white text-slate-900 rounded-xl font-bold text-base hover:bg-slate-100 transition-all shadow-lg">
               <FileSearch size={20} /> {hero.buttonLabel}
             </button>
-            <button className="flex items-center gap-2 px-6 py-3 bg-white/10 text-white rounded-xl font-bold text-base hover:bg-white/20 transition-all border border-white/10">
+            <button onClick={scrollToDetailedAnalytics} className="flex items-center gap-2 px-6 py-3 bg-white/10 text-white rounded-xl font-bold text-base hover:bg-white/20 transition-all border border-white/10">
               <Search size={20} /> Analyze Intent Trends
             </button>
           </div>
@@ -720,7 +729,7 @@ export default function ExecutiveDashboard({ onNavigate, killSwitchActive, onUpd
           >
             Generate New Topic
           </button>
-          <button className="px-6 py-3 bg-white text-indigo-600 border border-indigo-200 rounded-xl text-sm font-bold hover:bg-indigo-50 transition-all">
+          <button onClick={scrollToDetailedAnalytics} className="px-6 py-3 bg-white text-indigo-600 border border-indigo-200 rounded-xl text-sm font-bold hover:bg-indigo-50 transition-all">
             View Trend Data
           </button>
         </div>
@@ -827,7 +836,7 @@ export default function ExecutiveDashboard({ onNavigate, killSwitchActive, onUpd
           <h4 className="text-lg font-bold text-slate-900">Potential Malicious Activity</h4>
           <p className="text-base text-slate-600 leading-relaxed">Detected {guardrails.riskAttempts} attempts to bypass financial advice guardrails using prompt injection techniques from {Math.ceil(guardrails.riskAttempts / 4)} unique IPs in the last {timeRange === '7d' ? '24 hours' : '7 days'}.</p>
           <div className="mt-3 no-print">
-            <button className="px-5 py-2.5 bg-rose-600 text-white hover:bg-rose-700 rounded-xl text-sm font-bold transition-all">
+            <button onClick={() => setShowTisoConfirm(true)} className="px-5 py-2.5 bg-rose-600 text-white hover:bg-rose-700 rounded-xl text-sm font-bold transition-all">
               Alert TISO
             </button>
           </div>
@@ -963,7 +972,7 @@ export default function ExecutiveDashboard({ onNavigate, killSwitchActive, onUpd
       </div>
 
       {/* Detailed Analytics - Collapsible */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <div ref={detailedAnalyticsRef} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <button
           onClick={() => setShowDetailedAnalytics(!showDetailedAnalytics)}
           className="w-full px-8 py-5 flex items-center justify-between hover:bg-slate-50 transition-all no-print"
@@ -1232,6 +1241,71 @@ export default function ExecutiveDashboard({ onNavigate, killSwitchActive, onUpd
       </div>
 
       </div>{/* end inner content div */}
+
+      {/* TISO Alert Confirmation Modal */}
+      <AnimatePresence>
+        {showTisoConfirm && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowTisoConfirm(false)}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 8 }}
+              transition={{ duration: 0.2 }}
+              className="relative z-10 bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full flex flex-col gap-6"
+            >
+              <div className="flex items-start gap-4">
+                <div className="p-3 bg-rose-100 rounded-xl shrink-0">
+                  <ShieldAlert size={24} className="text-rose-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900">Alert TISO</h3>
+                  <p className="text-sm text-slate-500 mt-1">Technology and Information Security Officer</p>
+                </div>
+              </div>
+              <p className="text-sm text-slate-600 leading-relaxed">
+                You are about to send a security alert to the TISO regarding <span className="font-semibold text-slate-900">{guardrails.riskAttempts} detected prompt injection attempts</span> from {Math.ceil(guardrails.riskAttempts / 4)} unique IPs. This will notify the security team for immediate investigation.
+              </p>
+              <div className="flex items-center gap-3 p-4 bg-rose-50 border border-rose-200 rounded-xl">
+                <AlertTriangle size={16} className="text-rose-500 shrink-0" />
+                <p className="text-xs text-rose-700 font-medium">This action will be logged in the audit trail and cannot be undone.</p>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowTisoConfirm(false)}
+                  className="flex-1 px-5 py-3 bg-slate-100 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-200 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    onAddAuditEvent({
+                      actor: 'System Admin',
+                      actorRole: 'ADMIN',
+                      actionType: 'security.alert' as AuditActionType,
+                      entityType: 'guardrail',
+                      entityId: 'tiso-alert-' + Date.now(),
+                      entityName: 'TISO Security Alert',
+                      description: `TISO alerted — ${guardrails.riskAttempts} prompt injection attempts detected from ${Math.ceil(guardrails.riskAttempts / 4)} unique IPs.`,
+                      severity: 'critical',
+                    });
+                    setShowTisoConfirm(false);
+                  }}
+                  className="flex-1 px-5 py-3 bg-rose-600 text-white rounded-xl text-sm font-bold hover:bg-rose-700 transition-all shadow-lg shadow-rose-200"
+                >
+                  Confirm Alert
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Kill Switch — Activate Confirmation Modal */}
       <AnimatePresence>
