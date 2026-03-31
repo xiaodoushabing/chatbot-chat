@@ -13,7 +13,6 @@ type LifestyleTier = 'enhanced' | 'comfortable' | 'basic';
 interface TierResult {
   tier: LifestyleTier;
   reasoning: string;
-  advice: string;
 }
 
 interface PickerImage {
@@ -29,7 +28,6 @@ const TIER_CONFIG: Record<LifestyleTier, {
   color: string;
   border: string;
   badge: string;
-  products: { name: string; url: string }[];
   desc: string;
 }> = {
   enhanced: {
@@ -37,11 +35,6 @@ const TIER_CONFIG: Record<LifestyleTier, {
     color: 'text-amber-700',
     border: 'border-amber-200',
     badge: 'bg-amber-100 text-amber-800 border border-amber-300',
-    products: [
-      { name: 'OCBC Premier Banking', url: 'https://www.ocbc.com/premier-banking/why-join-us' },
-      { name: 'Wealth Advisory', url: 'https://www.ocbc.com/premier-banking/why-join-us' },
-      { name: 'Overseas Investment Fund', url: 'https://www.ocbc.com/personal-banking/investments' },
-    ],
     desc: 'Global travel, luxury experiences & world exploration',
   },
   comfortable: {
@@ -49,11 +42,6 @@ const TIER_CONFIG: Record<LifestyleTier, {
     color: 'text-blue-700',
     border: 'border-blue-200',
     badge: 'bg-blue-100 text-blue-800 border border-blue-300',
-    products: [
-      { name: 'OCBC RoboInvest', url: 'https://www.ocbc.com/personal-banking/investments/roboinvest' },
-      { name: 'CPF Investment Scheme', url: 'https://www.cpf.gov.sg/member/growing-your-savings/earning-higher-returns/investing-your-cpf-savings/cpf-investment-scheme-options' },
-      { name: 'SRS Account', url: 'https://www.ocbc.com/personal-banking/investments/supplementary-retirement-scheme-account' },
-    ],
     desc: 'Creative pursuits, learning & outdoor adventure in Asia',
   },
   basic: {
@@ -61,14 +49,68 @@ const TIER_CONFIG: Record<LifestyleTier, {
     color: 'text-green-700',
     border: 'border-green-200',
     badge: 'bg-green-100 text-green-800 border border-green-300',
-    products: [
-      { name: 'OCBC 360 Account', url: 'https://www.ocbc.com/personal-banking/deposits/360-savings-account' },
-      { name: 'CPF Voluntary Top-ups', url: 'https://www.cpf.gov.sg/member/growing-your-savings/saving-more-with-cpf/top-up-to-enjoy-higher-retirement-payouts' },
-      { name: 'Life Goals Savings', url: 'https://www.ocbc.com/personal-banking/start-planning' },
-    ],
     desc: 'Community, family & simple wellness living',
   },
 };
+
+// ─── Per-tier financial assumptions + message builders ────────────────────────
+
+const TIER_ASSUMPTIONS: Record<LifestyleTier, {
+  retirementAge: number;
+  lifeExpectancy: number;
+  monthlyExpenses: number;
+  monthlyIncome: number;
+  currentAssets: number;
+  monthlySalary: number;
+  monthlyCurrentExpenses: number;
+  projectedUntilAge: number;
+  adjustments: string;
+}> = {
+  enhanced: {
+    retirementAge: 50,
+    lifeExpectancy: 85,
+    monthlyExpenses: 8000,
+    monthlyIncome: 5000,
+    currentAssets: 500000,
+    monthlySalary: 12000,
+    monthlyCurrentExpenses: 3000,
+    projectedUntilAge: 63,
+    adjustments: 'adjusting retirement age, growing investment returns, diversifying income streams, or adding premium wealth management solutions',
+  },
+  comfortable: {
+    retirementAge: 55,
+    lifeExpectancy: 85,
+    monthlyExpenses: 5000,
+    monthlyIncome: 3500,
+    currentAssets: 220000,
+    monthlySalary: 5000,
+    monthlyCurrentExpenses: 1500,
+    projectedUntilAge: 70,
+    adjustments: 'adjusting retirement age, adding cash or investment holdings outside OCBC, reducing retirement spending, and more',
+  },
+  basic: {
+    retirementAge: 65,
+    lifeExpectancy: 85,
+    monthlyExpenses: 2500,
+    monthlyIncome: 1800,
+    currentAssets: 150000,
+    monthlySalary: 3500,
+    monthlyCurrentExpenses: 1200,
+    projectedUntilAge: 75,
+    adjustments: 'adjusting retirement age, topping up your CPF, reducing retirement spending, or building a small investment portfolio',
+  },
+};
+
+function buildInitialResultMessage(tier: LifestyleTier, reasoning: string): string {
+  const a = TIER_ASSUMPTIONS[tier];
+  const cfg = TIER_CONFIG[tier];
+  return `${reasoning} — ${cfg.label}. Let's see how close you are to making that a reality.\n\nHere's what we worked out from what we understand about you —\n• Target retirement age: ${a.retirementAge}\n• Life expectancy: ${a.lifeExpectancy}\n• Ideal retirement expenses: $${a.monthlyExpenses.toLocaleString()}/mth\n• Estimated retirement income: $${a.monthlyIncome.toLocaleString()}/mth\n• Current cash & investments: $${a.currentAssets.toLocaleString()}\n• Current salary: $${a.monthlySalary.toLocaleString()}/mth\n• Current expenses: $${a.monthlyCurrentExpenses.toLocaleString()}/mth\n\nWould you like to customise any of these assumptions, or would you like to see your retirement plan based on this starting point?`;
+}
+
+function buildProjectionMessage(tier: LifestyleTier): string {
+  const a = TIER_ASSUMPTIONS[tier];
+  return `With your ideal retirement expenses of $${a.monthlyExpenses.toLocaleString()}/month, and current net assets of $${a.currentAssets.toLocaleString()}, your projected savings would last until age ${a.projectedUntilAge}. This doesn't mean retirement is not possible — it just means we'll need to adjust a few things to better support the lifestyle you want. We can refine this plan by ${a.adjustments}.\n\nWould you like to refine your retirement plan, or should I suggest a few ways to close the gap?`;
+}
 
 // ─── Image pool (local copies in public/lifestyle-images/) ────────────────────
 
@@ -225,36 +267,102 @@ function PhoneShell({ headerLabel, children, footer }: {
   );
 }
 
-function TierResultCard({ result }: { result: TierResult }) {
+function TierResultFlow({ result }: { result: TierResult }) {
+  const [choice, setChoice] = useState<'plan' | 'customise' | null>(null);
   const cfg = TIER_CONFIG[result.tier];
+  const a = TIER_ASSUMPTIONS[result.tier];
+  const projectionMsg = buildProjectionMessage(result.tier);
+
+  const assumptions = [
+    `Target retirement age: ${a.retirementAge}`,
+    `Life expectancy: ${a.lifeExpectancy}`,
+    `Ideal retirement expenses: $${a.monthlyExpenses.toLocaleString()}/mth`,
+    `Estimated retirement income: $${a.monthlyIncome.toLocaleString()}/mth`,
+    `Current cash & investments: $${a.currentAssets.toLocaleString()}`,
+    `Current salary: $${a.monthlySalary.toLocaleString()}/mth`,
+    `Current expenses: $${a.monthlyCurrentExpenses.toLocaleString()}/mth`,
+  ];
+
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      className={cn('m-3 rounded-2xl border p-3 bg-white', cfg.border)}
-    >
-      <div className="flex items-center justify-between mb-2">
-        <span className={cn('text-xs font-bold px-2.5 py-0.5 rounded-full', cfg.badge)}>
-          {cfg.label}
-        </span>
-      </div>
-      <p className="text-sm text-slate-600 mb-2 leading-relaxed">{result.reasoning}</p>
-      <p className="text-sm text-slate-700 leading-relaxed mb-2">{result.advice}</p>
-      <div className="flex flex-col gap-1">
-        {TIER_CONFIG[result.tier].products.map(p => (
-          <a
-            key={p.name}
-            href={p.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs border border-slate-200 rounded-lg px-2 py-1 text-slate-600 hover:text-[#E3000F] hover:border-red-200 transition-colors flex items-center gap-1.5"
+    <>
+      <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+        className="flex items-end gap-2 px-3 py-1.5">
+        <div className="w-6 h-6 bg-slate-700 rounded-full flex items-center justify-center shrink-0">
+          <Sparkles size={11} className="text-white" />
+        </div>
+        <div className={cn('bg-white rounded-2xl rounded-bl-sm px-3 py-2 shadow-sm max-w-[210px] border', cfg.border)}>
+          <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full inline-block mb-1.5', cfg.badge)}>
+            {cfg.label}
+          </span>
+          <p className="text-sm text-slate-700 leading-relaxed">{result.reasoning} — {cfg.label}. Let's see how close you are to making that a reality.</p>
+          <p className="text-sm font-bold text-slate-700 mt-2 mb-1">Here's what we worked out from what we understand about you —</p>
+          <ul className="space-y-0.5 mb-2">
+            {assumptions.map(pt => (
+              <li key={pt} className="flex items-start gap-1 text-sm text-slate-600">
+                <span className="text-slate-400 shrink-0 mt-px">•</span>
+                <span>{pt}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="text-sm text-slate-700 leading-relaxed">Would you like to customise any of these assumptions, or would you like to see your retirement plan based on this starting point?</p>
+        </div>
+      </motion.div>
+
+      {choice === null && (
+        <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
+          className="flex justify-end gap-2 px-3 py-1">
+          <button
+            onClick={() => setChoice('customise')}
+            className="border border-slate-300 text-slate-600 text-xs px-3 py-1.5 rounded-full font-bold shadow-sm hover:bg-slate-50 transition-colors"
           >
-            <span className="text-slate-400">→</span>
-            <span className="underline underline-offset-2 decoration-slate-300 hover:decoration-red-300">{p.name}</span>
-          </a>
-        ))}
-      </div>
-    </motion.div>
+            Customise
+          </button>
+          <button
+            onClick={() => setChoice('plan')}
+            className="bg-[#E3000F] text-white text-xs px-3 py-1.5 rounded-full font-bold shadow-sm hover:bg-red-700 transition-colors"
+          >
+            View Plan
+          </button>
+        </motion.div>
+      )}
+
+      <AnimatePresence>
+        {choice === 'plan' && (
+          <motion.div key="plan" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
+            <div className="flex justify-end px-3 py-1">
+              <div className="bg-[#E3000F] rounded-2xl rounded-br-sm px-3 py-2 shadow-sm">
+                <p className="text-sm text-white">View Plan</p>
+              </div>
+            </div>
+            <div className="flex items-end gap-2 px-3 py-1.5 pb-3">
+              <div className="w-6 h-6 bg-slate-700 rounded-full flex items-center justify-center shrink-0">
+                <Sparkles size={11} className="text-white" />
+              </div>
+              <div className="bg-white rounded-2xl rounded-bl-sm px-3 py-2 shadow-sm max-w-[210px] border border-slate-200">
+                <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-line">{projectionMsg}</p>
+              </div>
+            </div>
+          </motion.div>
+        )}
+        {choice === 'customise' && (
+          <motion.div key="customise" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
+            <div className="flex justify-end px-3 py-1">
+              <div className="bg-slate-200 rounded-2xl rounded-br-sm px-3 py-2 shadow-sm">
+                <p className="text-sm text-slate-700">Customise</p>
+              </div>
+            </div>
+            <div className="flex items-end gap-2 px-3 py-1.5 pb-3">
+              <div className="w-6 h-6 bg-slate-700 rounded-full flex items-center justify-center shrink-0">
+                <Sparkles size={11} className="text-white" />
+              </div>
+              <div className="bg-white rounded-2xl rounded-bl-sm px-3 py-2 shadow-sm max-w-[210px] border border-slate-200">
+                <p className="text-sm text-slate-700 leading-relaxed">Sure! You can adjust your retirement age, monthly expenses, current assets, or any other assumption. Speak with your OCBC Relationship Manager for a fully personalised plan.</p>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
   );
 }
 
@@ -352,45 +460,6 @@ function AnalysingBubble() {
 
 // ─── Chat phone: multi-turn conversational lifestyle discovery ───────────────────
 
-const CHAT_TIER_KEYWORDS: Record<LifestyleTier, string[]> = {
-  enhanced: [
-    'luxury', 'fine dining', 'premium', 'first class', 'business class', 'yacht', 'designer',
-    'michelin', 'champagne', 'penthouse', 'villa', 'resort', 'spa', 'golf', 'wine', 'art gallery',
-    'couture', 'private', 'exclusive', 'high-end', 'gourmet', 'cruise', 'chauffeur',
-    'concierge', 'bespoke', 'platinum', 'vip', 'mansion', 'caviar', 'lobster',
-    'long trip', 'expedition', 'europe', 'iconic', 'world exploration', 'extended travel',
-    'premium at sea', 'luxury village', 'upscale', 'overseas', 'luxury retirement',
-    'nature expedition', 'iconic destination',
-  ],
-  comfortable: [
-    'travel', 'hobby', 'hobbies', 'children', 'kids', 'holiday', 'regional', 'dining out',
-    'cooking', 'garden', 'gardening', 'pets', 'camping', 'photography', 'sports', 'fitness', 'gym',
-    'road trip', 'explore', 'weekend', 'vacation', 'restaurant', 'movie', 'concert', 'music',
-    'cycling', 'swimming', 'hiking', 'beach', 'picnic', 'barbecue', 'friends',
-    'yoga retreat', 'workshop', 'workshops', 'creative', 'skill', 'learning', 'trekking',
-    'mountain', 'small group', 'outdoor adventure', 'nature in asia', 'asia', 'occasional travel',
-    'scenery', 'cooking class', 'continuous learning', 'outdoor',
-  ],
-  basic: [
-    'simple', 'nature', 'wellness', 'minimalist', 'yoga', 'meditation', 'walking', 'reading',
-    'community', 'local', 'peaceful', 'quiet', 'park', 'volunteer', 'morning', 'tea', 'sunrise',
-    'modest', 'frugal', 'budget', 'home', 'library', 'temple', 'tai chi', 'calm',
-    'slow', 'mindful', 'sustainable', 'organic', 'baking', 'knitting', 'chess',
-    'family', 'family bonding', 'home gathering', 'cosy dining', 'homely', 'gathering',
-    'routine', 'community activity', 'service', 'volunteering', 'purposeful', 'day-to-day',
-  ],
-};
-
-function scoreTiers(text: string): Record<LifestyleTier, number> {
-  const lower = text.toLowerCase();
-  const scores: Record<LifestyleTier, number> = { enhanced: 0, comfortable: 0, basic: 0 };
-  for (const [tier, keywords] of Object.entries(CHAT_TIER_KEYWORDS) as [LifestyleTier, string[]][]) {
-    for (const kw of keywords) {
-      if (lower.includes(kw)) scores[tier]++;
-    }
-  }
-  return scores;
-}
 
 // Conversation flow: bot asks questions, accumulates keyword signals, then gives result
 const CHAT_QUESTIONS = [
@@ -399,20 +468,39 @@ const CHAT_QUESTIONS = [
   "How do you like to unwind after a long day?",
 ];
 
-interface ChatMsg { role: 'user' | 'bot'; text: string; }
+interface ChatMsg { role: 'user' | 'bot'; text: string; isResult?: boolean; tier?: LifestyleTier; }
 
 function ChatPhone() {
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [questionIndex, setQuestionIndex] = useState(0);
-  const [allUserText, setAllUserText] = useState('');
+  const [userAnswers, setUserAnswers] = useState<string[]>([]);
   const [result, setResult] = useState<TierResult | null>(null);
+  const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
+  const [resultAction, setResultAction] = useState<'plan' | 'customise' | null>(null);
+  const [planShown, setPlanShown] = useState(false);
+  const [customAssumptions, setCustomAssumptions] = useState<typeof TIER_ASSUMPTIONS[LifestyleTier] | null>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
     setTimeout(() => { if (bodyRef.current) bodyRef.current.scrollTop = bodyRef.current.scrollHeight; }, 50);
   };
+
+  function parseCustomisations(text: string, base: typeof TIER_ASSUMPTIONS[LifestyleTier]): typeof TIER_ASSUMPTIONS[LifestyleTier] {
+    const updated = { ...base };
+    const num = (s: string) => parseInt(s.replace(/[,$]/g, ''), 10);
+    const m = (re: RegExp) => text.match(re);
+    const retireMatch = m(/retire.*?(\d+)|(\d+).*?retire/i);
+    if (retireMatch) updated.retirementAge = num(retireMatch[1] || retireMatch[2]);
+    const expMatch = m(/\$\s*([\d,]+)\s*\/?\s*month|\bexpenses?\b.*?\$?\s*([\d,]+)/i);
+    if (expMatch) updated.monthlyExpenses = num(expMatch[1] || expMatch[2]);
+    const assetMatch = m(/assets?\b.*?\$?\s*([\d,]+)|\bsavings?\b.*?\$?\s*([\d,]+)/i);
+    if (assetMatch) updated.currentAssets = num(assetMatch[1] || assetMatch[2]);
+    const salaryMatch = m(/salary\b.*?\$?\s*([\d,]+)|\beach.*?\$?\s*([\d,]+)/i);
+    if (salaryMatch) updated.monthlySalary = num(salaryMatch[1] || salaryMatch[2]);
+    return updated;
+  }
 
   const addBotMessage = (text: string) => {
     setMessages(prev => [...prev, { role: 'bot', text }]);
@@ -421,37 +509,112 @@ function ChatPhone() {
 
   const handleSend = () => {
     const text = input.trim();
-    if (!text || isTyping || result) return;
+    if (!text || isTyping) return;
     setInput('');
-    const accumulated = allUserText + ' ' + text;
-    setAllUserText(accumulated);
     setMessages(prev => [...prev, { role: 'user', text }]);
     setIsTyping(true);
     scrollToBottom();
 
+    // Post-action follow-up
+    if (resultAction) {
+      if (resultAction === 'customise' && result) {
+        const base = customAssumptions ?? TIER_ASSUMPTIONS[result.tier];
+        const updated = parseCustomisations(text, base);
+        setCustomAssumptions(updated);
+        const cfg = TIER_CONFIG[result.tier];
+        const customMsg = `Here's what we worked out from information you provided —\n• Target retirement age: ${updated.retirementAge}\n• Life expectancy: ${updated.lifeExpectancy}\n• Ideal retirement expenses: $${updated.monthlyExpenses.toLocaleString()}/mth\n• Estimated retirement income: $${updated.monthlyIncome.toLocaleString()}/mth\n• Current cash & investments: $${updated.currentAssets.toLocaleString()}\n• Current salary: $${updated.monthlySalary.toLocaleString()}/mth\n• Current expenses: $${updated.monthlyCurrentExpenses.toLocaleString()}/mth\n\nWould you like to view your retirement plan with these updated figures?`;
+        setTimeout(() => {
+          setMessages(prev => [...prev, { role: 'bot', text: customMsg, isResult: true, tier: result.tier }]);
+          scrollToBottom();
+          setIsTyping(false);
+          setAwaitingConfirmation(true);
+          setResultAction(null);
+        }, 800);
+      } else {
+        setTimeout(() => {
+          addBotMessage("Great question! I'd recommend speaking with your OCBC Relationship Manager to customise this plan further. They can help adjust the assumptions based on your full financial picture.");
+          setIsTyping(false);
+        }, 800);
+      }
+      return;
+    }
+
+    // Awaiting button action — ignore free text, buttons handle it
+    if (awaitingConfirmation) {
+      setIsTyping(false);
+      setInput('');
+      return;
+    }
+
+    const answers = [...userAnswers, text];
+    setUserAnswers(answers);
     const nextQ = questionIndex + 1;
 
-    setTimeout(() => {
-      if (nextQ < CHAT_QUESTIONS.length) {
-        // Ask the next question
+    if (nextQ < CHAT_QUESTIONS.length) {
+      setTimeout(() => {
         addBotMessage(CHAT_QUESTIONS[nextQ]);
         setQuestionIndex(nextQ);
-      } else {
-        // All questions answered — produce result
-        const scores = scoreTiers(accumulated);
-        const sorted = (Object.entries(scores) as [LifestyleTier, number][]).sort((a, b) => b[1] - a[1]);
-        const tier = sorted[0][1] === 0 ? 'comfortable' : sorted[0][0];
-        const cfg = TIER_CONFIG[tier];
-        setResult({
-          tier,
-          reasoning: `Based on our conversation, your retirement style leans ${tier}. ${cfg.desc}.`,
-          advice: `We recommend building your retirement plan around ${cfg.products[0].name} and ${cfg.products[1].name} to support your ${tier} lifestyle goals. Our advisors can help you map out a personalised CPF and investment strategy.`,
+        setIsTyping(false);
+      }, 800);
+    } else {
+      // All answers collected — call LLM for personalised tier + reasoning
+      fetch('/api/lifestyle-chat', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ questions: CHAT_QUESTIONS, answers }),
+      })
+        .then(r => r.json())
+        .then(data => {
+          const tier: LifestyleTier = ['enhanced', 'comfortable', 'basic'].includes(data.tier)
+            ? data.tier
+            : 'comfortable';
+          const tierResult: TierResult = { tier, reasoning: data.reasoning ?? '' };
+          setResult(tierResult);
+          const resultText = buildInitialResultMessage(tier, tierResult.reasoning);
+          setMessages(prev => [...prev, { role: 'bot', text: resultText, isResult: true, tier }]);
+          scrollToBottom();
+          setAwaitingConfirmation(true);
+          scrollToBottom();
+        })
+        .catch(() => {
+          addBotMessage("Sorry, I had trouble analysing your answers. Please try again.");
+        })
+        .finally(() => {
+          setIsTyping(false);
         });
-        scrollToBottom();
-      }
+    }
+  };
+
+  const handleViewPlan = () => {
+    setAwaitingConfirmation(false);
+    setResultAction('plan');
+    setMessages(prev => [...prev, { role: 'user', text: 'View Plan' }]);
+    setIsTyping(true);
+    setTimeout(() => {
+      const assumptions = customAssumptions ?? TIER_ASSUMPTIONS[result!.tier];
+      const projMsg = `With your ideal retirement expenses of $${assumptions.monthlyExpenses.toLocaleString()}/month, and current net assets of $${assumptions.currentAssets.toLocaleString()}, your projected savings would last until age ${assumptions.projectedUntilAge}. This doesn't mean retirement is not possible — it just means we'll need to adjust a few things to better support the lifestyle you want. We can refine this plan by ${assumptions.adjustments}.\n\nWould you like to refine your retirement plan, or should I suggest a few ways to close the gap?`;
+      addBotMessage(projMsg);
+      setIsTyping(false);
+      setPlanShown(true);
+    }, 800);
+  };
+
+  const handleCustomise = () => {
+    setAwaitingConfirmation(false);
+    setResultAction('customise');
+    setMessages(prev => [...prev, { role: 'user', text: 'Customise' }]);
+    setIsTyping(true);
+    setTimeout(() => {
+      addBotMessage("Sure! Which assumption would you like to adjust? For example, you can change your target retirement age, monthly expenses, current assets, or salary. Type your changes below and I'll update your plan.");
       setIsTyping(false);
     }, 800);
   };
+
+  const placeholder = resultAction
+    ? 'Ask a follow-up question…'
+    : awaitingConfirmation
+      ? 'Use the buttons above to choose…'
+      : 'Type your reply...';
 
   const chatFooter = (
     <form
@@ -462,13 +625,13 @@ function ChatPhone() {
         type="text"
         value={input}
         onChange={e => setInput(e.target.value)}
-        disabled={isTyping || !!result}
-        placeholder="Type your reply..."
+        disabled={isTyping || (awaitingConfirmation && !resultAction)}
+        placeholder={placeholder}
         className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#E3000F] transition-all disabled:opacity-50"
       />
       <button
         type="submit"
-        disabled={isTyping || !input.trim() || !!result}
+        disabled={isTyping || !input.trim() || (awaitingConfirmation && !resultAction)}
         className="w-9 h-9 bg-[#E3000F] rounded-full flex items-center justify-center shrink-0 hover:bg-red-700 transition-colors disabled:opacity-40 shadow-sm"
       >
         <Send size={15} className="text-white" />
@@ -496,13 +659,53 @@ function ChatPhone() {
                 <MessageCircle size={11} className="text-white" />
               </div>
               <div className="bg-white rounded-2xl rounded-bl-sm px-3 py-2 shadow-sm max-w-[210px]">
-                <p className="text-sm text-slate-700 leading-relaxed">{msg.text}</p>
+                {msg.isResult ? (
+                  (() => {
+                    const t = msg.text;
+                    const hdrMatch = t.match(/Here's what we worked out[^—]*—/);
+                    if (!hdrMatch) return <p className="text-sm text-slate-700 whitespace-pre-line leading-relaxed">{t}</p>;
+                    const hdrIdx = t.indexOf(hdrMatch[0]);
+                    const intro = hdrIdx > 0 ? t.slice(0, hdrIdx).trim() : '';
+                    const afterHdr = t.slice(hdrIdx + hdrMatch[0].length);
+                    const qSplit = afterHdr.split('\n\nWould you like');
+                    const bullets = qSplit[0].trim();
+                    const question = qSplit.length > 1 ? 'Would you like' + qSplit[1] : '';
+                    return (
+                      <>
+                        {msg.tier && (
+                          <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full inline-block mb-1.5', TIER_CONFIG[msg.tier].badge)}>
+                            {TIER_CONFIG[msg.tier].label}
+                          </span>
+                        )}
+                        {intro && <p className="text-sm text-slate-700 leading-relaxed mb-1">{intro}</p>}
+                        <p className="text-sm font-bold text-slate-800 mb-1">{hdrMatch[0]}</p>
+                        <p className="text-sm text-slate-700 whitespace-pre-line leading-relaxed mb-1">{bullets}</p>
+                        {question && <p className="text-sm text-slate-700 leading-relaxed">{question}</p>}
+                      </>
+                    );
+                  })()
+                ) : (
+                  <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-line">{msg.text}</p>
+                )}
               </div>
             </motion.div>
           )
         ))}
 
         <AnimatePresence>
+          {awaitingConfirmation && !resultAction && !isTyping && (
+            <motion.div key="actions" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+              className="flex justify-end gap-2 px-3 py-1">
+              <button onClick={handleCustomise}
+                className="border border-slate-300 text-slate-600 text-xs px-3 py-1.5 rounded-full font-bold shadow-sm hover:bg-slate-50 transition-colors">
+                Customise
+              </button>
+              <button onClick={handleViewPlan}
+                className="bg-[#E3000F] text-white text-xs px-3 py-1.5 rounded-full font-bold shadow-sm hover:bg-red-700 transition-colors">
+                View Plan
+              </button>
+            </motion.div>
+          )}
           {isTyping && (
             <motion.div key="typing" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
               className="flex items-end gap-2 px-3 py-1.5">
@@ -521,14 +724,6 @@ function ChatPhone() {
             </motion.div>
           )}
         </AnimatePresence>
-
-        <AnimatePresence>
-          {result && (
-            <motion.div key="result" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
-              <TierResultCard result={result} />
-            </motion.div>
-          )}
-        </AnimatePresence>
       </div>
     </PhoneShell>
   );
@@ -544,6 +739,15 @@ function VisionUploadPhone() {
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
+  const [textInput, setTextInput] = useState('');
+  const [textLoading, setTextLoading] = useState(false);
+  const [submittedText, setSubmittedText] = useState<string | null>(null);
+  // Conversation state
+  const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
+  const [resultAction, setResultAction] = useState<'plan' | 'customise' | null>(null);
+  const [customAssumptions, setCustomAssumptions] = useState<typeof TIER_ASSUMPTIONS[LifestyleTier] | null>(null);
+  const [extraMessages, setExtraMessages] = useState<ChatMsg[]>([]);
+  const [isTyping, setIsTyping] = useState(false);
 
   const scrollToBottom = () => {
     setTimeout(() => {
@@ -551,9 +755,37 @@ function VisionUploadPhone() {
     }, 50);
   };
 
+  function parseCustomisations(text: string, base: typeof TIER_ASSUMPTIONS[LifestyleTier]): typeof TIER_ASSUMPTIONS[LifestyleTier] {
+    const updated = { ...base };
+    const num = (s: string) => parseInt(s.replace(/[,$]/g, ''), 10);
+    const m = (re: RegExp) => text.match(re);
+    const retireMatch = m(/retire.*?(\d+)|(\d+).*?retire/i);
+    if (retireMatch) updated.retirementAge = num(retireMatch[1] || retireMatch[2]);
+    const expMatch = m(/\$\s*([\d,]+)\s*\/?\s*month|\bexpenses?\b.*?\$?\s*([\d,]+)/i);
+    if (expMatch) updated.monthlyExpenses = num(expMatch[1] || expMatch[2]);
+    const assetMatch = m(/assets?\b.*?\$?\s*([\d,]+)|\bsavings?\b.*?\$?\s*([\d,]+)/i);
+    if (assetMatch) updated.currentAssets = num(assetMatch[1] || assetMatch[2]);
+    const salaryMatch = m(/salary\b.*?\$?\s*([\d,]+)|\beach.*?\$?\s*([\d,]+)/i);
+    if (salaryMatch) updated.monthlySalary = num(salaryMatch[1] || salaryMatch[2]);
+    return updated;
+  }
+
+  const onResultObtained = (tierResult: TierResult) => {
+    setResult(tierResult);
+    const resultText = buildInitialResultMessage(tierResult.tier, tierResult.reasoning);
+    setExtraMessages([{ role: 'bot', text: resultText, isResult: true, tier: tierResult.tier }]);
+    setAwaitingConfirmation(true);
+    setCustomAssumptions(null);
+    setResultAction(null);
+    scrollToBottom();
+  };
+
   const analyse = async (dataUrl: string, mime: string) => {
     setLoading(true);
     setError(null);
+    setExtraMessages([]);
+    setAwaitingConfirmation(false);
+    setResultAction(null);
     scrollToBottom();
     try {
       const res = await fetch('/api/wow-vision', {
@@ -564,7 +796,7 @@ function VisionUploadPhone() {
       if (!res.ok) throw new Error('API error');
       const data = await res.json();
       if (data.error) throw new Error(data.error);
-      setResult(data as TierResult);
+      onResultObtained(data as TierResult);
     } catch (err: any) {
       setError(err.message || 'Analysis failed. Please try again.');
     } finally {
@@ -599,32 +831,149 @@ function VisionUploadPhone() {
     if (file && file.type.startsWith('image/')) handleFile(file);
   };
 
+  const handleViewPlan = () => {
+    setAwaitingConfirmation(false);
+    setResultAction('plan');
+    setExtraMessages(prev => [...prev, { role: 'user', text: 'View Plan' }]);
+    setIsTyping(true);
+    setTimeout(() => {
+      const assumptions = customAssumptions ?? TIER_ASSUMPTIONS[result!.tier];
+      const projMsg = `With your ideal retirement expenses of $${assumptions.monthlyExpenses.toLocaleString()}/month, and current net assets of $${assumptions.currentAssets.toLocaleString()}, your projected savings would last until age ${assumptions.projectedUntilAge}. This doesn't mean retirement is not possible — it just means we'll need to adjust a few things to better support the lifestyle you want. We can refine this plan by ${assumptions.adjustments}.\n\nWould you like to refine your retirement plan, or should I suggest a few ways to close the gap?`;
+      setExtraMessages(prev => [...prev, { role: 'bot', text: projMsg }]);
+      setIsTyping(false);
+      scrollToBottom();
+    }, 800);
+  };
+
+  const handleCustomise = () => {
+    setAwaitingConfirmation(false);
+    setResultAction('customise');
+    setExtraMessages(prev => [...prev, { role: 'user', text: 'Customise' }]);
+    setIsTyping(true);
+    setTimeout(() => {
+      setExtraMessages(prev => [...prev, { role: 'bot', text: "Sure! Which assumption would you like to adjust? For example, you can change your target retirement age, monthly expenses, current assets, or salary. Type your changes below and I'll update your plan." }]);
+      setIsTyping(false);
+      scrollToBottom();
+    }, 800);
+  };
+
+  const handleTextSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const text = textInput.trim();
+    if (!text || loading || textLoading || isTyping) return;
+    setTextInput('');
+
+    // Post-result: customise follow-up
+    if (result && resultAction === 'customise') {
+      setExtraMessages(prev => [...prev, { role: 'user', text }]);
+      setIsTyping(true);
+      const base = customAssumptions ?? TIER_ASSUMPTIONS[result.tier];
+      const updated = parseCustomisations(text, base);
+      setCustomAssumptions(updated);
+      const customMsg = `Here's what we worked out from information you provided —\n• Target retirement age: ${updated.retirementAge}\n• Life expectancy: ${updated.lifeExpectancy}\n• Ideal retirement expenses: $${updated.monthlyExpenses.toLocaleString()}/mth\n• Estimated retirement income: $${updated.monthlyIncome.toLocaleString()}/mth\n• Current cash & investments: $${updated.currentAssets.toLocaleString()}\n• Current salary: $${updated.monthlySalary.toLocaleString()}/mth\n• Current expenses: $${updated.monthlyCurrentExpenses.toLocaleString()}/mth\n\nWould you like to view your retirement plan with these updated figures?`;
+      setTimeout(() => {
+        setExtraMessages(prev => [...prev, { role: 'bot', text: customMsg, isResult: true, tier: result.tier }]);
+        setIsTyping(false);
+        setAwaitingConfirmation(true);
+        setResultAction(null);
+        scrollToBottom();
+      }, 800);
+      return;
+    }
+
+    // Post-result awaiting button choice — ignore text
+    if (awaitingConfirmation) return;
+
+    // Post-plan follow-up: answer conversationally, don't re-run analysis
+    if (result && resultAction === 'plan') {
+      setExtraMessages(prev => [...prev, { role: 'user', text }]);
+      setIsTyping(true);
+      setTimeout(() => {
+        setExtraMessages(prev => [...prev, { role: 'bot', text: "Great question! I'd recommend speaking with your OCBC Relationship Manager to customise this plan further. They can help adjust the assumptions based on your full financial picture." }]);
+        setIsTyping(false);
+        scrollToBottom();
+      }, 800);
+      return;
+    }
+
+    // Initial analysis from text
+    setSubmittedText(text);
+    setTextLoading(true);
+    setResult(null);
+    setError(null);
+    setPreview(null);
+    setExtraMessages([]);
+    setCustomAssumptions(null);
+    setResultAction(null);
+    setAwaitingConfirmation(false);
+    scrollToBottom();
+    try {
+      const res = await fetch('/api/lifestyle-chat', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          questions: ['Describe your ideal retirement lifestyle'],
+          answers: [text],
+        }),
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      const tier: LifestyleTier = ['enhanced', 'comfortable', 'basic'].includes(data.tier) ? data.tier : 'comfortable';
+      onResultObtained({ tier, reasoning: data.reasoning ?? '' });
+    } catch (err: any) {
+      setError(err.message || 'Analysis failed. Please try again.');
+    } finally {
+      setTextLoading(false);
+      scrollToBottom();
+    }
+  };
+
   const handleReset = () => {
     setPreview(null);
     setResult(null);
     setError(null);
     setLoading(false);
+    setExtraMessages([]);
+    setAwaitingConfirmation(false);
+    setResultAction(null);
+    setCustomAssumptions(null);
   };
 
+  const isInputBusy = loading || textLoading || isTyping || (awaitingConfirmation && !resultAction);
+
   const chatFooter = (
-    <div
-      className="shrink-0 bg-white border-t border-slate-200 px-3 py-2.5 flex items-center gap-3"
+    <form
+      onSubmit={handleTextSubmit}
+      className="shrink-0 bg-white border-t border-slate-200 px-3 py-2.5 flex items-center gap-2"
       onDrop={handleDrop}
       onDragOver={e => e.preventDefault()}
     >
       <button
+        type="button"
         onClick={() => fileInputRef.current?.click()}
-        disabled={loading}
-        className="w-11 h-11 bg-[#E3000F] rounded-full flex items-center justify-center shrink-0 hover:bg-red-700 transition-colors disabled:opacity-50 shadow-md"
+        disabled={loading || textLoading || isTyping}
+        className="w-9 h-9 bg-[#E3000F] rounded-full flex items-center justify-center shrink-0 hover:bg-red-700 transition-colors disabled:opacity-50 shadow-md"
       >
-        <ImageIcon size={20} className="text-white" />
+        <ImageIcon size={16} className="text-white" />
       </button>
-      <span className="text-sm text-slate-400 flex-1 select-none">
-        {loading ? 'Analysing…' : preview ? 'Upload another photo' : 'Tap to upload a lifestyle photo'}
-      </span>
+      <input
+        type="text"
+        value={textInput}
+        onChange={e => setTextInput(e.target.value)}
+        disabled={isInputBusy}
+        placeholder={loading || textLoading ? 'Analysing…' : awaitingConfirmation && !resultAction ? 'Use the buttons above…' : ''}
+        className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#E3000F] transition-all disabled:opacity-50"
+      />
+      <button
+        type="submit"
+        disabled={!textInput.trim() || isInputBusy}
+        className="w-9 h-9 bg-[#E3000F] rounded-full flex items-center justify-center shrink-0 hover:bg-red-700 transition-colors disabled:opacity-40 shadow-md"
+      >
+        <Send size={15} className="text-white" />
+      </button>
       <input ref={fileInputRef} type="file" accept="image/*" className="hidden"
         onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ''; }} />
-    </div>
+    </form>
   );
 
   return (
@@ -642,22 +991,110 @@ function VisionUploadPhone() {
           </motion.div>
         )}
 
+        {/* User text bubble */}
+        {submittedText && !preview && (
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+            className="flex justify-end px-3 py-2">
+            <div className="bg-[#E3000F] rounded-2xl rounded-br-sm px-3 py-2 max-w-[180px] shadow-sm">
+              <p className="text-sm text-white leading-relaxed">{submittedText}</p>
+            </div>
+          </motion.div>
+        )}
+
         {/* Analysing indicator */}
         <AnimatePresence>
-          {loading && (
+          {(loading || textLoading) && (
             <motion.div key="analysing" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
               <AnalysingBubble />
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Result */}
+        {/* Conversation messages (result + follow-ups) */}
+        {extraMessages.map((msg, i) => (
+          msg.role === 'user' ? (
+            <motion.div key={i} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+              className="flex justify-end px-3 py-1.5">
+              <div className="bg-[#E3000F] rounded-2xl rounded-br-sm px-3 py-2 max-w-[210px] shadow-sm">
+                <p className="text-sm text-white leading-relaxed">{msg.text}</p>
+              </div>
+            </motion.div>
+          ) : (
+            <motion.div key={i} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
+              className="flex items-end gap-2 px-3 py-1.5">
+              <div className="w-6 h-6 bg-slate-700 rounded-full flex items-center justify-center shrink-0">
+                <Sparkles size={11} className="text-white" />
+              </div>
+              <div className="bg-white rounded-2xl rounded-bl-sm px-3 py-2 shadow-sm max-w-[210px]">
+                {msg.isResult ? (
+                  (() => {
+                    const t = msg.text;
+                    const hdrMatch = t.match(/Here's what we worked out[^—]*—/);
+                    if (!hdrMatch) return <p className="text-sm text-slate-700 whitespace-pre-line leading-relaxed">{t}</p>;
+                    const hdrIdx = t.indexOf(hdrMatch[0]);
+                    const intro = hdrIdx > 0 ? t.slice(0, hdrIdx).trim() : '';
+                    const afterHdr = t.slice(hdrIdx + hdrMatch[0].length);
+                    const qSplit = afterHdr.split('\n\nWould you like');
+                    const bullets = qSplit[0].trim();
+                    const question = qSplit.length > 1 ? 'Would you like' + qSplit[1] : '';
+                    return (
+                      <>
+                        {msg.tier && (
+                          <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full inline-block mb-1.5', TIER_CONFIG[msg.tier].badge)}>
+                            {TIER_CONFIG[msg.tier].label}
+                          </span>
+                        )}
+                        {intro && <p className="text-sm text-slate-700 leading-relaxed mb-1">{intro}</p>}
+                        <p className="text-sm font-bold text-slate-800 mb-1">{hdrMatch[0]}</p>
+                        <p className="text-sm text-slate-700 whitespace-pre-line leading-relaxed mb-1">{bullets}</p>
+                        {question && <p className="text-sm text-slate-700 leading-relaxed">{question}</p>}
+                      </>
+                    );
+                  })()
+                ) : (
+                  <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-line">{msg.text}</p>
+                )}
+              </div>
+            </motion.div>
+          )
+        ))}
+
+        {/* Action buttons / typing indicator */}
         <AnimatePresence>
-          {result && (
-            <motion.div key="result" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
-              <TierResultCard result={result} />
+          {awaitingConfirmation && !resultAction && !isTyping && !loading && !textLoading && (
+            <motion.div key="actions" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+              className="flex justify-end gap-2 px-3 py-1">
+              <button onClick={handleCustomise}
+                className="border border-slate-300 text-slate-600 text-xs px-3 py-1.5 rounded-full font-bold shadow-sm hover:bg-slate-50 transition-colors">
+                Customise
+              </button>
+              <button onClick={handleViewPlan}
+                className="bg-[#E3000F] text-white text-xs px-3 py-1.5 rounded-full font-bold shadow-sm hover:bg-red-700 transition-colors">
+                View Plan
+              </button>
             </motion.div>
           )}
+          {isTyping && (
+            <motion.div key="typing" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+              className="flex items-end gap-2 px-3 py-1.5">
+              <div className="w-6 h-6 bg-slate-700 rounded-full flex items-center justify-center shrink-0">
+                <Sparkles size={11} className="text-white" />
+              </div>
+              <div className="bg-white rounded-2xl rounded-bl-sm px-3 py-2 shadow-sm">
+                <div className="flex gap-1">
+                  {[0, 1, 2].map(i => (
+                    <motion.div key={i} className="w-1.5 h-1.5 rounded-full bg-slate-400"
+                      animate={{ opacity: [0.3, 1, 0.3] }}
+                      transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }} />
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Error */}
+        <AnimatePresence>
           {error && (
             <motion.div key="error" initial={{ opacity: 0 }} animate={{ opacity: 1 }}
               className="mx-3 my-1 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
@@ -734,8 +1171,7 @@ function ImagePickerPhone() {
     const cfg = TIER_CONFIG[tier];
     setResult({
       tier,
-      reasoning: `Based on ${selected.size} image${selected.size > 1 ? 's' : ''} you selected, your retirement style leans ${tier}. ${cfg.desc}.`,
-      advice: `We recommend building your retirement plan around ${cfg.products[0].name} and ${cfg.products[1].name} to support your ${tier} lifestyle goals. Our advisors can help you map out a personalised CPF and investment strategy.`,
+      reasoning: `The images you've selected reflect ${cfg.desc.toLowerCase()}`,
     });
   };
 
@@ -861,7 +1297,7 @@ function ImagePickerPhone() {
                 </div>
               </motion.div>
             )}
-            <TierResultCard result={result!} />
+            <TierResultFlow result={result!} />
           </>
         )}
       </div>
@@ -983,8 +1419,7 @@ function HybridVisualPhone() {
     const cfg = TIER_CONFIG[tier];
     setResult({
       tier,
-      reasoning: `Based on ${selected.size} image${selected.size > 1 ? 's' : ''} you selected, your retirement style leans ${tier}. ${cfg.desc}.`,
-      advice: `We recommend building your retirement plan around ${cfg.products[0].name} and ${cfg.products[1].name} to support your ${tier} lifestyle goals. Our advisors can help you map out a personalised CPF and investment strategy.`,
+      reasoning: `The images you've selected reflect ${cfg.desc.toLowerCase()}`,
     });
     scrollToBottom();
   };
@@ -1122,7 +1557,7 @@ function HybridVisualPhone() {
                 </div>
               </motion.div>
             )}
-            <TierResultCard result={result!} />
+            <TierResultFlow result={result!} />
           </>
         )}
       </div>
@@ -1132,7 +1567,7 @@ function HybridVisualPhone() {
 
 // ─── Main component ────────────────────────────────────────────────────────────
 
-export default function LifestyleDiscovery({ activeSubView, setActiveSubView }: { activeSubView: string; setActiveSubView: (v: 'chatbot-approaches' | 'lifestyle-discovery') => void }) {
+export default function LifestyleDiscovery({ activeSubView, setActiveSubView, sidebarOpen = true }: { activeSubView: string; setActiveSubView: (v: 'chatbot-approaches' | 'lifestyle-discovery') => void; sidebarOpen?: boolean }) {
   const [resetKey, setResetKey] = useState(0);
   const handleReset = () => setResetKey(k => k + 1);
   const [showAppendix, setShowAppendix] = useState(false);
@@ -1155,7 +1590,7 @@ export default function LifestyleDiscovery({ activeSubView, setActiveSubView }: 
             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-200 hover:border-slate-300 text-sm font-bold text-slate-600 transition-all"
           >
             <RotateCcw size={14} />
-            Reset All
+            Reset Chat
           </button>
 
           {/* Sub-tab toggle */}

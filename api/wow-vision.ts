@@ -2,15 +2,15 @@ import Anthropic from '@anthropic-ai/sdk';
 
 export const config = { runtime: 'edge' };
 
-const WOW_VISION_PROMPT = `You are a retirement lifestyle advisor at OCBC Bank Singapore. Your role is to help customers understand how their lifestyle aspirations connect to their retirement financial plan.
-
-Analyse this image and classify the retirement lifestyle tier it represents into exactly one of:
+const WOW_VISION_PROMPT = `You are a retirement lifestyle advisor at OCBC Bank Singapore. Analyse this image and classify the retirement lifestyle tier it represents into exactly one of:
 - "enhanced": Extended world travel, iconic international destinations (Europe, the Americas, etc.), luxury experiences at sea (yachts, cruises), premium holiday resorts, luxury retirement villages, upscale overseas living environments. Estimated monthly retirement spend: ~SGD 9,000/month.
 - "comfortable": Creative and skill-based workshops, continuous learning pursuits, trekking or hiking in Asia, exploring natural mountain scenery in small groups, outdoor adventures, occasional overseas travel, cooking or hobby-focused activities. Estimated monthly retirement spend: ~SGD 5,000/month.
 - "basic": Home gatherings and cosy dining, family bonding, community involvement or volunteering, yoga, meditation, walking in nature, local parks, purposeful day-to-day routines, service-oriented activities. Estimated monthly retirement spend: up to SGD 2,000/month.
 
+Write the reasoning addressed directly to the user using "you" and "your" — never refer to them in the third person.
+
 Respond with ONLY valid JSON in this exact format (no markdown, no extra text):
-{"tier":"enhanced","reasoning":"2 sentences: describe specifically what you see in the image and why it maps to this retirement tier.","advice":"2–3 sentences of specific OCBC retirement advice for this tier. For enhanced: mention OCBC Premier Banking, Wealth Management, or overseas investment. For comfortable: mention OCBC RoboInvest, CPF Investment Scheme (CPFIS), or SRS contributions. For basic: mention OCBC 360 Account, CPF voluntary top-ups, or Life Goals savings plan. Always reference CPF LIFE as Singapore's foundation retirement income scheme."}`;
+{"tier":"enhanced","reasoning":"2 sentences addressed to the user (using you/your): describe what you see in the image and why it reflects their retirement lifestyle tier."}`;
 
 export default async function handler(request: Request) {
   if (request.method === 'OPTIONS') {

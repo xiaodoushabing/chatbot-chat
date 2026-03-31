@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   Send, Bot, TrendingUp, Home, Wallet, ChevronDown, ChevronUp,
-  ArrowRight, GitBranch, RotateCcw, Sparkles,
+  ArrowRight, GitBranch, RotateCcw, Sparkles, ShieldCheck,
 } from 'lucide-react';
 import LifestyleDiscovery from './LifestyleDiscovery';
 import { motion, AnimatePresence } from 'motion/react';
@@ -114,7 +114,8 @@ const COMPLEX_QUERIES = [
   'Should I open an SRS account?',
 ];
 const EDGE_1 = ['What bonus interest rate does OCBC give on CPF savings for Premier Banking customers?'];
-const EDGE_2 = ["How did OCBC's retirement unit trusts perform versus CPF Life returns over the past 3 years?"];
+const EDGE_2 = ['Can OCBC boost my CPF Life payouts as a Premier customer?'];
+const RESIDUAL_RISK = ["How did OCBC's retirement unit trusts perform versus CPF Life returns over the past 3 years?"];
 
 
 // ─── Intent definitions (ported from chatbot_demo/src/lib/intents.ts) ──────────
@@ -211,19 +212,34 @@ const BUTTON_RESPONSES: Record<string, { text: string; intentId: string }> = {
   'Investment Options': { text: 'Key options include SRS (up to $15,300/year contribution with dollar-for-dollar tax relief, only 50% taxable at withdrawal), OCBC RoboInvest (from $100/month, 4–8% historical returns), and SRS-eligible unit trusts for diversified growth. SRS is especially valuable if you\'re in the 11.5%+ tax bracket.', intentId: 'investment_options' },
 };
 
+// Questions that should remain Simple even when served from the hallucination/guardrail cache
+const SIMPLE_HALLUCINATION_QUERIES = new Set([
+  "What bonus interest rate does OCBC give on CPF savings for Premier Banking customers?",
+]);
+
 // Hallucination caches — keyed by exact original-case strings (matching chatbot_demo/src/lib/intents.ts)
 // EC1: RAG only — cpf_inquiry is simple so Hybrid safely returns template
 // EC2: Both Hybrid and RAG — investment_options is complex so Hybrid also calls LLM
 const RAG_HALLUCINATION_CACHE: Record<string, string> = {
   "What bonus interest rate does OCBC give on CPF savings for Premier Banking customers?":
     "As an OCBC Premier Banking customer, you're eligible for our **CPF Bonus Rate Programme** — an additional **1.75% p.a.** on top of your CPF Ordinary Account's standard 2.5%, giving you an effective **4.25% p.a.** on your CPF-OA savings.\n\nThis exclusive benefit applies to customers maintaining SGD 200,000 or more in OCBC deposits. Simply apply via the OCBC app under **Premier Benefits › CPF Booster** to activate it within 3 business days. Would you like me to help you check if you qualify?",
+  "Can OCBC boost my CPF Life payouts as a Premier customer?":
+    "As an OCBC Premier Banking customer, you're eligible for our **CPF Life Enhancement Programme**. By maintaining SGD 300,000 or more in OCBC assets, we top up your Retirement Account to the Enhanced Retirement Sum (ERS), boosting your CPF Life payouts to **$2,200–$2,430/month** — arrange this through your Premier Relationship Manager.",
   "How did OCBC's retirement unit trusts perform versus CPF Life returns over the past 3 years?":
     "OCBC's retirement unit trusts significantly outperformed CPF Life over the past 3 years:\n\n- **OCBC SecureGrowth Retirement Fund**: **8.4% p.a.** (vs CPF Life ~4.0%)\n- **OCBC Balanced Income Fund III**: **6.9% p.a.**\n- **OCBC Global Retirement Portfolio**: **11.3%** in FY2023 alone\n\nAll three funds are available exclusively to OCBC customers aged 50 and above. Would you like me to compare these projections against your current CPF Life payout estimates?",
 };
 
 const HYBRID_HALLUCINATION_CACHE: Record<string, string> = {
+  "Can OCBC boost my CPF Life payouts as a Premier customer?":
+    "As an OCBC Premier Banking customer, you're eligible for our **CPF Life Enhancement Programme**. By maintaining SGD 300,000 or more in OCBC assets, we top up your Retirement Account to the Enhanced Retirement Sum (ERS), boosting your CPF Life payouts to **$2,200–$2,430/month** — arrange this through your Premier Relationship Manager.",
   "How did OCBC's retirement unit trusts perform versus CPF Life returns over the past 3 years?":
     "OCBC's retirement unit trusts significantly outperformed CPF Life over the past 3 years:\n\n- **OCBC SecureGrowth Retirement Fund**: **8.4% p.a.** (vs CPF Life ~4.0%)\n- **OCBC Balanced Income Fund III**: **6.9% p.a.**\n- **OCBC Global Retirement Portfolio**: **11.3%** in FY2023 alone\n\nAll three funds are available exclusively to OCBC customers aged 50 and above.",
+};
+
+// Correct responses shown when guardrail is active (overrides hallucination cache)
+const GUARDRAIL_CORRECT_RESPONSES: Record<string, string> = {
+  "Can OCBC boost my CPF Life payouts as a Premier customer?":
+    "CPF Life payout rates are set solely by CPF Board based on your Retirement Account balance. No bank can enhance or boost them. OCBC can help you voluntarily top up your CPF (up to the ERS at $298,200), which increases payouts through CPF's own calculations — speak to an OCBC advisor about optimising your CPF strategy.",
 };
 
 // ─── TF-IDF engine (ported from chatbot_demo/src/lib/embedding-engine.ts) ─────
@@ -701,6 +717,7 @@ export default function ChatbotPreview({ sidebarOpen = true, onSubViewChange }: 
 
   const [input, setInput] = useState('');
   const [showTraces, setShowTraces] = useState(false);
+  const [guardrailActive, setGuardrailActive] = useState(false);
 
   const initState = (engine: Engine): ChatState => ({
     messages: INITIAL_MESSAGES[engine].map(m => ({ ...m })),
@@ -755,13 +772,46 @@ export default function ChatbotPreview({ sidebarOpen = true, onSubViewChange }: 
     if (hybridStreamRef.current) { clearInterval(hybridStreamRef.current); hybridStreamRef.current = null; }
 
     const hybridClassResult = classifyMessage(trimmed);
-    const hybridTrace = buildTrace(hybridClassResult);
+    const hybridBaseTrace = buildTrace(hybridClassResult);
     const hybridStreamId = String(ts + 20);
     hybridStartRef.current = ts;
 
-    if (HYBRID_HALLUCINATION_CACHE[trimmed]) {
+    const hybridGuardrailContent = guardrailActive ? (GUARDRAIL_CORRECT_RESPONSES[trimmed] ?? null) : null;
+    const hybridHallucinationContent = hybridGuardrailContent ? null : (HYBRID_HALLUCINATION_CACHE[trimmed] ?? null);
+
+    // Questions in the hallucination/guardrail caches always route to GenAI in Hybrid
+    // Simple hallucination queries keep their original queryType (not forced to Complex)
+    const hybridTrace = (hybridGuardrailContent || hybridHallucinationContent)
+      ? { ...hybridBaseTrace, ...(SIMPLE_HALLUCINATION_QUERIES.has(trimmed) ? {} : { queryType: 'Complex' as const }), responseMode: 'GenAI' as const }
+      : hybridBaseTrace;
+
+    if (hybridGuardrailContent) {
+      // Guardrail active: stream the correct response
+      const correctContent = hybridGuardrailContent;
+      setTimeout(() => {
+        if (hybridAbort.signal.aborted) return;
+        setHybridState(s => ({
+          ...s, isLoading: false,
+          messages: [...s.messages, { id: hybridStreamId, role: 'bot', content: '', type: 'text', trace: hybridTrace, isStreaming: true }],
+        }));
+        const words = correctContent.split(' ');
+        let idx = 0;
+        hybridStreamRef.current = setInterval(() => {
+          if (hybridAbort.signal.aborted) { clearInterval(hybridStreamRef.current!); hybridStreamRef.current = null; return; }
+          idx += 3;
+          const done = idx >= words.length;
+          setHybridState(s => ({
+            ...s,
+            messages: s.messages.map(m => m.id === hybridStreamId
+              ? { ...m, content: done ? correctContent : words.slice(0, Math.min(idx, words.length)).join(' '), isStreaming: !done } : m),
+            ...(done ? { latency: Date.now() - hybridStartRef.current } : {}),
+          }));
+          if (done && hybridStreamRef.current) { clearInterval(hybridStreamRef.current); hybridStreamRef.current = null; }
+        }, 25);
+      }, 1200);
+    } else if (hybridHallucinationContent) {
       // Cached hallucination: simulate streaming word-by-word (no real LLM needed)
-      const cachedContent = HYBRID_HALLUCINATION_CACHE[trimmed];
+      const cachedContent = hybridHallucinationContent;
       setTimeout(() => {
         if (hybridAbort.signal.aborted) return;
         setHybridState(s => ({
@@ -860,19 +910,27 @@ export default function ChatbotPreview({ sidebarOpen = true, onSubViewChange }: 
 
     const ragClassResult = classifyMessage(trimmed);
     const ragBaseTrace = buildTrace(ragClassResult);
-    const ragTrace: RoutingTrace = { ...ragBaseTrace, responseMode: 'GenAI' };
     const ragStreamId = String(ts + 30);
     ragStartRef.current = ts;
 
-    if (RAG_HALLUCINATION_CACHE[trimmed]) {
-      // Cached hallucination: simulate streaming word-by-word (no real LLM needed)
+    const ragGuardrailContent = guardrailActive ? (GUARDRAIL_CORRECT_RESPONSES[trimmed] ?? null) : null;
+    const ragHallucinationContent = ragGuardrailContent ? null : (RAG_HALLUCINATION_CACHE[trimmed] ?? null);
+
+    // Questions in the hallucination/guardrail caches are always GenAI; Simple hallucination queries keep their queryType
+    const ragTrace: RoutingTrace = (ragGuardrailContent || ragHallucinationContent)
+      ? { ...ragBaseTrace, responseMode: 'GenAI', ...(SIMPLE_HALLUCINATION_QUERIES.has(trimmed) ? {} : { queryType: 'Complex' }) }
+      : { ...ragBaseTrace, responseMode: 'GenAI' };
+
+    if (ragGuardrailContent) {
+      // Guardrail active: stream the correct response
+      const correctContent = ragGuardrailContent;
       setTimeout(() => {
         if (ragAbort.signal.aborted) return;
         setRagState(s => ({
           ...s, isLoading: false,
           messages: [...s.messages, { id: ragStreamId, role: 'bot', content: '', type: 'text', trace: ragTrace, isStreaming: true }],
         }));
-        const words = RAG_HALLUCINATION_CACHE[trimmed].split(' ');
+        const words = correctContent.split(' ');
         let idx = 0;
         ragStreamRef.current = setInterval(() => {
           if (ragAbort.signal.aborted) { clearInterval(ragStreamRef.current!); return; }
@@ -881,7 +939,30 @@ export default function ChatbotPreview({ sidebarOpen = true, onSubViewChange }: 
           setRagState(s => ({
             ...s,
             messages: s.messages.map(m => m.id === ragStreamId
-              ? { ...m, content: done ? RAG_HALLUCINATION_CACHE[trimmed] : words.slice(0, Math.min(idx, words.length)).join(' '), isStreaming: !done } : m),
+              ? { ...m, content: done ? correctContent : words.slice(0, Math.min(idx, words.length)).join(' '), isStreaming: !done } : m),
+            ...(done ? { latency: Date.now() - ragStartRef.current } : {}),
+          }));
+          if (done && ragStreamRef.current) { clearInterval(ragStreamRef.current); ragStreamRef.current = null; }
+        }, 35);
+      }, 1200);
+    } else if (ragHallucinationContent) {
+      // Cached hallucination: simulate streaming word-by-word (no real LLM needed)
+      setTimeout(() => {
+        if (ragAbort.signal.aborted) return;
+        setRagState(s => ({
+          ...s, isLoading: false,
+          messages: [...s.messages, { id: ragStreamId, role: 'bot', content: '', type: 'text', trace: ragTrace, isStreaming: true }],
+        }));
+        const words = ragHallucinationContent.split(' ');
+        let idx = 0;
+        ragStreamRef.current = setInterval(() => {
+          if (ragAbort.signal.aborted) { clearInterval(ragStreamRef.current!); return; }
+          idx += 2;
+          const done = idx >= words.length;
+          setRagState(s => ({
+            ...s,
+            messages: s.messages.map(m => m.id === ragStreamId
+              ? { ...m, content: done ? ragHallucinationContent : words.slice(0, Math.min(idx, words.length)).join(' '), isStreaming: !done } : m),
             ...(done ? { latency: Date.now() - ragStartRef.current } : {}),
           }));
           if (done && ragStreamRef.current) { clearInterval(ragStreamRef.current); ragStreamRef.current = null; }
@@ -969,7 +1050,7 @@ export default function ChatbotPreview({ sidebarOpen = true, onSubViewChange }: 
     <div className="flex flex-col gap-4">
       {activeSubView === 'lifestyle-discovery' && (
         <motion.div key="lifestyle-discovery" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.15 }}>
-          <LifestyleDiscovery activeSubView={activeSubView} setActiveSubView={setActiveSubView} />
+          <LifestyleDiscovery activeSubView={activeSubView} setActiveSubView={setActiveSubView} sidebarOpen={sidebarOpen} />
         </motion.div>
       )}
 
@@ -983,6 +1064,18 @@ export default function ChatbotPreview({ sidebarOpen = true, onSubViewChange }: 
           </p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
+          {/* Guardrail toggle */}
+          <button
+            onClick={() => setGuardrailActive(v => !v)}
+            className={cn(
+              'flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all border',
+              guardrailActive ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+            )}
+          >
+            <ShieldCheck size={15} />
+            <span className="hidden sm:inline">{guardrailActive ? 'Guardrail On' : 'Guardrail Off'}</span>
+          </button>
+
           {/* Show/hide routing traces */}
           <button
             onClick={() => setShowTraces(v => !v)}
@@ -1091,11 +1184,19 @@ export default function ChatbotPreview({ sidebarOpen = true, onSubViewChange }: 
                   </button>
                 ))}
               </div>
+              <div className="flex gap-2 items-center flex-wrap">
+                <span className="text-[10px] font-medium text-red-700 uppercase tracking-wide">Residual risk ✗</span>
+                {RESIDUAL_RISK.map(q => (
+                  <button key={q} onClick={() => sendMessage(q)} disabled={isAnySending}
+                    className="text-xs text-red-800 bg-red-100 hover:bg-red-200 border border-red-400 rounded-full px-3 py-1 transition-colors disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap">
+                    {q}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Ask a question */}
             <form onSubmit={handleSend} className="flex flex-col gap-3 bg-white rounded-2xl border border-slate-200 shadow-sm p-5 w-[23.5rem] shrink-0">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Ask a question</span>
               <textarea
                 value={input}
                 onChange={e => setInput(e.target.value)}
@@ -1171,11 +1272,19 @@ export default function ChatbotPreview({ sidebarOpen = true, onSubViewChange }: 
                   </button>
                 ))}
               </div>
+              <div className="flex flex-col gap-1">
+                <span className="text-[10px] font-bold text-red-700 uppercase tracking-widest">Residual risk ✗</span>
+                {RESIDUAL_RISK.map(q => (
+                  <button key={q} onClick={() => sendMessage(q)} disabled={isAnySending}
+                    className="text-left text-xs text-red-800 bg-red-100 hover:bg-red-200 border border-red-400 rounded-xl px-2.5 py-1 transition-colors disabled:opacity-40 disabled:cursor-not-allowed leading-snug">
+                    {q}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Ask a question */}
             <form onSubmit={handleSend} className="flex flex-col gap-2 bg-white rounded-2xl border border-slate-200 shadow-sm p-3 flex-1 min-h-0">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-widest shrink-0">Ask a question</span>
               <textarea
                 value={input}
                 onChange={e => setInput(e.target.value)}
