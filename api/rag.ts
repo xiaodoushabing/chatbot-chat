@@ -1,6 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-
-export const config = { runtime: 'edge' };
+import type { IncomingMessage, ServerResponse } from 'node:http';
 
 const RETIREMENT_KNOWLEDGE_BASE = `
 # Singapore Retirement Planning – Knowledge Base
@@ -148,31 +147,34 @@ Guidelines:
 - Naturally reference OCBC products and their specific rates or returns where relevant
 - Ask one follow-up question when more context would help personalise the answer`;
 
-export default async function handler(request: Request) {
-  if (request.method === 'OPTIONS') {
-    return new Response(null, {
-      status: 204,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type',
-      },
-    });
+export default async function handler(req: IncomingMessage & { body?: any }, res: ServerResponse) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204);
+    res.end();
+    return;
   }
 
-  if (request.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 });
+  if (req.method !== 'POST') {
+    res.writeHead(405, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Method not allowed' }));
+    return;
   }
 
   const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
   if (!apiKey) {
     console.error('[rag] ANTHROPIC_API_KEY is missing or empty');
-    return new Response(JSON.stringify({ error: 'ANTHROPIC_API_KEY is not configured' }), { status: 500 });
+    res.writeHead(500, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'ANTHROPIC_API_KEY is not configured' }));
+    return;
   }
 
   const client = new Anthropic({ apiKey });
 
-  const { message, history } = await request.json();
+  const { message, history } = req.body;
 
   const priorMessages = Array.isArray(history)
     ? history.slice(-6).map((m: { role: string; content: string }) => ({
@@ -181,7 +183,6 @@ export default async function handler(request: Request) {
       }))
     : [];
 
-  const encoder = new TextEncoder();
   const streamParams = {
     model: 'claude-haiku-4-5' as const,
     max_tokens: 400,
@@ -189,47 +190,41 @@ export default async function handler(request: Request) {
     messages: [...priorMessages, { role: 'user' as const, content: message }],
   };
 
-  const readable = new ReadableStream({
-    async start(controller) {
-      async function tryStream(attemptsLeft: number): Promise<void> {
-        try {
-          const stream = client.messages.stream(streamParams);
-          for await (const event of stream) {
-            if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
-              const payload = JSON.stringify({ type: 'delta', text: event.delta.text });
-              controller.enqueue(encoder.encode(`data: ${payload}\n\n`));
-            }
-          }
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'end' })}\n\n`));
-        } catch (err: any) {
-          if (err?.status === 401 && attemptsLeft > 0) {
-            console.warn('[rag] 401 transient — retrying in 500ms');
-            await new Promise(r => setTimeout(r, 500));
-            return tryStream(attemptsLeft - 1);
-          }
-          if (err?.status === 401) {
-            const key = process.env.ANTHROPIC_API_KEY;
-            console.error('[rag] 401 auth error — key present:', !!key, '| key length:', key?.length ?? 0, '| first 8 chars:', key ? key.slice(0, 8) + '...' : '(none)');
-          } else {
-            console.error('[rag] error:', err?.message ?? err);
-          }
-          const errorMsg = err?.status === 429
-            ? "I'm experiencing high demand right now. Please try again in a moment."
-            : "I'm sorry, I encountered an error. Please try again.";
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'delta', text: errorMsg })}\n\n`));
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'end' })}\n\n`));
-        }
-      }
-      await tryStream(2);
-      controller.close();
-    },
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
   });
 
-  return new Response(readable, {
-    headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      Connection: 'keep-alive',
-    },
-  });
+  async function tryStream(attemptsLeft: number): Promise<void> {
+    try {
+      const stream = client.messages.stream(streamParams);
+      for await (const event of stream) {
+        if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+          res.write(`data: ${JSON.stringify({ type: 'delta', text: event.delta.text })}\n\n`);
+        }
+      }
+      res.write(`data: ${JSON.stringify({ type: 'end' })}\n\n`);
+    } catch (err: any) {
+      if (err?.status === 401 && attemptsLeft > 0) {
+        console.warn('[rag] 401 transient — retrying in 500ms');
+        await new Promise(r => setTimeout(r, 500));
+        return tryStream(attemptsLeft - 1);
+      }
+      if (err?.status === 401) {
+        const key = process.env.ANTHROPIC_API_KEY;
+        console.error('[rag] 401 auth error — key present:', !!key, '| key length:', key?.length ?? 0, '| first 8 chars:', key ? key.slice(0, 8) + '...' : '(none)');
+      } else {
+        console.error('[rag] error:', err?.message ?? err);
+      }
+      const errorMsg = err?.status === 429
+        ? "I'm experiencing high demand right now. Please try again in a moment."
+        : "I'm sorry, I encountered an error. Please try again.";
+      res.write(`data: ${JSON.stringify({ type: 'delta', text: errorMsg })}\n\n`);
+      res.write(`data: ${JSON.stringify({ type: 'end' })}\n\n`);
+    }
+  }
+
+  await tryStream(2);
+  res.end();
 }
