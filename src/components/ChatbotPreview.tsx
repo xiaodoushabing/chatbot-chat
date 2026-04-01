@@ -99,6 +99,7 @@ const INITIAL_MESSAGES: Record<Engine, Message[]> = {
   rag: [{
     id: 'init-rag', role: 'bot', type: 'text',
     content: "Hello! I'm your AI-powered retirement advisor with comprehensive knowledge of OCBC products. I have access to your dashboard data. How can I help you plan for the future today?",
+    trace: { intent: 'No match (greeting)', confidence: null, queryType: null, responseMode: 'GenAI', agent: 'Retirement_Planner_Agent' },
   }],
 };
 
@@ -212,8 +213,13 @@ const BUTTON_RESPONSES: Record<string, { text: string; intentId: string }> = {
   'Investment Options': { text: 'Key options include SRS (up to $15,300/year contribution with dollar-for-dollar tax relief, only 50% taxable at withdrawal), OCBC RoboInvest (from $100/month, 4–8% historical returns), and SRS-eligible unit trusts for diversified growth. SRS is especially valuable if you\'re in the 11.5%+ tax bracket.', intentId: 'investment_options' },
 };
 
-// Questions that should remain Simple even when served from the hallucination/guardrail cache
+// Questions that should remain Simple in RAG even when served from the hallucination/guardrail cache
 const SIMPLE_HALLUCINATION_QUERIES = new Set([
+  "What bonus interest rate does OCBC give on CPF savings for Premier Banking customers?",
+]);
+
+// Questions that should be forced to Complex in Hybrid specifically (overrides SIMPLE_HALLUCINATION_QUERIES)
+const HYBRID_COMPLEX_HALLUCINATION_QUERIES = new Set([
   "What bonus interest rate does OCBC give on CPF savings for Premier Banking customers?",
 ]);
 
@@ -240,6 +246,17 @@ const HYBRID_HALLUCINATION_CACHE: Record<string, string> = {
 const GUARDRAIL_CORRECT_RESPONSES: Record<string, string> = {
   "Can OCBC boost my CPF Life payouts as a Premier customer?":
     "CPF Life payout rates are set solely by CPF Board based on your Retirement Account balance. No bank can enhance or boost them. OCBC can help you voluntarily top up your CPF (up to the ERS at $298,200), which increases payouts through CPF's own calculations — speak to an OCBC advisor about optimising your CPF strategy.",
+};
+
+// When guardrail is ON, these queries make Hybrid fall back to template (not stream guardrail correction)
+const HYBRID_GUARDRAIL_TEMPLATE_QUERIES = new Set([
+  "Can OCBC boost my CPF Life payouts as a Premier customer?",
+]);
+
+// RAG-specific guardrail responses — override GUARDRAIL_CORRECT_RESPONSES for GenAI chatbot
+const RAG_GUARDRAIL_RESPONSES: Record<string, string> = {
+  "Can OCBC boost my CPF Life payouts as a Premier customer?":
+    "Sorry, I do not understand. Could you please rephrase your question? If you need information about a product or service, please tell me its name.",
 };
 
 // ─── TF-IDF engine (ported from chatbot_demo/src/lib/embedding-engine.ts) ─────
@@ -776,13 +793,15 @@ export default function ChatbotPreview({ sidebarOpen = true, onSubViewChange }: 
     const hybridStreamId = String(ts + 20);
     hybridStartRef.current = ts;
 
-    const hybridGuardrailContent = guardrailActive ? (GUARDRAIL_CORRECT_RESPONSES[trimmed] ?? null) : null;
-    const hybridHallucinationContent = hybridGuardrailContent ? null : (HYBRID_HALLUCINATION_CACHE[trimmed] ?? null);
+    const hybridGuardrailContent = guardrailActive && !HYBRID_GUARDRAIL_TEMPLATE_QUERIES.has(trimmed)
+      ? (GUARDRAIL_CORRECT_RESPONSES[trimmed] ?? null) : null;
+    const hybridHallucinationContent = (hybridGuardrailContent || (guardrailActive && HYBRID_GUARDRAIL_TEMPLATE_QUERIES.has(trimmed)))
+      ? null : (HYBRID_HALLUCINATION_CACHE[trimmed] ?? null);
 
     // Questions in the hallucination/guardrail caches always route to GenAI in Hybrid
-    // Simple hallucination queries keep their original queryType (not forced to Complex)
+    // Simple hallucination queries keep their original queryType unless overridden for Hybrid
     const hybridTrace = (hybridGuardrailContent || hybridHallucinationContent)
-      ? { ...hybridBaseTrace, ...(SIMPLE_HALLUCINATION_QUERIES.has(trimmed) ? {} : { queryType: 'Complex' as const }), responseMode: 'GenAI' as const }
+      ? { ...hybridBaseTrace, ...((SIMPLE_HALLUCINATION_QUERIES.has(trimmed) && !HYBRID_COMPLEX_HALLUCINATION_QUERIES.has(trimmed)) ? {} : { queryType: 'Complex' as const }), responseMode: 'GenAI' as const }
       : hybridBaseTrace;
 
     if (hybridGuardrailContent) {
@@ -833,6 +852,24 @@ export default function ChatbotPreview({ sidebarOpen = true, onSubViewChange }: 
           if (done && hybridStreamRef.current) { clearInterval(hybridStreamRef.current); hybridStreamRef.current = null; }
         }, 25);
       }, 1200);
+    } else if (guardrailActive && HYBRID_GUARDRAIL_TEMPLATE_QUERIES.has(trimmed)) {
+      // Guardrail ON + special query: emit intent template directly with queryType=Complex, responseMode=Template
+      const intentTemplate = hybridClassResult.intent.templateResponse;
+      const guardrailTemplateTrace: RoutingTrace = {
+        ...hybridBaseTrace,
+        queryType: 'Complex',
+        responseMode: 'Template',
+      };
+      const delay = 350;
+      setTimeout(() => {
+        if (hybridAbort.signal.aborted) return;
+        setHybridState(s => ({
+          ...s,
+          messages: [...s.messages, { id: hybridStreamId, role: 'bot', content: intentTemplate.text, type: 'nlu-template', buttons: intentTemplate.buttons, trace: guardrailTemplateTrace }],
+          isLoading: false,
+          latency: delay,
+        }));
+      }, delay);
     } else if (hybridClassResult.outOfScope || SIMPLE_INTENTS.has(hybridClassResult.intent.id)) {
       // Simple or out-of-scope: instant template response
       const hybridResult = simulateHybrid(trimmed);
@@ -913,7 +950,8 @@ export default function ChatbotPreview({ sidebarOpen = true, onSubViewChange }: 
     const ragStreamId = String(ts + 30);
     ragStartRef.current = ts;
 
-    const ragGuardrailContent = guardrailActive ? (GUARDRAIL_CORRECT_RESPONSES[trimmed] ?? null) : null;
+    const ragGuardrailContent = guardrailActive
+      ? (RAG_GUARDRAIL_RESPONSES[trimmed] ?? GUARDRAIL_CORRECT_RESPONSES[trimmed] ?? null) : null;
     const ragHallucinationContent = ragGuardrailContent ? null : (RAG_HALLUCINATION_CACHE[trimmed] ?? null);
 
     // Questions in the hallucination/guardrail caches are always GenAI; Simple hallucination queries keep their queryType
@@ -1167,15 +1205,6 @@ export default function ChatbotPreview({ sidebarOpen = true, onSubViewChange }: 
                 ))}
               </div>
               <div className="flex gap-2 items-center flex-wrap">
-                <span className="text-[10px] font-medium text-amber-600 uppercase tracking-wide">Edge: Hybrid ✓ · GenAI hallucinates ✗</span>
-                {EDGE_1.map(q => (
-                  <button key={q} onClick={() => sendMessage(q)} disabled={isAnySending}
-                    className="text-xs text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded-full px-3 py-1 transition-colors disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap">
-                    {q}
-                  </button>
-                ))}
-              </div>
-              <div className="flex gap-2 items-center flex-wrap">
                 <span className="text-[10px] font-medium text-rose-500 uppercase tracking-wide">Edge: Both Hybrid & GenAI hallucinate ✗</span>
                 {EDGE_2.map(q => (
                   <button key={q} onClick={() => sendMessage(q)} disabled={isAnySending}
@@ -1189,6 +1218,15 @@ export default function ChatbotPreview({ sidebarOpen = true, onSubViewChange }: 
                 {RESIDUAL_RISK.map(q => (
                   <button key={q} onClick={() => sendMessage(q)} disabled={isAnySending}
                     className="text-xs text-red-800 bg-red-100 hover:bg-red-200 border border-red-400 rounded-full px-3 py-1 transition-colors disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap">
+                    {q}
+                  </button>
+                ))}
+              </div>
+              <div className="flex gap-2 items-center flex-wrap">
+                <span className="text-[10px] font-medium text-amber-600 uppercase tracking-wide">Edge: Hybrid - template ✓ · GenAI hallucinates ✗</span>
+                {EDGE_1.map(q => (
+                  <button key={q} onClick={() => sendMessage(q)} disabled={isAnySending}
+                    className="text-xs text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded-full px-3 py-1 transition-colors disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap">
                     {q}
                   </button>
                 ))}
@@ -1255,15 +1293,6 @@ export default function ChatbotPreview({ sidebarOpen = true, onSubViewChange }: 
                 ))}
               </div>
               <div className="flex flex-col gap-1">
-                <span className="text-[10px] font-bold text-amber-600 uppercase tracking-widest">Edge: Hybrid ✓ · GenAI hallucinates ✗</span>
-                {EDGE_1.map(q => (
-                  <button key={q} onClick={() => sendMessage(q)} disabled={isAnySending}
-                    className="text-left text-xs text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded-xl px-2.5 py-1 transition-colors disabled:opacity-40 disabled:cursor-not-allowed leading-snug">
-                    {q}
-                  </button>
-                ))}
-              </div>
-              <div className="flex flex-col gap-1">
                 <span className="text-[10px] font-bold text-rose-500 uppercase tracking-widest">Edge: Both Hybrid & GenAI hallucinate ✗</span>
                 {EDGE_2.map(q => (
                   <button key={q} onClick={() => sendMessage(q)} disabled={isAnySending}
@@ -1277,6 +1306,15 @@ export default function ChatbotPreview({ sidebarOpen = true, onSubViewChange }: 
                 {RESIDUAL_RISK.map(q => (
                   <button key={q} onClick={() => sendMessage(q)} disabled={isAnySending}
                     className="text-left text-xs text-red-800 bg-red-100 hover:bg-red-200 border border-red-400 rounded-xl px-2.5 py-1 transition-colors disabled:opacity-40 disabled:cursor-not-allowed leading-snug">
+                    {q}
+                  </button>
+                ))}
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className="text-[10px] font-bold text-amber-600 uppercase tracking-widest">Edge: Hybrid - template ✓ · GenAI hallucinates ✗</span>
+                {EDGE_1.map(q => (
+                  <button key={q} onClick={() => sendMessage(q)} disabled={isAnySending}
+                    className="text-left text-xs text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded-xl px-2.5 py-1 transition-colors disabled:opacity-40 disabled:cursor-not-allowed leading-snug">
                     {q}
                   </button>
                 ))}
