@@ -877,7 +877,7 @@ export default function ChatbotPreview({ sidebarOpen = true, onSubViewChange }: 
         if (hybridAbort.signal.aborted) return;
         setHybridState(s => ({
           ...s,
-          messages: [...s.messages, { id: hybridStreamId, role: 'bot', content: intentTemplate.text, type: 'nlu-template', buttons: intentTemplate.buttons, trace: guardrailTemplateTrace }],
+          messages: [...s.messages, { id: hybridStreamId, role: 'bot', content: RAG_GUARDRAIL_RESPONSES[trimmed] ?? intentTemplate.text, type: 'nlu-template', buttons: RAG_GUARDRAIL_RESPONSES[trimmed] ? undefined : intentTemplate.buttons, trace: guardrailTemplateTrace }],
           isLoading: false,
           latency: delay,
         }));
@@ -968,7 +968,7 @@ export default function ChatbotPreview({ sidebarOpen = true, onSubViewChange }: 
 
     // Questions in the hallucination/guardrail caches are always GenAI; Simple hallucination queries keep their queryType
     const ragTrace: RoutingTrace = (ragGuardrailContent || ragHallucinationContent)
-      ? { ...ragBaseTrace, responseMode: 'GenAI', ...(SIMPLE_HALLUCINATION_QUERIES.has(trimmed) ? {} : { queryType: 'Complex' }) }
+      ? { ...ragBaseTrace, responseMode: (guardrailActive && HYBRID_GUARDRAIL_TEMPLATE_QUERIES.has(trimmed)) ? 'Template' : 'GenAI', ...(SIMPLE_HALLUCINATION_QUERIES.has(trimmed) ? {} : { queryType: 'Complex' }) }
       : { ...ragBaseTrace, responseMode: 'GenAI' };
 
     if (ragGuardrailContent) {
