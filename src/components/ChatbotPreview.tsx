@@ -213,13 +213,11 @@ const BUTTON_RESPONSES: Record<string, { text: string; intentId: string }> = {
   'Investment Options': { text: 'Key options include SRS (up to $15,300/year contribution with dollar-for-dollar tax relief, only 50% taxable at withdrawal), OCBC RoboInvest (from $100/month, 4–8% historical returns), and SRS-eligible unit trusts for diversified growth. SRS is especially valuable if you\'re in the 11.5%+ tax bracket.', intentId: 'investment_options' },
 };
 
-// Questions that should remain Simple in RAG even when served from the hallucination/guardrail cache
-const SIMPLE_HALLUCINATION_QUERIES = new Set([
-  "What bonus interest rate does OCBC give on CPF savings for Premier Banking customers?",
-]);
+// Reserved for queries that should remain Simple in both chatbots when served from hallucination/guardrail cache
+const SIMPLE_HALLUCINATION_QUERIES = new Set<string>([]);
 
-// Questions that should be forced to Complex in Hybrid specifically (overrides SIMPLE_HALLUCINATION_QUERIES)
-const HYBRID_COMPLEX_HALLUCINATION_QUERIES = new Set([
+// Queries hard-coded to Complex→Template in Hybrid regardless of guardrail state
+const HYBRID_FORCED_COMPLEX_TEMPLATE_QUERIES = new Set([
   "What bonus interest rate does OCBC give on CPF savings for Premier Banking customers?",
 ]);
 
@@ -799,9 +797,9 @@ export default function ChatbotPreview({ sidebarOpen = true, onSubViewChange }: 
       ? null : (HYBRID_HALLUCINATION_CACHE[trimmed] ?? null);
 
     // Questions in the hallucination/guardrail caches always route to GenAI in Hybrid
-    // Simple hallucination queries keep their original queryType unless overridden for Hybrid
+    // Hallucination/guardrail queries always show Complex unless explicitly kept Simple
     const hybridTrace = (hybridGuardrailContent || hybridHallucinationContent)
-      ? { ...hybridBaseTrace, ...((SIMPLE_HALLUCINATION_QUERIES.has(trimmed) && !HYBRID_COMPLEX_HALLUCINATION_QUERIES.has(trimmed)) ? {} : { queryType: 'Complex' as const }), responseMode: 'GenAI' as const }
+      ? { ...hybridBaseTrace, ...(SIMPLE_HALLUCINATION_QUERIES.has(trimmed) ? {} : { queryType: 'Complex' as const }), responseMode: 'GenAI' as const }
       : hybridBaseTrace;
 
     if (hybridGuardrailContent) {
@@ -852,6 +850,20 @@ export default function ChatbotPreview({ sidebarOpen = true, onSubViewChange }: 
           if (done && hybridStreamRef.current) { clearInterval(hybridStreamRef.current); hybridStreamRef.current = null; }
         }, 25);
       }, 1200);
+    } else if (HYBRID_FORCED_COMPLEX_TEMPLATE_QUERIES.has(trimmed)) {
+      // Hard-coded Complex→Template: always use intent template with forced trace, guardrail state irrelevant
+      const intentTemplate = hybridClassResult.intent.templateResponse;
+      const forcedTrace: RoutingTrace = { ...hybridBaseTrace, queryType: 'Complex', responseMode: 'Template' };
+      const delay = 350;
+      setTimeout(() => {
+        if (hybridAbort.signal.aborted) return;
+        setHybridState(s => ({
+          ...s,
+          messages: [...s.messages, { id: hybridStreamId, role: 'bot', content: intentTemplate.text, type: 'nlu-template', buttons: intentTemplate.buttons, trace: forcedTrace }],
+          isLoading: false,
+          latency: delay,
+        }));
+      }, delay);
     } else if (guardrailActive && HYBRID_GUARDRAIL_TEMPLATE_QUERIES.has(trimmed)) {
       // Guardrail ON + special query: emit intent template directly with queryType=Complex, responseMode=Template
       const intentTemplate = hybridClassResult.intent.templateResponse;
