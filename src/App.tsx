@@ -551,17 +551,17 @@ export default function App() {
   };
 
   const navItems = [
-    { id: 'preview', label: 'Bot Tech Benchmark', icon: <Bot size={22} />, description: 'Performance Testing' },
-    { id: 'active-intents', label: 'Active Topics', icon: <MessageSquare size={22} />, description: 'Manage Live Database' },
-    { id: 'dashboard', label: 'Observability', icon: <Activity size={22} />, description: 'Intelligence & Monitoring' },
-    { id: 'discovery', label: 'Topic Discovery', icon: <Zap size={22} />, description: 'Automated Knowledge Sync' },
+    { id: 'preview', label: 'Try the Chatbot', icon: <Bot size={22} />, description: 'Test & Preview' },
+    { id: 'active-intents', label: 'Topic Controls', icon: <MessageSquare size={22} />, description: 'Manage What the Bot Answers' },
+    { id: 'dashboard', label: 'Reports & Insights', icon: <Activity size={22} />, description: 'Analytics & Monitoring' },
+    { id: 'discovery', label: 'Knowledge Updates', icon: <Zap size={22} />, description: 'Keep the Bot Current' },
   ];
 
   const moreNavItems = [
-    { id: 'active-agents', label: 'Active Agents', icon: <Users2 size={22} />, description: 'Manage AI Agents' },
-    { id: 'content-library', label: 'Content Library', icon: <Library size={22} />, description: 'Templates & Documents' },
-    { id: 'audit-trail', label: 'Audit Trail', icon: <ClipboardList size={22} />, description: 'Compliance & Change History' },
-    { id: 'change-control', label: 'Change Control', icon: <CheckSquare size={22} />, description: 'Maker-Checker Approvals' },
+    { id: 'active-agents', label: 'AI Specialists', icon: <Users2 size={22} />, description: 'Manage AI Agents' },
+    { id: 'content-library', label: 'Templates & Documents', icon: <Library size={22} />, description: 'Resources & Files' },
+    { id: 'audit-trail', label: 'Activity Log', icon: <ClipboardList size={22} />, description: 'Change History' },
+    { id: 'change-control', label: 'Approvals', icon: <CheckSquare size={22} />, description: 'Review & Approve Changes' },
   ];
 
   const allNavItems = [...navItems, ...moreNavItems];

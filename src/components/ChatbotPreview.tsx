@@ -134,9 +134,16 @@ const RETIREMENT_INTENTS: Intent[] = [
   {
     id: 'cpf_inquiry', name: 'CPF Inquiry',
     description: 'Questions about CPF accounts, interest rates, and contribution rules',
-    keywords: ['cpf','central','provident','fund','ordinary','special','medisave','oa','sa','ma','ra','contribution','payout','withdrawal','topup','interest','rate','retirement','account','life','balance','scheme','srs','supplementary','age'],
-    trainingExamples: ['how does CPF work','what is CPF OA interest rate','CPF contribution rates for employees','what is CPF Life monthly payout','when can I withdraw my CPF','how to top up CPF special account','CPF retirement sum requirements','difference between BRS FRS ERS','how much is CPF Life payout','What is the SRS retirement age','SRS withdrawal age','what age can I withdraw SRS','SRS retirement withdrawal rules'],
+    keywords: ['cpf','central','provident','fund','ordinary','special','medisave','oa','sa','ma','ra','contribution','payout','withdrawal','topup','interest','rate','account','life','balance','brs','frs','ers'],
+    trainingExamples: ['how does CPF work','what is CPF OA interest rate','CPF contribution rates for employees','what is CPF Life monthly payout','when can I withdraw my CPF','how to top up CPF special account','CPF retirement sum requirements','difference between BRS FRS ERS','how much is CPF Life payout'],
     templateResponse: { text: 'Your CPF has three main accounts: Ordinary Account (OA) at 2.5% p.a., Special Account (SA) at 4.0%, and MediSave (MA) at 4.0%. Total contribution is 37% of salary (20% employee + 17% employer, capped at $6,800/month). The 2024 retirement sums are: BRS $99,400, FRS $198,800, and ERS $298,200.', buttons: ['CPF OA/SA Interest Rates','CPF Contribution Rates','CPF Life Monthly Payouts','CPF Retirement Sum (BRS/FRS/ERS)'] },
+  },
+  {
+    id: 'srs_inquiry', name: 'SRS Inquiry',
+    description: 'Questions about SRS retirement age, withdrawals, contribution limits, and tax relief',
+    keywords: ['srs','supplementary','retirement','scheme','withdrawal','age','63','65','contribution','limit','tax','relief','penalty','foreigner','citizen','pr'],
+    trainingExamples: ['What is the SRS retirement age','SRS withdrawal age','what age can I withdraw SRS','SRS retirement withdrawal rules','how much can I contribute to SRS','SRS tax relief','SRS contribution limit','early SRS withdrawal penalty','should I open an SRS account','SRS for foreigners'],
+    templateResponse: { text: 'The SRS statutory retirement age is 63 (being raised to 65 by 2030). At or after this age, only 50% of SRS withdrawals are taxable — spread over up to 10 years, you can withdraw up to $400,000 tax-free (assuming no other income). Early withdrawal incurs a 5% penalty plus full tax. Annual contribution limits: $15,300 for Citizens/PRs, $35,700 for foreigners.', buttons: ['SRS Withdrawal Rules', 'SRS Contribution Limits', 'CPF Life Monthly Payouts', 'Start My Retirement Plan'] },
   },
   {
     id: 'retirement_planning', name: 'Retirement Planning',
@@ -177,7 +184,7 @@ const OUT_OF_SCOPE_INTENT_DATA = {
 };
 
 // Simple intents use template only; complex intents trigger LLM (same as chatbot_demo)
-const SIMPLE_INTENTS = new Set(['cpf_inquiry', 'retirement_gap', 'life_events']);
+const SIMPLE_INTENTS = new Set(['cpf_inquiry', 'srs_inquiry', 'retirement_gap', 'life_events']);
 
 // Direct button responses — substantive answers for each preconfigured button
 const BUTTON_RESPONSES: Record<string, { text: string; intentId: string }> = {
