@@ -69,8 +69,8 @@ export default function Login({ onLogin }: LoginProps) {
           <div className="flex items-center justify-center gap-3 mb-5">
             <img src={ocbcLogo} alt="OCBC" className="h-14 object-contain" />
             <div className="border-l-2 border-slate-300 pl-4 text-left">
-              <div className="font-black text-2xl tracking-tight text-slate-900 leading-none">AI Admin</div>
-              <div className="text-sm font-bold text-[#E3000F] uppercase tracking-widest mt-1">Suite</div>
+              <div className="font-bold text-xl text-slate-900 leading-tight" style={{fontFamily:'Inter,sans-serif'}}>GDO Chatbot</div>
+              <div className="font-bold text-base text-slate-900 leading-tight mt-0.5" style={{fontFamily:'Inter,sans-serif'}}>Platform</div>
             </div>
           </div>
           <p className="text-base text-slate-600 leading-relaxed font-medium">

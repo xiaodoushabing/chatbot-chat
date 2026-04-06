@@ -591,8 +591,8 @@ export default function App() {
                 className="h-8 object-contain"
               />
               <div className="flex flex-col border-l-2 border-slate-200 pl-3 whitespace-nowrap">
-                <span className="font-black text-lg tracking-tight leading-none text-slate-900">AI Admin</span>
-                <span className="text-xs font-bold text-[#E3000F] uppercase tracking-widest mt-1">Suite</span>
+                <span className="font-bold text-base text-slate-900 leading-tight" style={{fontFamily:'Inter,sans-serif'}}>GDO Chatbot</span>
+                <span className="font-bold text-base text-slate-900 leading-tight mt-0.5" style={{fontFamily:'Inter,sans-serif'}}>Platform</span>
               </div>
             </div>
           ) : (
