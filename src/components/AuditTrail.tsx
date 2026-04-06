@@ -297,7 +297,7 @@ export default function AuditTrail({ auditEvents }: AuditTrailProps) {
             <div className="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center text-[#E3000F] shrink-0">
               <ClipboardList size={22} />
             </div>
-            <h2 className="text-4xl font-bold tracking-tight text-slate-900">Audit Trail</h2>
+            <h2 className="text-4xl font-bold tracking-tight text-slate-900">Activity Log</h2>
           </div>
           <p className="text-slate-500 text-lg mt-1">
             Complete change history for compliance and regulatory review.

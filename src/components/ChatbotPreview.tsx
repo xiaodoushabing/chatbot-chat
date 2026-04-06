@@ -1115,7 +1115,7 @@ export default function ChatbotPreview({ sidebarOpen = true, onSubViewChange }: 
       {/* ── Page header ── */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h2 className="text-3xl font-bold text-slate-900">Bot Tech Benchmark</h2>
+          <h2 className="text-4xl font-bold tracking-tight text-slate-900">Try the Chatbot</h2>
           <p className="text-slate-500 mt-2 text-base max-w-2xl">
             Compare Traditional NLU, Hybrid, and Full GenAI chatbots side-by-side.
           </p>

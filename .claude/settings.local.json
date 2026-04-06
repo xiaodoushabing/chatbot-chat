@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "WebSearch"
+      "WebSearch",
+      "Bash(grep -n \"Bot Tech\\\\|Discovery\\\\|Dashboard\\\\|Preview\\\\|Intents\\\\|Agents\\\\|Content\\\\|Audit\\\\|Control\" /Users/lisatan/project/chatbot-chat/src/components/*.tsx)"
     ]
   }
 }

@@ -612,7 +612,7 @@ export default function ExecutiveDashboard({ onNavigate, killSwitchActive, onUpd
         {/* Title row — export on far right */}
         <div className="flex items-start justify-between gap-4">
           <div className="flex flex-col gap-1">
-            <h2 className="text-4xl font-bold tracking-tight text-slate-900">Observability</h2>
+            <h2 className="text-4xl font-bold tracking-tight text-slate-900">Reports & Insights</h2>
             <p className="text-slate-500 text-base">
               Real-time intelligence, guardrail monitoring, and automated risk detection.
               {selectedProject !== 'All Projects' && (

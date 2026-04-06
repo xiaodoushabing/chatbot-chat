@@ -482,7 +482,7 @@ export default function ActiveAgents({ onAddApproval, onAddAuditEvent, onNavigat
       {/* Header */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 shrink-0">
         <div className="flex flex-col gap-0.5">
-          <h2 className="text-2xl font-bold tracking-tight text-slate-900">Active Agents</h2>
+          <h2 className="text-4xl font-bold tracking-tight text-slate-900">AI Specialists</h2>
           <p className="text-slate-500 text-sm">Manage AI agents available for this chatbot instance.</p>
         </div>
         <div className="flex items-center gap-2">

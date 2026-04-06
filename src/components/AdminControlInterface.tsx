@@ -168,7 +168,7 @@ export default function AdminControlInterface({ approvals, onApprovalDecision, o
       <div className="flex flex-col gap-6 p-8 max-w-7xl mx-auto w-full">
         {/* Page Header */}
         <div className="flex flex-col gap-1">
-          <h2 className="text-4xl font-bold tracking-tight text-slate-900">Change Control</h2>
+          <h2 className="text-4xl font-bold tracking-tight text-slate-900">Approvals</h2>
           <p className="text-slate-500 text-lg">
             Maker-checker approval queue for all pending changes.
           </p>

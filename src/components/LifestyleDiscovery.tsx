@@ -1579,7 +1579,7 @@ export default function LifestyleDiscovery({ activeSubView, setActiveSubView, si
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h2 className="text-3xl font-bold text-slate-900">Lifestyle Discovery</h2>
+          <h2 className="text-4xl font-bold tracking-tight text-slate-900">Lifestyle Discovery</h2>
           <p className="text-slate-500 mt-2 text-base max-w-2xl">
             Compare two approaches to understanding a customer's retirement lifestyle.
           </p>

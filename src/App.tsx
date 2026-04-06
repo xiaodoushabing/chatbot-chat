@@ -554,7 +554,7 @@ export default function App() {
     { id: 'preview', label: 'Try the Chatbot', icon: <Bot size={22} />, description: 'Test & Preview' },
     { id: 'active-intents', label: 'Topic Controls', icon: <MessageSquare size={22} />, description: 'Manage What the Bot Answers' },
     { id: 'dashboard', label: 'Reports & Insights', icon: <Activity size={22} />, description: 'Analytics & Monitoring' },
-    { id: 'discovery', label: 'Knowledge Updates', icon: <Zap size={22} />, description: 'Keep the Bot Current' },
+    { id: 'discovery', label: 'Update knowledge', icon: <Zap size={22} />, description: 'Keep the Bot Current' },
   ];
 
   const moreNavItems = [

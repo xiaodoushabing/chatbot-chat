@@ -39,7 +39,7 @@ export default function ContentLibrary({ onAddApproval, onAddAuditEvent, pending
       <div className="mb-6">
         <div className="flex items-center gap-3 mb-1">
           <Library size={24} className="text-[#E3000F]" />
-          <h1 className="text-2xl font-black text-slate-900">Content Library</h1>
+          <h2 className="text-4xl font-bold tracking-tight text-slate-900">Templates & Documents</h2>
         </div>
         <p className="text-slate-500 text-sm ml-9">Manage response templates and knowledge documents</p>
       </div>

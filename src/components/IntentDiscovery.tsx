@@ -491,7 +491,7 @@ export default function IntentDiscovery({ onDeploy, onAddApproval, onAddAuditEve
       <div className="flex flex-col gap-8">
         <div className="flex items-start justify-between gap-4">
           <div className="flex flex-col gap-3">
-            <h2 className="text-4xl font-bold tracking-tight text-slate-900">Knowledge Synchronization</h2>
+            <h2 className="text-4xl font-bold tracking-tight text-slate-900">Update knowledge</h2>
             <p className="text-slate-500 text-lg">
               Automatically discover and update chatbot intents from your latest policy documents and web resources.
             </p>

@@ -563,7 +563,7 @@ export default function ActiveIntents({ onAddApproval, onAddAuditEvent, autoOpen
       {/* Header */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
         <div className="flex flex-col gap-0.5">
-          <h2 className="text-2xl font-bold tracking-tight text-slate-900">Active Topics</h2>
+          <h2 className="text-4xl font-bold tracking-tight text-slate-900">Topic Controls</h2>
           <p className="text-slate-500 text-sm">Manage chatbot topics and response modes.</p>
         </div>
         <div className="flex items-center gap-2">
